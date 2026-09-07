@@ -73,11 +73,15 @@
 <section style="padding-top:0;">
   <div class="wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;">
     <div>
-      <form class="form-box" name="contact" method="POST" action="/thanks.html"
-            data-netlify="true" netlify-honeypot="bot-field">
-        <input type="hidden" name="form-name" value="contact">
+      <form class="form-box" name="contact" method="POST" action="https://api.web3forms.com/submit">
+        <!-- استبدل القيمة بمفتاح الوصول من web3forms.com (مجاني — سجّل بإيميلك) -->
+        <input type="hidden" name="access_key" value="YOUR_WEB3FORMS_ACCESS_KEY">
+        <input type="hidden" name="subject" value="طلب جديد من موقع Vacant HR">
+        <input type="hidden" name="from_name" value="موقع Vacant HR">
+        <input type="hidden" name="redirect" value="https://vacanthr.com/thanks.html">
+        <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p hidden>
-          <label>لا تملأ هذا الحقل إن كنت إنسانًا: <input name="bot-field"></label>
+          <label>لا تملأ هذا الحقل إن كنت إنسانًا: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
         </p>
         <div class="form-row">
           <label for="name">الاسم*</label>
@@ -196,23 +200,27 @@
 
 <script src="script.js" defer></script>
 <script>
-// Progressive enhancement: AJAX submit so the user stays on the page.
-// Falls back to normal navigation to /thanks.html if fetch fails.
+// إرسال عبر Web3Forms مع البقاء في نفس الصفحة (progressive enhancement).
+// لو فشل الطلب، يترك الفورم يرسل بشكل عادي ويحوّل لصفحة الشكر.
 (function () {
   var form = document.querySelector('form[name="contact"]');
   if (!form) return;
   var status = form.querySelector('.form-status');
   form.addEventListener('submit', function (e) {
-    if (location.protocol === 'file:') return; // let it navigate when testing locally
+    if (location.protocol === 'file:') return; // اتركه ينتقل عند الاختبار المحلي
     e.preventDefault();
     var btn = form.querySelector('button[type="submit"]');
-    var data = new URLSearchParams(new FormData(form)).toString();
     btn.disabled = true;
     status.style.color = 'var(--teal-2)';
     status.textContent = 'جارٍ الإرسال…';
-    fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: data })
-      .then(function (r) {
-        if (!r.ok) throw new Error('bad response');
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: new FormData(form)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        if (!json.success) throw new Error(json.message || 'failed');
         form.reset();
         status.style.color = 'var(--brass)';
         status.textContent = 'تم استلام رسالتك، هنتواصل معاك خلال يوم عمل.';
