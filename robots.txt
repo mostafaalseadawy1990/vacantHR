@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vacanthr.com/sitemap.xml
