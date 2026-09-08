@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  url: 'https://vacanthr.com/about',
+  mainEntity: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+}];
+---
+<Base
+  title="من نحن | Vacant HR"
+  description="Vacant HR شركة حلول موارد بشرية للشركات الناشئة والمتوسطة في مصر — نجمع بين خدمة التوظيف البشرية ونظام HRM تقني في مكان واحد. تعرّف على قصتنا وقيمنا."
+  active="about"
+  path="/about"
+  waText="مرحبًا، حابب أعرف أكتر عن Vacant HR"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>من نحن</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap">
+    <div class="eyebrow-line">من نحن</div>
+    <h1 style="max-width:20ch;">بنساعد الشركات تبني فرق قوية وأنظمة موارد بشرية تكبر معاها</h1>
+    <p class="lead" style="max-width:62ch;">Vacant HR اتأسست على فكرة بسيطة: الشركات الناشئة والمتوسطة محتاجة نفس جودة خدمات الموارد البشرية اللي عند الشركات الكبيرة، بس بشكل عملي وبتكلفة مناسبة. عشان كده جمعنا الخدمة البشرية (توظيف واستشارات) مع أداة تقنية (نظام HRM) تحت سقف واحد.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap prose">
+    <h2>قصتنا</h2>
+    <p>بدأنا كفريق توظيف صغير بيشتغل مع شركات ناشئة في القاهرة. مع الوقت لاحظنا إن العملاء بيرجعوا لنا بنفس المشاكل: هيكل تنظيمي مش واضح، سياسات مكتوبة على السريع، وبيانات موظفين متفرقة على شيتات إكسل. فقررنا نوسّع الخدمة عشان نغطي دورة الموارد البشرية كاملة — من أول ما تدوّر على موظف، لحد ما تدير أداءه ورواتبه.</p>
+
+    <h2>قيمنا</h2>
+    <div class="value-grid">
+      <div><h3>الوضوح</h3><p>توصيات محددة وخطوات واضحة، مش تقارير نظرية.</p></div>
+      <div><h3>العملية</h3><p>نشتغل مع فريقك على التنفيذ، مش بس التسليم.</p></div>
+      <div><h3>الشفافية</h3><p>أسعار واضحة ومواعيد واقعية من أول يوم.</p></div>
+    </div>
+
+    <h2>مين بنخدمهم</h2>
+    <ul>
+      <li>الشركات الناشئة اللي بتوظف أول 10–50 موظف وعايزة تعمل الأساس صح.</li>
+      <li>الشركات المتوسطة اللي وصلت لمرحلة إن الشيتات مابقتش تكفي.</li>
+      <li>فرق الموارد البشرية اللي محتاجة دعم في التوظيف أو الاستشارات لمشروع محدد.</li>
+    </ul>
+
+    <h2>ليه Vacant HR</h2>
+    <ul>
+      <li>خدمة بشرية وتقنية في مكان واحد — مش محتاج تتعامل مع أكتر من مورّد.</li>
+      <li>خبرة محلية بقانون العمل والتأمينات والسوق المصري.</li>
+      <li>واجهة عربية بالكامل لكل الأدوات.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat"><div class="num" data-count="120" data-prefix="+">+120</div><div class="lbl">شركة تثق بينا</div></div>
+      <div class="stat"><div class="num" data-count="3400" data-prefix="+">+3,400</div><div class="lbl">توظيف ناجح</div></div>
+      <div class="stat"><div class="num" data-count="18">18</div><div class="lbl">قطاع مختلف</div></div>
+      <div class="stat"><div class="num" data-count="92" data-suffix="%">92%</div><div class="lbl">نسبة رضا العملاء</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="wrap">
+    <h2>نبدأ شغل سوا؟</h2>
+    <p>احجز استشارة مجانية ونتكلم عن احتياج شركتك.</p>
+    <a href="/contact" class="btn solid">تواصل معنا</a>
+  </div>
+</section>
+
+</main>
+</Base>

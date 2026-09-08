@@ -1,0 +1,69 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import WhatsApp from '../components/WhatsApp.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  active?: string;
+  path?: string;            // canonical path, e.g. "/about"
+  ogImage?: string;
+  noindex?: boolean;
+  waText?: string;
+  jsonld?: unknown[];
+  showChrome?: boolean;     // header/footer/whatsapp (default true)
+}
+
+const {
+  title,
+  description = 'Vacant HR تقدم خدمات التوظيف، نظام إدارة موارد بشرية سحابي (HRM SaaS)، الاستشارات، ونماذج الوصف الوظيفي.',
+  active = '',
+  path = Astro.url.pathname,
+  ogImage = '/og-image.png',
+  noindex = false,
+  waText,
+  jsonld = [],
+  showChrome = true,
+} = Astro.props;
+
+const site = 'https://vacanthr.com';
+const canonical = new URL(path, site).href;
+const ogImageAbs = new URL(ogImage, site).href;
+---
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+{noindex && <meta name="robots" content="noindex" />}
+<meta name="theme-color" content="#1F3B36" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Vacant HR" />
+<meta property="og:locale" content="ar_AR" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImageAbs} />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;500;600;700;800&display=swap" />
+<link rel="stylesheet" href="/style.css" />
+{jsonld.map((block) => (
+  <script type="application/ld+json" set:html={JSON.stringify(block)} />
+))}
+</head>
+<body>
+<a href="#main" class="skip-link">تخطَّ إلى المحتوى</a>
+{showChrome && <Header active={active} />}
+<slot />
+{showChrome && <Footer />}
+{showChrome && <WhatsApp text={waText} />}
+<script src="/script.js" defer is:inline></script>
+</body>
+</html>

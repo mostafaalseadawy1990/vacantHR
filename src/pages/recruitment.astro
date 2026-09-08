@@ -1,0 +1,99 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  serviceType: 'خدمات التوظيف',
+  provider: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+  areaServed: 'EG',
+  description: 'توظيف دائم، مؤقت ومشاريعي، وتوظيف تنفيذي للشركات الناشئة والمتوسطة.',
+}];
+---
+<Base
+  title="خدمة التوظيف | Vacant HR"
+  description="خدمة توظيف متكاملة من Vacant HR: توظيف دائم، مؤقت ومشاريعي، وتوظيف تنفيذي (Executive Search) — من كتابة الإعلان حتى التعيين والتفاوض على العرض."
+  active="recruitment"
+  path="/recruitment"
+  waText="مرحبًا، عندي استفسار عن خدمة التوظيف"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>التوظيف</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap">
+    <div class="eyebrow-line">خدمة التوظيف</div>
+    <h1 style="max-width:16ch;">نوصلك للكفاءة الصح، مش أي كفاءة</h1>
+    <p class="lead" style="max-width:60ch;">فريقنا بيدور على المرشح المناسب لثقافة شركتك ومتطلبات الدور، مش بس اللي بيوافق على السيرة الذاتية.</p>
+    <div class="btn-row"><a href="/contact" class="btn solid">اطلب مرشح</a></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">أنواع التوظيف</div>
+      <h2>خدمة تناسب احتياجك، مهما كان حجم الفريق</h2>
+    </div>
+
+    <div class="feature-row">
+      <div>
+        <h3>التوظيف الدائم</h3>
+        <p>نتولى دورة التوظيف كاملة: كتابة الإعلان، الفرز، المقابلات الأولية، وتنسيق المقابلة النهائية مع فريقك، لحد ما تختار الشخص المناسب.</p>
+        <div class="tag-list">
+          <span class="tag">وظائف إدارية</span>
+          <span class="tag">وظائف تقنية</span>
+          <span class="tag">وظائف مبيعات وتسويق</span>
+        </div>
+      </div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><circle cx="160" cy="130" r="46" fill="none" stroke="#1F3B36" stroke-width="10"/><line x1="196" y1="166" x2="255" y2="225" stroke="#1F3B36" stroke-width="10" stroke-linecap="round"/><circle cx="160" cy="130" r="18" fill="#B07A2E"/><line x1="60" y1="250" x2="340" y2="250" stroke="#B07A2E" stroke-width="2"/></svg></div>
+    </div>
+
+    <div class="feature-row rev">
+      <div>
+        <h3>التوظيف المؤقت والمشاريعي</h3>
+        <p>لو عندك حمل عمل موسمي أو مشروع محدد المدة، بنوفرلك كفاءات جاهزة للانضمام بسرعة من غير التزام توظيف طويل المدى.</p>
+      </div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="70" y="80" width="70" height="140" fill="#1F3B36"/><rect x="165" y="120" width="70" height="100" fill="#2C5049"/><rect x="260" y="60" width="70" height="160" fill="#B07A2E"/><line x1="50" y1="230" x2="350" y2="230" stroke="#1F3B36" stroke-width="2"/></svg></div>
+    </div>
+
+    <div class="feature-row">
+      <div>
+        <h3>التوظيف التنفيذي (Executive Search)</h3>
+        <p>لأدوار القيادة العليا، بنستخدم منهجية بحث مباشر (Headhunting) مع سرية تامة، ونقدملك قائمة مختصرة من المرشحين المؤهلين فعليًا.</p>
+      </div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><circle cx="200" cy="120" r="40" fill="#1F3B36"/><path d="M120 240 q80 -110 160 0" fill="none" stroke="#1F3B36" stroke-width="10" stroke-linecap="round"/><path d="M200 60 l12 24 26 4 -19 18 4 26 -23 -12 -23 12 4 -26 -19 -18 26 -4z" fill="#B07A2E"/></svg></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">آلية العمل</div>
+      <h2>رحلة التوظيف معانا</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n"></div><div><h3>فهم المتطلبات</h3><p>جلسة قصيرة لفهم طبيعة الدور، ثقافة الفريق، والميزانية.</p></div></div>
+      <div class="step"><div class="n"></div><div><h3>البحث والفرز</h3><p>ندور على المرشحين من قاعدة بياناتنا وقنوات البحث المباشر، ونعمل فرز أولي هاتفي.</p></div></div>
+      <div class="step"><div class="n"></div><div><h3>تقديم القائمة المختصرة</h3><p>بنقدملك 3-5 مرشحين مؤهلين مع تقرير تقييم لكل واحد.</p></div></div>
+      <div class="step"><div class="n"></div><div><h3>المقابلة والتعيين</h3><p>ننسق المقابلات النهائية، ونساعد في التفاوض على العرض حتى التوقيع.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="wrap">
+    <h2>عندك دور شاغر محتاج تتملى؟</h2>
+    <p>ابعتلنا تفاصيل الوظيفة ونرجعلك خلال 24 ساعة بخطة عمل مبدئية.</p>
+    <a href="/contact" class="btn solid">اطلب مرشح دلوقتي</a>
+  </div>
+</section>
+
+</main>
+</Base>

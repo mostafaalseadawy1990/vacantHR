@@ -1,0 +1,120 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Vacant HR — نظام إدارة الموارد البشرية',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  inLanguage: 'ar',
+  offers: [
+    { '@type': 'Offer', name: 'أساسي', price: '150', priceCurrency: 'EGP', description: 'لكل موظف شهريًا' },
+    { '@type': 'Offer', name: 'احترافي', price: '220', priceCurrency: 'EGP', description: 'لكل موظف شهريًا' },
+  ],
+  publisher: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+}];
+---
+<Base
+  title="برنامج HRM SaaS | Vacant HR"
+  description="نظام إدارة موارد بشرية سحابي بواجهة عربية من Vacant HR: حضور وانصراف، رواتب، إجازات وطلبات، وتقييم أداء — بباقات تناسب حجم فريقك."
+  active="hrm"
+  path="/hrm-saas"
+  waText="مرحبًا، عايز أعرف أكتر عن برنامج HRM"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>برنامج HRM</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow-line">نظام إدارة الموارد البشرية</div>
+      <h1>كل بيانات موظفينك في مكان واحد</h1>
+      <p class="lead">حضور، رواتب، إجازات، وتقييم أداء — نظام سحابي بواجهة عربية، مصمم لفرق الموارد البشرية اللي عايزة توقف الشيتات المتفرقة.</p>
+      <div class="btn-row">
+        <a href="/contact" class="btn solid">اطلب تجربة مجانية</a>
+        <a href="/hrm-guide" class="btn">دليل الاستخدام والشروحات</a>
+      </div>
+    </div>
+    <div class="hero-figure" aria-hidden="true">
+      <svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="500" fill="#E8E0CB"/><rect x="50" y="60" width="300" height="200" rx="6" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="50" y="60" width="300" height="34" fill="#1F3B36"/><rect x="72" y="120" width="120" height="10" fill="#2C5049"/><rect x="72" y="145" width="200" height="10" fill="#B07A2E"/><rect x="72" y="170" width="160" height="10" fill="#2C5049"/><rect x="72" y="195" width="220" height="10" fill="#B07A2E"/><polyline points="70,360 130,320 190,340 260,280 330,250" fill="none" stroke="#1F3B36" stroke-width="6" stroke-linecap="round"/><circle cx="260" cy="280" r="8" fill="#B07A2E"/></svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">المميزات</div>
+      <h2>وحدات النظام</h2>
+    </div>
+
+    <div class="feature-row">
+      <div><h3>الحضور والانصراف</h3><p>تسجيل حضور عبر الموبايل أو البصمة، مع حساب تلقائي للتأخير والوقت الإضافي، وربط مباشر بكشوف الرواتب.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><circle cx="200" cy="150" r="80" fill="none" stroke="#1F3B36" stroke-width="8"/><line x1="200" y1="150" x2="200" y2="95" stroke="#1F3B36" stroke-width="8" stroke-linecap="round"/><line x1="200" y1="150" x2="240" y2="170" stroke="#B07A2E" stroke-width="8" stroke-linecap="round"/></svg></div>
+    </div>
+
+    <div class="feature-row rev">
+      <div><h3>الرواتب</h3><p>احتساب الرواتب والخصومات والبدلات تلقائيًا شهريًا، مع إصدار قسائم رواتب إلكترونية لكل موظف.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="130" y="55" width="140" height="190" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="152" y="85" width="96" height="8" fill="#2C5049"/><rect x="152" y="110" width="70" height="8" fill="#B07A2E"/><rect x="152" y="135" width="96" height="8" fill="#2C5049"/><circle cx="200" cy="195" r="24" fill="none" stroke="#B07A2E" stroke-width="5"/><text x="200" y="203" font-size="22" fill="#B07A2E" text-anchor="middle" font-family="Amiri, serif">£</text></svg></div>
+    </div>
+
+    <div class="feature-row">
+      <div><h3>الإجازات والطلبات</h3><p>تقديم طلبات الإجازة والموافقة عليها إلكترونيًا، مع رصيد إجازات محدث لحظيًا لكل موظف.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="120" y="60" width="160" height="170" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="120" y="60" width="160" height="30" fill="#1F3B36"/><path d="M150 150 l20 20 40 -45" fill="none" stroke="#B07A2E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+
+    <div class="feature-row rev">
+      <div><h3>تقييم الأداء</h3><p>دورات تقييم دورية قابلة للتخصيص، بمؤشرات أداء واضحة تساعدك في قرارات الترقية والتطوير.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="80" y="150" width="45" height="90" fill="#2C5049"/><rect x="150" y="110" width="45" height="130" fill="#1F3B36"/><rect x="220" y="80" width="45" height="160" fill="#B07A2E"/><rect x="290" y="130" width="45" height="110" fill="#2C5049"/><line x1="60" y1="240" x2="350" y2="240" stroke="#1F3B36" stroke-width="2"/></svg></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">الأسعار</div>
+      <h2>باقات تناسب حجم فريقك</h2>
+    </div>
+    <div class="pricing">
+      <div class="plan">
+        <h3>أساسي</h3>
+        <div class="price">150 ج.م <span>/ موظف / شهريًا</span></div>
+        <p>لفرق تحت 20 موظف</p>
+        <ul><li>الحضور والانصراف</li><li>إدارة الإجازات</li><li>دعم عبر البريد الإلكتروني</li></ul>
+        <a href="/contact" class="btn" style="margin-top:22px;">ابدأ الآن</a>
+      </div>
+      <div class="plan featured">
+        <h3>احترافي</h3>
+        <div class="price">220 ج.م <span>/ موظف / شهريًا</span></div>
+        <p>الأكثر طلبًا للشركات المتوسطة</p>
+        <ul><li>كل مميزات الباقة الأساسية</li><li>إدارة الرواتب الكاملة</li><li>تقييم الأداء</li><li>دعم فني مباشر</li></ul>
+        <a href="/contact" class="btn solid" style="margin-top:22px;background:var(--brass);border-color:var(--brass);">اطلب عرض تجريبي</a>
+      </div>
+      <div class="plan">
+        <h3>مؤسسي</h3>
+        <div class="price">تواصل معنا</div>
+        <p>لفرق أكبر من 100 موظف</p>
+        <ul><li>كل المميزات</li><li>تكامل مع أنظمة أخرى (API)</li><li>مدير حساب مخصص</li></ul>
+        <a href="/contact" class="btn" style="margin-top:22px;">تواصل مع المبيعات</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="wrap">
+    <h2>جاهز تجرب النظام؟</h2>
+    <p>احجز عرض تجريبي مباشر لمدة 20 دقيقة مع فريقنا، من غير أي التزام.</p>
+    <a href="/contact" class="btn solid">احجز عرض تجريبي</a>
+  </div>
+</section>
+
+</main>
+</Base>

@@ -1,0 +1,24 @@
+---
+interface Props { active?: string }
+const { active = '' } = Astro.props;
+const links = [
+  { href: '/', label: 'الرئيسية', key: 'home' },
+  { href: '/recruitment', label: 'التوظيف', key: 'recruitment' },
+  { href: '/hrm-saas', label: 'برنامج HRM', key: 'hrm' },
+  { href: '/consulting', label: 'الاستشارات', key: 'consulting' },
+  { href: '/jd-templates', label: 'نماذج الوصف الوظيفي', key: 'jd' },
+  { href: '/about', label: 'من نحن', key: 'about' },
+];
+---
+<header class="site">
+  <div class="wrap nav">
+    <a href="/" class="brand">Vacant HR <span>VACANT HR</span></a>
+    <nav class="nav-links" id="nav" aria-label="التنقل الرئيسي">
+      {links.map((l) => (
+        <a href={l.href} class={active === l.key ? 'active' : undefined} aria-current={active === l.key ? 'page' : undefined}>{l.label}</a>
+      ))}
+      <a href="/contact" class:list={['nav-cta', { active: active === 'contact' }]} aria-current={active === 'contact' ? 'page' : undefined}>تواصل معنا</a>
+    </nav>
+    <button class="burger" type="button" aria-label="فتح القائمة" aria-controls="nav" aria-expanded="false">☰</button>
+  </div>
+</header>

@@ -1,0 +1,89 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  serviceType: 'استشارات الموارد البشرية',
+  provider: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+  areaServed: 'EG',
+  description: 'الهيكلة التنظيمية، السياسات الداخلية، مسارات النمو الوظيفي، وأنظمة التعويضات.',
+}];
+---
+<Base
+  title="استشارات الموارد البشرية | Vacant HR"
+  description="استشارات موارد بشرية عملية من Vacant HR: الهيكلة التنظيمية، السياسات الداخلية، مسارات النمو الوظيفي، وأنظمة التعويضات والمزايا — تشخيص وتنفيذ مشترك مع فريقك."
+  active="consulting"
+  path="/consulting"
+  waText="مرحبًا، محتاج استشارة موارد بشرية"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>الاستشارات</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap">
+    <div class="eyebrow-line">الاستشارات</div>
+    <h1 style="max-width:18ch;">لما الهيكل التنظيمي يبقى واضح، القرارات بتبقى أسهل</h1>
+    <p class="lead" style="max-width:60ch;">نساعد الشركات الناشئة والمتوسطة تبني أساس موارد بشرية سليم، بدل ما تعالج المشاكل واحدة واحدة.</p>
+    <div class="btn-row"><a href="/contact" class="btn solid">احجز جلسة تشخيص</a></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">مجالات الاستشارة</div>
+      <h2>بنشتغل معاك على</h2>
+    </div>
+
+    <div class="feature-row">
+      <div><h3>الهيكلة التنظيمية</h3><p>مراجعة الهيكل الحالي لشركتك، وتحديد مستويات الإدارة والمسؤوليات بشكل يدعم النمو المستقبلي بدون تضارب صلاحيات.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="160" y="45" width="80" height="45" fill="#1F3B36"/><rect x="70" y="150" width="80" height="45" fill="#2C5049"/><rect x="250" y="150" width="80" height="45" fill="#2C5049"/><path d="M200 90 V120 H110 V150 M200 120 H290 V150" fill="none" stroke="#B07A2E" stroke-width="3"/></svg></div>
+    </div>
+
+    <div class="feature-row rev">
+      <div><h3>السياسات الداخلية</h3><p>صياغة دليل سياسات الموظفين: الحضور، الإجازات، السلوك الوظيفي، والإجراءات التأديبية، بما يتوافق مع قانون العمل.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="130" y="45" width="140" height="210" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="152" y="75" width="96" height="8" fill="#2C5049"/><rect x="152" y="100" width="96" height="8" fill="#B07A2E"/><rect x="152" y="125" width="70" height="8" fill="#2C5049"/><rect x="152" y="150" width="96" height="8" fill="#B07A2E"/><rect x="152" y="175" width="60" height="8" fill="#2C5049"/></svg></div>
+    </div>
+
+    <div class="feature-row">
+      <div><h3>مسارات النمو الوظيفي</h3><p>تصميم مسارات ترقية واضحة لكل دور، تساعدك تحتفظ بالكفاءات وتقلل معدل ترك العمل.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><circle cx="90" cy="220" r="14" fill="#2C5049"/><circle cx="200" cy="150" r="14" fill="#1F3B36"/><circle cx="310" cy="80" r="14" fill="#B07A2E"/><path d="M90 220 L200 150 L310 80" fill="none" stroke="#1F3B36" stroke-width="4" stroke-dasharray="2 8" stroke-linecap="round"/></svg></div>
+    </div>
+
+    <div class="feature-row rev">
+      <div><h3>أنظمة التعويضات والمزايا</h3><p>مراجعة هيكل الرواتب والمزايا بمقارنة بسوق العمل، لضمان تنافسية عادلة داخليًا وخارجيًا.</p></div>
+      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><path d="M200 60 v180 M120 90 h160 M120 90 l-25 55 h50z M280 90 l-25 55 h50z" fill="none" stroke="#1F3B36" stroke-width="6" stroke-linejoin="round"/><circle cx="200" cy="255" r="10" fill="#B07A2E"/></svg></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">طريقة التعامل</div>
+      <h2>استشارة عملية، مش تقرير هيقعد في الدرج</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n"></div><div><h3>تشخيص الوضع الحالي</h3><p>نراجع الهيكل، السياسات، والبيانات المتاحة لفهم نقاط الضعف الفعلية.</p></div></div>
+      <div class="step"><div class="n"></div><div><h3>خطة عمل واضحة</h3><p>نقدم توصيات محددة بأولويات وجدول زمني واقعي للتنفيذ.</p></div></div>
+      <div class="step"><div class="n"></div><div><h3>التنفيذ المشترك</h3><p>نشتغل مع فريقك خطوة بخطوة، مش بس نسلم توصية ونمشي.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="wrap">
+    <h2>عندك تحدي تنظيمي محدد؟</h2>
+    <p>احجز جلسة تشخيص أولية مجانية لمدة 30 دقيقة.</p>
+    <a href="/contact" class="btn solid">احجز جلسة تشخيص</a>
+  </div>
+</section>
+
+</main>
+</Base>

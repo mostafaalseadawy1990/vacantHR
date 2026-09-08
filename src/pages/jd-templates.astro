@@ -1,0 +1,73 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'نماذج الوصف الوظيفي المجانية',
+  url: 'https://vacanthr.com/jd-templates',
+  isPartOf: { '@type': 'WebSite', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+  inLanguage: 'ar',
+}];
+
+const templates = [
+  { cat: 'تقنية المعلومات', title: 'مطوّر برمجيات', file: 'jd-software-developer', desc: 'المهام، المهارات التقنية المطلوبة، ومتطلبات الخبرة لدور مطور Backend أو Frontend، مع مؤشرات أداء مقترحة.' },
+  { cat: 'المبيعات', title: 'مدير حسابات', file: 'jd-account-manager', desc: 'وصف كامل لدور مدير الحسابات مع مؤشرات الأداء (KPIs) المقترحة ومسؤوليات التجديد والبيع الإضافي.' },
+  { cat: 'التسويق', title: 'أخصائي تسويق رقمي', file: 'jd-digital-marketing-specialist', desc: 'يشمل المهام اليومية، الأدوات المطلوب إتقانها، المؤهلات الأساسية، ومؤشرات مثل CPL و CAC.' },
+  { cat: 'المالية', title: 'محاسب أول', file: 'jd-senior-accountant', desc: 'نموذج متوافق مع الممارسات المحاسبية المصرية، يشمل المهارات، الإقرارات الضريبية، والشهادات المطلوبة.' },
+  { cat: 'الموارد البشرية', title: 'أخصائي موارد بشرية', file: 'jd-hr-generalist', desc: 'وصف وظيفي لدور HR Generalist يغطي التوظيف، شؤون الموظفين، والامتثال لقانون العمل.' },
+  { cat: 'خدمة العملاء', title: 'ممثل خدمة عملاء', file: 'jd-customer-service-representative', desc: 'نموذج مرن يصلح للعمل الحضوري أو عن بعد، مع مهارات التواصل المطلوبة ومؤشرات CSAT و FCR.' },
+];
+---
+<Base
+  title="نماذج الوصف الوظيفي المجانية | Vacant HR"
+  description="مكتبة مجانية من نماذج الوصف الوظيفي الجاهزة والقابلة للتعديل من Vacant HR — مصنّفة حسب القطاع: تقنية، مبيعات، تسويق، مالية، موارد بشرية، وخدمة عملاء."
+  active="jd"
+  path="/jd-templates"
+  waText="مرحبًا، محتاج نموذج وصف وظيفي مخصص"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>نماذج الوصف الوظيفي</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap">
+    <div class="eyebrow-line">مكتبة مجانية</div>
+    <h1 style="max-width:18ch;">نماذج وصف وظيفي جاهزة، وقابلة للتعديل</h1>
+    <p class="lead" style="max-width:60ch;">اختصر وقت كتابة الوصف الوظيفي من الصفر. حمّل النموذج، عدّله بما يناسب شركتك، وابدأ الإعلان عن الوظيفة فورًا. كل النماذج بصيغة نصية مفتوحة تفتحها على Word أو Google Docs.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">تصفح حسب القطاع</div>
+      <h2>النماذج المتاحة</h2>
+    </div>
+    <div class="doc-grid">
+      {templates.map((t) => (
+        <div class="doc-card">
+          <span class="cat">{t.cat}</span>
+          <h3>{t.title}</h3>
+          <p>{t.desc}</p>
+          <a href={`/templates/${t.file}.md`} class="dl" download>تحميل النموذج ↓</a>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap" style="text-align:center;">
+    <h2 style="margin-bottom:16px;">مش لاقي المسمى الوظيفي اللي محتاجه؟</h2>
+    <p style="margin:0 auto;">ابعتلنا تفاصيل الدور، وفريقنا هيجهزلك نموذج مخصص خلال يوم عمل واحد.</p>
+    <a href="/contact" class="btn solid" style="margin-top:24px;">اطلب نموذج مخصص</a>
+  </div>
+</section>
+
+</main>
+</Base>

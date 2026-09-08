@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+export const prerender = true;
+---
+<Base title="الصفحة غير موجودة | Vacant HR" path="/404" noindex={true}>
+<main id="main">
+<section class="hero" style="padding:100px 0;">
+  <div class="wrap" style="text-align:center;">
+    <div class="eyebrow-line" style="justify-content:center;">خطأ 404</div>
+    <h1>الصفحة دي مش موجودة</h1>
+    <p class="lead" style="margin:16px auto 0;">يمكن الرابط قديم أو فيه خطأ إملائي. تقدر ترجع للرئيسية أو تتصفح خدماتنا.</p>
+    <div class="btn-row" style="justify-content:center;">
+      <a href="/" class="btn solid">الرئيسية</a>
+      <a href="/contact" class="btn">تواصل معنا</a>
+    </div>
+  </div>
+</section>
+</main>
+</Base>
