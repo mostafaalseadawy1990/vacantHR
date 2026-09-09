@@ -1,0 +1,22 @@
+---
+interface Props { active?: string }
+const { active = '' } = Astro.props;
+const items = [
+  { href: '/admin', label: 'نظرة عامة', key: 'home' },
+  { href: '/admin/jobs', label: 'الوظائف', key: 'jobs' },
+  { href: '/admin/requests', label: 'طلبات الشركات', key: 'requests' },
+];
+---
+<div class="dash-head">
+  <div>
+    <div class="eyebrow-line">لوحة الإدارة</div>
+    <h1><slot>Vacant HR</slot></h1>
+  </div>
+  <a href="/logout" class="btn">تسجيل الخروج</a>
+</div>
+<nav class="dash-nav">
+  {items.map((i) => (
+    <a href={i.href} class={active === i.key ? 'active' : undefined}>{i.label}</a>
+  ))}
+  <a href="/dashboard">لوحة المستخدم</a>
+</nav>

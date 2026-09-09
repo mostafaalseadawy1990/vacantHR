@@ -1,0 +1,82 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+import { EMPLOYMENT_TYPE_AR } from '../../../lib/jobs';
+
+const supabase = serverClient(Astro);
+
+// Quick status change from the list
+let flash = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = String(form.get('id') || '');
+  const status = String(form.get('status') || '');
+  if (id && ['draft', 'open', 'closed'].includes(status)) {
+    const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+    if (status === 'open') patch.published_at = new Date().toISOString();
+    const { error } = await supabase.from('jobs').update(patch).eq('id', id);
+    if (!error) return Astro.redirect('/admin/jobs?ok=1', 303);
+    flash = 'تعذّر تحديث الحالة.';
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: jobs } = await supabase
+  .from('jobs')
+  .select('id, slug, title, department, employment_type, status, created_at, applications(count)')
+  .order('created_at', { ascending: false });
+
+const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتوحة', closed: 'مغلقة' };
+---
+<Base title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="jobs">الوظائف</AdminNav>
+
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div style="margin-bottom:20px;"><a href="/admin/jobs/new" class="btn solid">+ وظيفة جديدة</a></div>
+
+    {(!jobs || jobs.length === 0) ? (
+      <p style="color:var(--teal-2);">مفيش وظائف. <a href="/admin/jobs/new">ضيف أول وظيفة</a>.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>المسمى</th><th>القسم</th><th>النوع</th><th>المتقدمين</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>
+            {jobs.map((j: any) => (
+              <tr>
+                <td><a href={`/admin/jobs/${j.slug}`}>{j.title}</a></td>
+                <td>{j.department ?? '—'}</td>
+                <td>{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR] ?? j.employment_type}</td>
+                <td>{j.applications?.[0]?.count ?? 0}</td>
+                <td><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{STATUS_AR[j.status]}</span></td>
+                <td>
+                  <form method="POST" style="display:flex;gap:6px;">
+                    <input type="hidden" name="id" value={j.id} />
+                    <select name="status" class="mini-select">
+                      <option value="draft" selected={j.status === 'draft'}>مسودة</option>
+                      <option value="open" selected={j.status === 'open'}>مفتوحة</option>
+                      <option value="closed" selected={j.status === 'closed'}>مغلقة</option>
+                    </select>
+                    <button type="submit" class="mini-btn">حفظ</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:#fff;}
+  .mini-btn{background:var(--teal);color:var(--paper);cursor:pointer;border-color:var(--teal);}
+</style>

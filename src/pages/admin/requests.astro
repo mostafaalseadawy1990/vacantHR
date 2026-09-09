@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+
+const supabase = serverClient(Astro);
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = String(form.get('id') || '');
+  const status = String(form.get('status') || '');
+  if (id && ['new', 'in_progress', 'candidates_sent', 'closed'].includes(status)) {
+    const { error } = await supabase.from('client_requests').update({ status }).eq('id', id);
+    if (!error) return Astro.redirect('/admin/requests?ok=1', 303);
+    flash = 'تعذّر التحديث.';
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: reqs } = await supabase
+  .from('client_requests')
+  .select('id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone)')
+  .order('created_at', { ascending: false });
+
+const ST: Array<[string, string]> = [
+  ['new', 'جديد'], ['in_progress', 'شغّالين عليه'], ['candidates_sent', 'أرسلنا مرشحين'], ['closed', 'مغلق'],
+];
+const sel = (c: string, v: string) => (c === v ? true : undefined);
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base title="طلبات الشركات | Vacant HR" path="/admin/requests" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="requests">طلبات الشركات</AdminNav>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    {(!reqs || reqs.length === 0) ? (
+      <p style="color:var(--teal-2);">مفيش طلبات من شركات لسه.</p>
+    ) : (
+      <div style="display:grid;gap:18px;">
+        {reqs.map((r: any) => (
+          <div class="form-box" style="max-width:none;">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:baseline;">
+              <h3 style="margin:0;">{r.role_title} <span style="color:var(--teal-2);font-size:0.85rem;">× {r.headcount}</span></h3>
+              <span style="font-size:0.85rem;color:var(--teal-2);">{fmt(r.created_at)}</span>
+            </div>
+            <p style="margin:10px 0 6px;color:var(--teal-2);font-size:0.9rem;">
+              {r.profiles?.company_name ?? '—'} — {r.profiles?.full_name ?? '—'}
+              {r.profiles?.phone && <span dir="ltr"> · {r.profiles.phone}</span>}
+            </p>
+            {r.details_md && <p style="white-space:pre-wrap;">{r.details_md}</p>}
+            <form method="POST" style="display:flex;gap:8px;margin-top:12px;">
+              <input type="hidden" name="id" value={r.id} />
+              <select name="status" class="mini-select">
+                {ST.map(([v, l]) => <option value={v} selected={sel(r.status, v)}>{l}</option>)}
+              </select>
+              <button type="submit" class="mini-btn">تحديث الحالة</button>
+            </form>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 12px;border:1px solid var(--line);border-radius:2px;background:#fff;}
+  .mini-btn{background:var(--teal);color:var(--paper);cursor:pointer;border-color:var(--teal);}
+</style>

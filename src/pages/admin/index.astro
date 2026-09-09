@@ -1,0 +1,77 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+
+const supabase = serverClient(Astro);
+
+const [{ count: openJobs }, { count: draftJobs }, { count: totalApps }, { count: newReqs }] = await Promise.all([
+  supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+  supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+  supabase.from('applications').select('id', { count: 'exact', head: true }),
+  supabase.from('client_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+]);
+
+const { data: recent } = await supabase
+  .from('applications')
+  .select('id, status, created_at, jobs(title, slug), profiles(full_name)')
+  .order('created_at', { ascending: false })
+  .limit(8);
+
+const STATUS_AR: Record<string, string> = {
+  submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة',
+  rejected: 'مرفوض', hired: 'تم التعيين',
+};
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+---
+<Base title="لوحة الإدارة | Vacant HR" path="/admin" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="home">نظرة عامة</AdminNav>
+
+    <div class="stat-cards">
+      <a href="/admin/jobs" class="stat-card"><span class="n">{openJobs ?? 0}</span><span class="l">وظيفة مفتوحة</span></a>
+      <a href="/admin/jobs" class="stat-card"><span class="n">{draftJobs ?? 0}</span><span class="l">مسودة</span></a>
+      <a href="/admin/jobs" class="stat-card"><span class="n">{totalApps ?? 0}</span><span class="l">إجمالي المتقدمين</span></a>
+      <a href="/admin/requests" class="stat-card"><span class="n">{newReqs ?? 0}</span><span class="l">طلب شركة جديد</span></a>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin:28px 0;">
+      <a href="/admin/jobs/new" class="btn solid">+ وظيفة جديدة</a>
+      <a href="/admin/jobs" class="btn">كل الوظائف</a>
+    </div>
+
+    <h2 style="margin-bottom:14px;">آخر المتقدمين</h2>
+    {(!recent || recent.length === 0) ? (
+      <p style="color:var(--teal-2);">مفيش طلبات لسه.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>المرشح</th><th>الوظيفة</th><th>الحالة</th><th>التاريخ</th></tr></thead>
+          <tbody>
+            {recent.map((a: any) => (
+              <tr>
+                <td>{a.profiles?.full_name ?? '—'}</td>
+                <td>{a.jobs?.slug ? <a href={`/admin/jobs/${a.jobs.slug}`}>{a.jobs?.title}</a> : (a.jobs?.title ?? '—')}</td>
+                <td><span class={`status-pill status-${a.status}`}>{STATUS_AR[a.status] ?? a.status}</span></td>
+                <td>{fmt(a.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);}
+  .stat-card{background:var(--paper);padding:24px 20px;display:flex;flex-direction:column;gap:6px;}
+  .stat-card:hover{background:var(--sand);}
+  .stat-card .n{font-family:'Amiri',serif;font-size:2rem;color:var(--brass);font-weight:700;}
+  .stat-card .l{font-size:0.85rem;color:var(--teal-2);}
+  @media(max-width:720px){.stat-cards{grid-template-columns:1fr 1fr;}}
+</style>

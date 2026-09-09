@@ -1,0 +1,147 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const user = Astro.locals.user!;
+let errorMsg = '';
+const v: Record<string, string> = {};
+
+function slugify(s: string) {
+  const base = s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  return base || `job-${Date.now().toString(36)}`;
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const get = (k: string) => String(form.get(k) || '').trim();
+  Object.assign(v, {
+    title: get('title'), slug: get('slug'), department: get('department'), location: get('location'),
+    employment_type: get('employment_type'), workplace: get('workplace'), experience_level: get('experience_level'),
+    salary_min: get('salary_min'), salary_max: get('salary_max'),
+    description_md: get('description_md'), requirements_md: get('requirements_md'), status: get('status'),
+  });
+  const salaryVisible = form.get('salary_visible') === 'on';
+
+  if (!v.title || !v.description_md) {
+    errorMsg = 'المسمى والوصف مطلوبين.';
+  } else {
+    const slug = (v.slug || slugify(v.title)).replace(/[^a-z0-9-]/g, '');
+    const status = ['draft', 'open', 'closed'].includes(v.status) ? v.status : 'draft';
+    const row: Record<string, unknown> = {
+      slug,
+      title: v.title,
+      department: v.department || null,
+      location: v.location || 'القاهرة، مصر',
+      employment_type: ['full_time', 'part_time', 'contract', 'temporary'].includes(v.employment_type) ? v.employment_type : 'full_time',
+      workplace: ['onsite', 'hybrid', 'remote'].includes(v.workplace) ? v.workplace : 'onsite',
+      experience_level: v.experience_level || null,
+      salary_min: v.salary_min ? parseInt(v.salary_min, 10) : null,
+      salary_max: v.salary_max ? parseInt(v.salary_max, 10) : null,
+      salary_visible: salaryVisible,
+      description_md: v.description_md,
+      requirements_md: v.requirements_md || '',
+      status,
+      created_by: user.id,
+      published_at: status === 'open' ? new Date().toISOString() : null,
+    };
+    const { error } = await supabase.from('jobs').insert(row);
+    if (error) {
+      errorMsg = error.code === '23505' ? 'الـ slug مستخدم قبل كده — غيّره.' : `تعذّر الحفظ: ${error.message}`;
+    } else {
+      return Astro.redirect(`/admin/jobs/${slug}`, 303);
+    }
+  }
+}
+---
+<Base title="وظيفة جديدة | Vacant HR" path="/admin/jobs/new" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="jobs">وظيفة جديدة</AdminNav>
+    {errorMsg && <p class="notice notice-error" style="margin-bottom:18px;">{errorMsg}</p>}
+
+    <form method="POST" class="form-box" style="max-width:720px;">
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label for="title">المسمى الوظيفي *</label>
+          <input type="text" id="title" name="title" value={v.title} required />
+        </div>
+        <div class="form-row">
+          <label for="slug">الـ slug (إنجليزي، حروف صغيرة وشرطات)</label>
+          <input type="text" id="slug" name="slug" value={v.slug} pattern="[a-z0-9-]*" placeholder="backend-developer" />
+        </div>
+        <div class="form-row">
+          <label for="department">القسم</label>
+          <input type="text" id="department" name="department" value={v.department} />
+        </div>
+        <div class="form-row">
+          <label for="location">المكان</label>
+          <input type="text" id="location" name="location" value={v.location} placeholder="القاهرة، مصر" />
+        </div>
+        <div class="form-row">
+          <label for="employment_type">نوع التعاقد</label>
+          <select id="employment_type" name="employment_type">
+            <option value="full_time">دوام كامل</option>
+            <option value="part_time">دوام جزئي</option>
+            <option value="contract">عقد مؤقت</option>
+            <option value="temporary">مشروعي</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="workplace">مكان العمل</label>
+          <select id="workplace" name="workplace">
+            <option value="onsite">من المقر</option>
+            <option value="hybrid">هجين</option>
+            <option value="remote">عن بُعد</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="experience_level">مستوى الخبرة</label>
+          <input type="text" id="experience_level" name="experience_level" value={v.experience_level} placeholder="2–4 سنوات" />
+        </div>
+        <div class="form-row">
+          <label for="status">الحالة</label>
+          <select id="status" name="status">
+            <option value="draft">مسودة</option>
+            <option value="open">مفتوحة (تظهر للجمهور)</option>
+            <option value="closed">مغلقة</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="salary_min">الحد الأدنى للراتب</label>
+          <input type="number" id="salary_min" name="salary_min" value={v.salary_min} />
+        </div>
+        <div class="form-row">
+          <label for="salary_max">الحد الأقصى للراتب</label>
+          <input type="number" id="salary_max" name="salary_max" value={v.salary_max} />
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:4px;">
+        <label style="display:flex;gap:10px;align-items:center;font-weight:400;">
+          <input type="checkbox" name="salary_visible" style="width:auto;" /> إظهار الراتب في إعلان الوظيفة
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label for="description_md">الوصف الوظيفي * (Markdown: ## عنوان، - نقطة، **غامق**)</label>
+        <textarea id="description_md" name="description_md" style="min-height:180px;" required>{v.description_md}</textarea>
+      </div>
+      <div class="form-row">
+        <label for="requirements_md">المتطلبات (Markdown)</label>
+        <textarea id="requirements_md" name="requirements_md" style="min-height:140px;">{v.requirements_md}</textarea>
+      </div>
+
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الوظيفة</button>
+    </form>
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;}
+  @media(max-width:620px){.form-grid-2{grid-template-columns:1fr;}}
+</style>
