@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
-export const prerender = true;
+import { getSettings, getTestimonials, getFaqs } from '../lib/settings';
+
+const [s, testimonials, faqs] = await Promise.all([getSettings(), getTestimonials(), getFaqs()]);
 
 const jsonld = [
   {
@@ -9,13 +11,31 @@ const jsonld = [
     name: 'Vacant HR',
     url: 'https://vacanthr.com/',
     logo: 'https://vacanthr.com/favicon.svg',
-    email: 'info@vacanthr.com',
-    description: 'حلول متكاملة للتوظيف وإدارة الموارد البشرية للشركات الناشئة والمتوسطة.',
+    email: s.contact_email,
+    description: s.company_blurb,
     address: { '@type': 'PostalAddress', addressLocality: 'القاهرة', addressCountry: 'EG' },
-    sameAs: ['https://www.linkedin.com/company/vacanthr'],
+    sameAs: [s.linkedin_url],
   },
   { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Vacant HR', url: 'https://vacanthr.com/', inLanguage: 'ar' },
+  ...(faqs.length
+    ? [{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((f) => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      }]
+    : []),
 ];
+
+function statAttrs(value: string) {
+  const num = parseInt(value.replace(/[^\d]/g, ''), 10);
+  const prefix = value.trim().startsWith('+') ? '+' : '';
+  const suffix = value.includes('%') ? '%' : '';
+  return Number.isFinite(num) ? { 'data-count': String(num), 'data-prefix': prefix, 'data-suffix': suffix } : {};
+}
 ---
 <Base
   title="Vacant HR | حلول التوظيف وإدارة الموارد البشرية للشركات"
@@ -29,9 +49,9 @@ const jsonld = [
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <div class="eyebrow-line">شريكك في إدارة رأس المال البشري</div>
-      <h1>نبني أنظمة التوظيف والموارد البشرية التي تكبر مع شركتك</h1>
-      <p class="lead">من إيجاد الكفاءة المناسبة، إلى إدارة بيانات موظفيك يوميًا، وصولًا لهيكلة سياسات عملك — Vacant HR تجمع الخدمة البشرية والتقنية في مكان واحد.</p>
+      <div class="eyebrow-line">{s.home_hero_eyebrow}</div>
+      <h1>{s.home_hero_title}</h1>
+      <p class="lead">{s.home_hero_lead}</p>
       <div class="btn-row">
         <a href="/contact" class="btn solid">احجز استشارة مجانية</a>
         <a href="/hrm-saas" class="btn">شاهد برنامج HRM</a>
@@ -99,63 +119,50 @@ const jsonld = [
 <section class="alt">
   <div class="wrap">
     <div class="stats">
-      <div class="stat"><div class="num" data-count="120" data-prefix="+">+120</div><div class="lbl">شركة تثق بينا</div></div>
-      <div class="stat"><div class="num" data-count="3400" data-prefix="+">+3,400</div><div class="lbl">توظيف ناجح</div></div>
-      <div class="stat"><div class="num" data-count="18">18</div><div class="lbl">قطاع مختلف</div></div>
-      <div class="stat"><div class="num" data-count="92" data-suffix="%">92%</div><div class="lbl">نسبة رضا العملاء</div></div>
+      {s.home_stats.map((st) => (
+        <div class="stat"><div class="num" {...statAttrs(st.value)}>{st.value}</div><div class="lbl">{st.label}</div></div>
+      ))}
     </div>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow-line">آراء عملائنا</div>
-      <h2>شركات وصلت لفريقها الصح معانا</h2>
-    </div>
-    <div class="quotes">
-      <div class="quote">
-        <p>«فريق Vacant HR فهم طبيعة شركتنا بسرعة، ورشحلنا 3 مرشحين كلهم كانوا مناسبين فعلًا. عيّنّا واحد خلال أسبوعين.»</p>
-        <div class="who">منال إبراهيم<span>مديرة الموارد البشرية — شركة تقنية</span></div>
+{testimonials.length > 0 && (
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow-line">آراء عملائنا</div>
+        <h2>شركات وصلت لفريقها الصح معانا</h2>
       </div>
-      <div class="quote">
-        <p>«نقلنا إدارة الحضور والرواتب من شيتات إكسل لبرنامج HRM بتاعهم. وفّرنا يومين شغل كل شهر على الأقل.»</p>
-        <div class="who">أحمد فؤاد<span>مدير عمليات — سلسلة مطاعم</span></div>
-      </div>
-      <div class="quote">
-        <p>«الاستشارة كانت عملية جدًا. طلعنا بدليل سياسات واضح وهيكل تنظيمي مفيش فيه تضارب صلاحيات.»</p>
-        <div class="who">سارة عبد الله<span>مؤسِّسة — شركة خدمات لوجستية</span></div>
+      <div class="quotes">
+        {testimonials.map((t) => (
+          <div class="quote">
+            <p>«{t.quote}»</p>
+            <div class="who">{t.name}{t.title && <span>{t.title}</span>}</div>
+          </div>
+        ))}
       </div>
     </div>
-  </div>
-</section>
+  </section>
+)}
 
-<section class="alt">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow-line">أسئلة شائعة</div>
-      <h2>الأسئلة اللي بتوصلنا كتير</h2>
+{faqs.length > 0 && (
+  <section class="alt">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow-line">أسئلة شائعة</div>
+        <h2>الأسئلة اللي بتوصلنا كتير</h2>
+      </div>
+      <div class="faq">
+        {faqs.map((f) => (
+          <details>
+            <summary>{f.question}</summary>
+            <p>{f.answer}</p>
+          </details>
+        ))}
+      </div>
     </div>
-    <div class="faq">
-      <details>
-        <summary>خدمة التوظيف بتاخد وقت قد إيه؟</summary>
-        <p>في المتوسط بنقدّم قائمة مختصرة من 3–5 مرشحين خلال 7–10 أيام عمل من تأكيد تفاصيل الدور، والتعيين النهائي بيتم عادةً خلال 3–4 أسابيع.</p>
-      </details>
-      <details>
-        <summary>برنامج HRM بيشتغل على الموبايل؟</summary>
-        <p>أيوه، النظام سحابي بالكامل ويشتغل من المتصفح على الكمبيوتر والموبايل، وفيه تسجيل حضور عن طريق الموبايل أو البصمة.</p>
-      </details>
-      <details>
-        <summary>هل في حد أدنى لعدد الموظفين للاشتراك في البرنامج؟</summary>
-        <p>لا يوجد حد أدنى إلزامي. الباقة الأساسية مصممة للفرق تحت 20 موظف، وفيه باقات أكبر للشركات المتوسطة والمؤسسات.</p>
-      </details>
-      <details>
-        <summary>نماذج الوصف الوظيفي مجانية فعلًا؟</summary>
-        <p>أيوه، مكتبة النماذج القياسية متاحة للتحميل مجانًا. لو محتاج نموذج مخصص لمسمى غير موجود، بنجهّزه لك خلال يوم عمل.</p>
-      </details>
-    </div>
-  </div>
-</section>
+  </section>
+)}
 
 <section class="cta-banner">
   <div class="wrap">

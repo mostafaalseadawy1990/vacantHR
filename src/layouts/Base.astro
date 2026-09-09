@@ -2,6 +2,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import WhatsApp from '../components/WhatsApp.astro';
+import { getSettings } from '../lib/settings';
 
 interface Props {
   title: string;
@@ -30,6 +31,15 @@ const {
 const site = 'https://vacanthr.com';
 const canonical = new URL(path, site).href;
 const ogImageAbs = new URL(ogImage, site).href;
+
+const settings = await getSettings();
+
+// Edge-cache anonymous HTML so CMS edits appear within ~a minute without a redeploy.
+try {
+  if (!Astro.locals?.user) {
+    Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=600');
+  }
+} catch { /* prerendered: no response object */ }
 ---
 <!doctype html>
 <html lang="ar" dir="rtl">
@@ -40,7 +50,7 @@ const ogImageAbs = new URL(ogImage, site).href;
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex" />}
-<meta name="theme-color" content="#1F3B36" />
+<meta name="theme-color" content="#0E7C66" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Vacant HR" />
 <meta property="og:locale" content="ar_AR" />
@@ -52,7 +62,7 @@ const ogImageAbs = new URL(ogImage, site).href;
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;500;600;700;800&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/style.css" />
 {jsonld.map((block) => (
   <script type="application/ld+json" set:html={JSON.stringify(block)} />
@@ -60,10 +70,10 @@ const ogImageAbs = new URL(ogImage, site).href;
 </head>
 <body>
 <a href="#main" class="skip-link">تخطَّ إلى المحتوى</a>
-{showChrome && <Header active={active} />}
+{showChrome && <Header active={active} settings={settings} />}
 <slot />
-{showChrome && <Footer />}
-{showChrome && <WhatsApp text={waText} />}
+{showChrome && <Footer settings={settings} />}
+{showChrome && <WhatsApp text={waText} number={settings.whatsapp_number} />}
 <script src="/script.js" defer is:inline></script>
 </body>
 </html>

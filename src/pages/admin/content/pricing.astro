@@ -1,0 +1,107 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const supabase = serverClient(Astro);
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') || '');
+  const id = String(form.get('id') || '');
+
+  if (action === 'delete' && id) {
+    await supabase.from('pricing_plans').delete().eq('id', id);
+    return Astro.redirect('/admin/content/pricing?ok=1', 303);
+  }
+  if (action === 'save') {
+    const features = String(form.get('features') || '')
+      .split('\n').map((l) => l.trim()).filter(Boolean);
+    const row = {
+      name: String(form.get('name') || '').trim(),
+      price: String(form.get('price') || '').trim(),
+      unit: String(form.get('unit') || '').trim() || null,
+      note: String(form.get('note') || '').trim() || null,
+      features,
+      featured: form.get('featured') === 'on',
+      cta_label: String(form.get('cta_label') || '').trim() || 'ابدأ الآن',
+      position: parseInt(String(form.get('position') || '0'), 10) || 0,
+      published: form.get('published') === 'on',
+    };
+    if (!row.name || !row.price) {
+      flash = 'الاسم والسعر مطلوبين.';
+    } else {
+      const res = id
+        ? await supabase.from('pricing_plans').update(row).eq('id', id)
+        : await supabase.from('pricing_plans').insert(row);
+      if (!res.error) return Astro.redirect('/admin/content/pricing?ok=1', 303);
+      flash = `تعذّر الحفظ: ${res.error.message}`;
+    }
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: items } = await supabase.from('pricing_plans').select('*').order('position');
+---
+<Base title="باقات الأسعار | لوحة الإدارة" path="/admin/content/pricing" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="content">باقات الأسعار</AdminNav>
+    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div style="display:grid;gap:16px;max-width:720px;">
+      {(items ?? []).map((p: any) => (
+        <form method="POST" class="form-box" style="max-width:none;">
+          <input type="hidden" name="_action" value="save" />
+          <input type="hidden" name="id" value={p.id} />
+          <div class="form-grid-2">
+            <div class="form-row"><label>اسم الباقة</label><input name="name" value={p.name} required /></div>
+            <div class="form-row"><label>السعر</label><input name="price" value={p.price} required /></div>
+            <div class="form-row"><label>الوحدة (مثال: / موظف / شهريًا)</label><input name="unit" value={p.unit ?? ''} /></div>
+            <div class="form-row"><label>ملاحظة قصيرة</label><input name="note" value={p.note ?? ''} /></div>
+          </div>
+          <div class="form-row"><label>المميزات (كل سطر ميزة)</label><textarea name="features" style="min-height:100px;">{(p.features ?? []).join('\n')}</textarea></div>
+          <div class="form-grid-2">
+            <div class="form-row"><label>نص الزر</label><input name="cta_label" value={p.cta_label ?? ''} /></div>
+            <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={p.position} /></div>
+          </div>
+          <div style="display:flex;gap:20px;margin-bottom:14px;">
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="featured" checked={p.featured} /> باقة مميزة</label>
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked={p.published} /> ظاهرة</label>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+            <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;">حذف</button>
+          </div>
+        </form>
+      ))}
+
+      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+        <input type="hidden" name="_action" value="save" />
+        <h3 style="margin-bottom:14px;">إضافة باقة</h3>
+        <div class="form-grid-2">
+          <div class="form-row"><label>اسم الباقة</label><input name="name" required /></div>
+          <div class="form-row"><label>السعر</label><input name="price" required placeholder="150 ج.م" /></div>
+          <div class="form-row"><label>الوحدة</label><input name="unit" placeholder="/ موظف / شهريًا" /></div>
+          <div class="form-row"><label>ملاحظة قصيرة</label><input name="note" /></div>
+        </div>
+        <div class="form-row"><label>المميزات (كل سطر ميزة)</label><textarea name="features" style="min-height:100px;"></textarea></div>
+        <div class="form-grid-2">
+          <div class="form-row"><label>نص الزر</label><input name="cta_label" value="ابدأ الآن" /></div>
+          <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:14px;">
+          <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="featured" /> باقة مميزة</label>
+          <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked /> ظاهرة</label>
+        </div>
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+</Base>

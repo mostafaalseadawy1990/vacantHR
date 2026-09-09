@@ -1,0 +1,85 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+import { DEFAULT_SETTINGS } from '../../../lib/settings';
+
+const supabase = serverClient(Astro);
+
+const TEXT_FIELDS: Array<{ key: string; label: string; textarea?: boolean }> = [
+  { key: 'contact_email', label: 'البريد الإلكتروني' },
+  { key: 'contact_phone', label: 'رقم الهاتف (بصيغة +20…)' },
+  { key: 'whatsapp_number', label: 'رقم واتساب (أرقام فقط، 201…)' },
+  { key: 'address', label: 'العنوان' },
+  { key: 'working_hours', label: 'ساعات العمل' },
+  { key: 'linkedin_url', label: 'رابط لينكدإن' },
+  { key: 'company_blurb', label: 'نبذة الشركة (الفوتر)', textarea: true },
+  { key: 'home_hero_eyebrow', label: 'الرئيسية — السطر الصغير فوق العنوان' },
+  { key: 'home_hero_title', label: 'الرئيسية — العنوان الكبير', textarea: true },
+  { key: 'home_hero_lead', label: 'الرئيسية — الفقرة تحت العنوان', textarea: true },
+];
+
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const rows: Array<{ key: string; value: unknown; updated_at: string }> = [];
+  const now = new Date().toISOString();
+
+  for (const f of TEXT_FIELDS) {
+    rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
+  }
+  // stats: 4 pairs
+  const stats = [];
+  for (let i = 0; i < 4; i++) {
+    const value = String(form.get(`stat_value_${i}`) ?? '').trim();
+    const label = String(form.get(`stat_label_${i}`) ?? '').trim();
+    if (value || label) stats.push({ value, label });
+  }
+  rows.push({ key: 'home_stats', value: stats, updated_at: now });
+
+  const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
+  if (!error) return Astro.redirect('/admin/content/settings?ok=1', 303);
+  flash = `تعذّر الحفظ: ${error.message}`;
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data } = await supabase.from('site_settings').select('key, value');
+const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
+for (const r of data ?? []) cur[r.key] = r.value;
+const stats: Array<{ value: string; label: string }> = Array.isArray(cur.home_stats) ? cur.home_stats : DEFAULT_SETTINGS.home_stats;
+while (stats.length < 4) stats.push({ value: '', label: '' });
+---
+<Base title="إعدادات الموقع | لوحة الإدارة" path="/admin/content/settings" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="content">إعدادات الموقع</AdminNav>
+    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ. التعديلات تظهر على الموقع خلال دقيقة.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <form method="POST" class="form-box" style="max-width:720px;">
+      {TEXT_FIELDS.map((f) => (
+        <div class="form-row">
+          <label for={f.key}>{f.label}</label>
+          {f.textarea
+            ? <textarea id={f.key} name={f.key} style="min-height:80px;">{cur[f.key] ?? ''}</textarea>
+            : <input id={f.key} name={f.key} value={cur[f.key] ?? ''} />}
+        </div>
+      ))}
+
+      <h3 style="margin:24px 0 12px;">أرقام الإحصائيات (الرئيسية)</h3>
+      {stats.slice(0, 4).map((st, i) => (
+        <div class="form-grid-2">
+          <div class="form-row"><label for={`stat_value_${i}`}>الرقم {i + 1}</label><input id={`stat_value_${i}`} name={`stat_value_${i}`} value={st.value} placeholder="+120" /></div>
+          <div class="form-row"><label for={`stat_label_${i}`}>الوصف {i + 1}</label><input id={`stat_label_${i}`} name={`stat_label_${i}`} value={st.label} placeholder="شركة تثق بينا" /></div>
+        </div>
+      ))}
+
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الإعدادات</button>
+    </form>
+  </div>
+</section>
+</main>
+</Base>

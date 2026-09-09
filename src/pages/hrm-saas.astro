@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
-export const prerender = true;
+import { getPricingPlans } from '../lib/settings';
+
+const plans = await getPricingPlans();
 
 const jsonld = [{
   '@context': 'https://schema.org',
@@ -83,27 +85,15 @@ const jsonld = [{
       <h2>باقات تناسب حجم فريقك</h2>
     </div>
     <div class="pricing">
-      <div class="plan">
-        <h3>أساسي</h3>
-        <div class="price">150 ج.م <span>/ موظف / شهريًا</span></div>
-        <p>لفرق تحت 20 موظف</p>
-        <ul><li>الحضور والانصراف</li><li>إدارة الإجازات</li><li>دعم عبر البريد الإلكتروني</li></ul>
-        <a href="/contact" class="btn" style="margin-top:22px;">ابدأ الآن</a>
-      </div>
-      <div class="plan featured">
-        <h3>احترافي</h3>
-        <div class="price">220 ج.م <span>/ موظف / شهريًا</span></div>
-        <p>الأكثر طلبًا للشركات المتوسطة</p>
-        <ul><li>كل مميزات الباقة الأساسية</li><li>إدارة الرواتب الكاملة</li><li>تقييم الأداء</li><li>دعم فني مباشر</li></ul>
-        <a href="/contact" class="btn solid" style="margin-top:22px;background:var(--brass);border-color:var(--brass);">اطلب عرض تجريبي</a>
-      </div>
-      <div class="plan">
-        <h3>مؤسسي</h3>
-        <div class="price">تواصل معنا</div>
-        <p>لفرق أكبر من 100 موظف</p>
-        <ul><li>كل المميزات</li><li>تكامل مع أنظمة أخرى (API)</li><li>مدير حساب مخصص</li></ul>
-        <a href="/contact" class="btn" style="margin-top:22px;">تواصل مع المبيعات</a>
-      </div>
+      {plans.map((plan) => (
+        <div class:list={['plan', { featured: plan.featured }]}>
+          <h3>{plan.name}</h3>
+          <div class="price">{plan.price} {plan.unit && <span>{plan.unit}</span>}</div>
+          {plan.note && <p>{plan.note}</p>}
+          <ul>{plan.features.map((f) => <li>{f}</li>)}</ul>
+          <a href="/contact" class:list={['btn', { solid: plan.featured }]} style="margin-top:22px;">{plan.cta_label ?? 'ابدأ الآن'}</a>
+        </div>
+      ))}
     </div>
   </div>
 </section>
