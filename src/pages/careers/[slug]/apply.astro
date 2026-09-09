@@ -1,0 +1,120 @@
+---
+import Base from '../../../layouts/Base.astro';
+import { serverClient } from '../../../lib/supabase';
+import type { Job } from '../../../lib/jobs';
+
+const { slug } = Astro.params;
+const user = Astro.locals.user!; // middleware guarantees this
+const profile = Astro.locals.profile;
+
+const supabase = serverClient(Astro);
+
+const { data: job } = await supabase
+  .from('jobs')
+  .select('id, slug, title, status')
+  .eq('slug', slug)
+  .eq('status', 'open')
+  .maybeSingle<Pick<Job, 'id' | 'slug' | 'title' | 'status'>>();
+
+if (!job) return Astro.redirect('/careers', 302);
+
+// Already applied?
+const { data: existing } = await supabase
+  .from('applications')
+  .select('id')
+  .eq('job_id', job.id)
+  .eq('candidate_id', user.id)
+  .maybeSingle();
+if (existing) return Astro.redirect('/dashboard?applied=1', 302);
+
+const MAX_BYTES = 5 * 1024 * 1024;
+const OK_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
+let errorMsg = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const cover = String(form.get('cover_note') || '').trim().slice(0, 2000);
+  const cv = form.get('cv');
+
+  if (!(cv instanceof File) || cv.size === 0) {
+    errorMsg = 'ارفع سيرتك الذاتية (PDF أو Word).';
+  } else if (cv.size > MAX_BYTES) {
+    errorMsg = 'حجم الملف أكبر من 5 ميجابايت.';
+  } else if (!OK_TYPES.includes(cv.type)) {
+    errorMsg = 'الصيغة غير مدعومة. استخدم PDF أو DOC أو DOCX.';
+  } else {
+    const ext = (cv.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('cvs')
+      .upload(path, cv, { contentType: cv.type, upsert: false });
+
+    if (upErr) {
+      errorMsg = 'تعذّر رفع الملف. جرّب تاني.';
+    } else {
+      const { error: insErr } = await supabase.from('applications').insert({
+        job_id: job.id,
+        candidate_id: user.id,
+        cv_path: path,
+        cover_note: cover || null,
+      });
+      if (insErr) {
+        errorMsg = insErr.code === '23505'
+          ? 'قدّمت على الوظيفة دي قبل كده.'
+          : 'تعذّر إرسال الطلب. جرّب تاني.';
+      } else {
+        return Astro.redirect('/dashboard?applied=1', 303);
+      }
+    }
+  }
+}
+---
+<Base title={`التقديم على ${job.title} | Vacant HR`} path={`/careers/${job.slug}/apply`} noindex={true}>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل">
+    <a href="/">الرئيسية</a><span>/</span><a href="/careers">الوظائف</a><span>/</span>
+    <a href={`/careers/${job.slug}`}>{job.title}</a><span>/</span>التقديم
+  </nav>
+</div>
+
+<section class="hero" style="padding:40px 0 40px;">
+  <div class="wrap">
+    <div class="eyebrow-line">تقديم على وظيفة</div>
+    <h1 style="max-width:22ch;">{job.title}</h1>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="auth-wrap" style="max-width:560px;margin:0;">
+      {errorMsg && <p class="notice notice-error" style="margin-bottom:18px;">{errorMsg}</p>}
+
+      <form class="form-box" method="POST" enctype="multipart/form-data">
+        <p style="margin-bottom:20px;color:var(--teal-2);">
+          بتقدّم باسم <strong>{profile?.full_name || user.email}</strong>.
+          {' '}لتعديل بياناتك روح <a href="/dashboard/profile">لوحتك</a>.
+        </p>
+
+        <div class="form-row">
+          <label for="cv">السيرة الذاتية (PDF / DOC / DOCX — حتى 5 ميجا)</label>
+          <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+        </div>
+        <div class="form-row">
+          <label for="cover_note">نبذة مختصرة (اختياري)</label>
+          <textarea id="cover_note" name="cover_note" maxlength="2000" placeholder="ليه إنت مناسب للدور ده؟"></textarea>
+        </div>
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إرسال الطلب</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+</main>
+</Base>

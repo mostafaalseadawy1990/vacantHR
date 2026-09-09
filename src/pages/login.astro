@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro';
+import { serverClient } from '../lib/supabase';
+
+const url = new URL(Astro.request.url);
+let next = url.searchParams.get('next') || '/dashboard';
+if (!next.startsWith('/')) next = '/dashboard';
+
+// Already signed in? Go straight through.
+if (Astro.locals.user) return Astro.redirect(next, 302);
+
+let errorMsg = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') || '').trim().toLowerCase();
+  const password = String(form.get('password') || '');
+  const nextField = String(form.get('next') || next);
+  const dest = nextField.startsWith('/') ? nextField : '/dashboard';
+
+  if (!email || !password) {
+    errorMsg = 'اكتب البريد الإلكتروني وكلمة المرور.';
+  } else {
+    const supabase = serverClient(Astro);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      errorMsg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+    } else {
+      return Astro.redirect(dest, 303);
+    }
+  }
+}
+---
+<Base title="تسجيل الدخول | Vacant HR" path="/login" noindex={true}>
+<main id="main">
+<section class="hero" style="padding:50px 0 60px;">
+  <div class="wrap">
+    <div class="auth-wrap">
+      <div class="eyebrow-line">تسجيل الدخول</div>
+      <h1 style="margin-bottom:24px;">أهلاً بيك تاني</h1>
+
+      {errorMsg && <p class="notice notice-error" style="margin-bottom:18px;">{errorMsg}</p>}
+
+      <form class="form-box" method="POST">
+        <input type="hidden" name="next" value={next} />
+        <div class="form-row">
+          <label for="email">البريد الإلكتروني</label>
+          <input type="email" id="email" name="email" autocomplete="email" required />
+        </div>
+        <div class="form-row">
+          <label for="password">كلمة المرور</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;width:100%;">دخول</button>
+      </form>
+
+      <p class="auth-switch">
+        لسه معندكش حساب؟ <a href={`/signup?next=${encodeURIComponent(next)}`}>اعمل حساب جديد</a>
+      </p>
+    </div>
+  </div>
+</section>
+</main>
+</Base>

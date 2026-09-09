@@ -1,6 +1,10 @@
 ---
 interface Props { active?: string }
 const { active = '' } = Astro.props;
+
+const user = Astro.locals?.user ?? null;
+const profile = Astro.locals?.profile ?? null;
+
 const links = [
   { href: '/', label: 'الرئيسية', key: 'home' },
   { href: '/recruitment', label: 'التوظيف', key: 'recruitment' },
@@ -18,8 +22,26 @@ const links = [
       {links.map((l) => (
         <a href={l.href} class={active === l.key ? 'active' : undefined} aria-current={active === l.key ? 'page' : undefined}>{l.label}</a>
       ))}
+      {profile?.role === 'admin' && <a href="/admin" class={active === 'admin' ? 'active' : undefined}>الإدارة</a>}
+      <a href={user ? '/dashboard' : '/login'} data-auth-link class={active === 'dashboard' ? 'active' : undefined}>{user ? 'لوحتي' : 'دخول'}</a>
       <a href="/contact" class:list={['nav-cta', { active: active === 'contact' }]} aria-current={active === 'contact' ? 'page' : undefined}>تواصل معنا</a>
     </nav>
     <button class="burger" type="button" aria-label="فتح القائمة" aria-controls="nav" aria-expanded="false">☰</button>
   </div>
 </header>
+
+<script is:inline>
+  // Prerendered pages can't know the session server-side; fix the auth link from the cookie.
+  (function () {
+    try {
+      var authed = document.cookie.split(';').some(function (c) {
+        return /^\s*sb-[a-z0-9-]+-auth-token(\.\d+)?=/.test(c);
+      });
+      var link = document.querySelector('[data-auth-link]');
+      if (authed && link && link.getAttribute('href') === '/login') {
+        link.textContent = 'لوحتي';
+        link.setAttribute('href', '/dashboard');
+      }
+    } catch (e) {}
+  })();
+</script>

@@ -1,0 +1,126 @@
+---
+import Base from '../layouts/Base.astro';
+import { serverClient } from '../lib/supabase';
+
+const url = new URL(Astro.request.url);
+let next = url.searchParams.get('next') || '/dashboard';
+if (!next.startsWith('/')) next = '/dashboard';
+const roleParam = url.searchParams.get('role') === 'client' ? 'client' : 'candidate';
+
+if (Astro.locals.user) return Astro.redirect(next, 302);
+
+let errorMsg = '';
+let checkEmail = false;
+let formRole = roleParam;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') || '').trim().toLowerCase();
+  const password = String(form.get('password') || '');
+  const fullName = String(form.get('full_name') || '').trim();
+  const phone = String(form.get('phone') || '').trim();
+  const company = String(form.get('company_name') || '').trim();
+  formRole = form.get('role') === 'client' ? 'client' : 'candidate';
+  const nextField = String(form.get('next') || next);
+  const dest = nextField.startsWith('/') ? nextField : '/dashboard';
+
+  if (!email || password.length < 8 || !fullName) {
+    errorMsg = 'اكتب الاسم والبريد وكلمة مرور من 8 حروف على الأقل.';
+  } else if (formRole === 'client' && !company) {
+    errorMsg = 'اكتب اسم الشركة.';
+  } else {
+    const supabase = serverClient(Astro);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, phone, role: formRole, company_name: company || null },
+        emailRedirectTo: `${url.origin}/login`,
+      },
+    });
+    if (error) {
+      errorMsg = error.message.includes('already registered')
+        ? 'البريد ده مسجّل قبل كده. جرّب تسجيل الدخول.'
+        : 'تعذّر إنشاء الحساب. جرّب تاني أو تواصل معنا.';
+    } else if (data.session) {
+      return Astro.redirect(dest, 303);
+    } else {
+      checkEmail = true;
+    }
+  }
+}
+---
+<Base title="إنشاء حساب | Vacant HR" path="/signup" noindex={true}>
+<main id="main">
+<section class="hero" style="padding:50px 0 60px;">
+  <div class="wrap">
+    <div class="auth-wrap">
+      <div class="eyebrow-line">حساب جديد</div>
+      <h1 style="margin-bottom:24px;">اعمل حساب في دقيقة</h1>
+
+      {checkEmail ? (
+        <p class="notice notice-ok">
+          بعتنا رسالة تأكيد على بريدك. افتحها واضغط الرابط، وبعدها <a href={`/login?next=${encodeURIComponent(next)}`}>سجّل الدخول</a>.
+        </p>
+      ) : (
+        <>
+          {errorMsg && <p class="notice notice-error" style="margin-bottom:18px;">{errorMsg}</p>}
+
+          <form class="form-box" method="POST">
+            <input type="hidden" name="next" value={next} />
+
+            <div class="role-toggle">
+              <input type="radio" id="role-candidate" name="role" value="candidate" checked={formRole === 'candidate'} />
+              <label for="role-candidate">باحث عن عمل</label>
+              <input type="radio" id="role-client" name="role" value="client" checked={formRole === 'client'} />
+              <label for="role-client">شركة توظّف</label>
+            </div>
+
+            <div class="form-row">
+              <label for="full_name">الاسم بالكامل</label>
+              <input type="text" id="full_name" name="full_name" autocomplete="name" required />
+            </div>
+            <div class="form-row" data-client-only hidden={formRole !== 'client'}>
+              <label for="company_name">اسم الشركة</label>
+              <input type="text" id="company_name" name="company_name" autocomplete="organization" />
+            </div>
+            <div class="form-row">
+              <label for="email">البريد الإلكتروني</label>
+              <input type="email" id="email" name="email" autocomplete="email" required />
+            </div>
+            <div class="form-row">
+              <label for="phone">رقم الهاتف</label>
+              <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" />
+            </div>
+            <div class="form-row">
+              <label for="password">كلمة المرور (8 حروف على الأقل)</label>
+              <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required />
+            </div>
+            <button type="submit" class="btn solid" style="border:none;cursor:pointer;width:100%;">إنشاء الحساب</button>
+          </form>
+
+          <p class="auth-switch">
+            عندك حساب بالفعل؟ <a href={`/login?next=${encodeURIComponent(next)}`}>سجّل الدخول</a>
+          </p>
+        </>
+      )}
+    </div>
+  </div>
+</section>
+</main>
+
+<script is:inline>
+  (function () {
+    var radios = document.querySelectorAll('input[name="role"]');
+    var companyRow = document.querySelector('[data-client-only]');
+    if (!companyRow) return;
+    function sync() {
+      var isClient = document.getElementById('role-client').checked;
+      companyRow.hidden = !isClient;
+      companyRow.querySelector('input').required = isClient;
+    }
+    radios.forEach(function (r) { r.addEventListener('change', sync); });
+    sync();
+  })();
+</script>
+</Base>

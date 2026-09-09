@@ -1,0 +1,83 @@
+---
+import Base from '../../layouts/Base.astro';
+import { serverClient } from '../../lib/supabase';
+
+const user = Astro.locals.user!;
+const profile = Astro.locals.profile;
+const supabase = serverClient(Astro);
+const role = profile?.role ?? 'candidate';
+
+let msg = '';
+let values = {
+  full_name: profile?.full_name ?? '',
+  phone: profile?.phone ?? '',
+  company_name: profile?.company_name ?? '',
+};
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  values = {
+    full_name: String(form.get('full_name') || '').trim(),
+    phone: String(form.get('phone') || '').trim(),
+    company_name: String(form.get('company_name') || '').trim(),
+  };
+  if (!values.full_name) {
+    msg = 'الاسم مطلوب.';
+  } else {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: values.full_name,
+        phone: values.phone || null,
+        company_name: role === 'client' ? (values.company_name || null) : profile?.company_name ?? null,
+      })
+      .eq('id', user.id);
+    msg = error ? 'تعذّر الحفظ.' : 'اتحفظت التعديلات ✓';
+  }
+}
+---
+<Base title="بياناتي | Vacant HR" path="/dashboard/profile" active="dashboard" noindex={true}>
+<main id="main">
+<section style="padding:44px 0 70px;">
+  <div class="wrap">
+    <div class="dash-head">
+      <div>
+        <div class="eyebrow-line">بياناتي</div>
+        <h1>تعديل البيانات</h1>
+      </div>
+      <a href="/logout" class="btn">تسجيل الخروج</a>
+    </div>
+
+    <nav class="dash-nav">
+      <a href="/dashboard">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
+      <a href="/dashboard/profile" class="active">بياناتي</a>
+      {profile?.role === 'admin' && <a href="/admin">لوحة الإدارة</a>}
+    </nav>
+
+    {msg && <p class={`notice ${msg.includes('✓') ? 'notice-ok' : 'notice-error'}`} style="margin-bottom:20px;">{msg}</p>}
+
+    <form class="form-box" method="POST" style="max-width:560px;">
+      <div class="form-row">
+        <label for="email">البريد الإلكتروني</label>
+        <input type="email" id="email" value={user.email} disabled />
+      </div>
+      <div class="form-row">
+        <label for="full_name">الاسم بالكامل</label>
+        <input type="text" id="full_name" name="full_name" value={values.full_name} required />
+      </div>
+      <div class="form-row">
+        <label for="phone">رقم الهاتف</label>
+        <input type="tel" id="phone" name="phone" value={values.phone} inputmode="tel" />
+      </div>
+      {role === 'client' && (
+        <div class="form-row">
+          <label for="company_name">اسم الشركة</label>
+          <input type="text" id="company_name" name="company_name" value={values.company_name} />
+        </div>
+      )}
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+    </form>
+  </div>
+</section>
+</main>
+</Base>
