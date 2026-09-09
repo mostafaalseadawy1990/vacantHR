@@ -1,1 +1,3 @@
-https://www.vacanthr.com/*  https://vacanthr.com/:splat  301!
+# Cloudflare Pages _redirects — relative paths only.
+# www → apex canonicalisation is handled by a Cloudflare Redirect Rule on the zone,
+# not here (Pages _redirects cannot target a different hostname).

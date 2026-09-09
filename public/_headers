@@ -4,14 +4,15 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
 
+# Short cache + revalidation for unversioned assets, so a new deploy shows up fast.
 /style.css
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=300, must-revalidate
 
 /script.js
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=300, must-revalidate
 
 /favicon.svg
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=86400
 
 /og-image.png
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=86400
