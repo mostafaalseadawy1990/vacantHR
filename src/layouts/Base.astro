@@ -32,6 +32,9 @@ const site = 'https://vacanthr.com';
 const canonical = new URL(path, site).href;
 const ogImageAbs = new URL(ogImage, site).href;
 
+// Bump when style.css / script.js change — busts any stale CDN/browser cache.
+const ASSET_VER = '20260910a';
+
 const settings = await getSettings();
 
 // Edge-cache anonymous HTML so CMS edits appear within ~a minute without a redeploy.
@@ -63,7 +66,7 @@ try {
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" />
-<link rel="stylesheet" href="/style.css" />
+<link rel="stylesheet" href={`/style.css?v=${ASSET_VER}`} />
 {jsonld.map((block) => (
   <script type="application/ld+json" set:html={JSON.stringify(block)} />
 ))}
@@ -74,6 +77,6 @@ try {
 <slot />
 {showChrome && <Footer settings={settings} />}
 {showChrome && <WhatsApp text={waText} number={settings.whatsapp_number} />}
-<script src="/script.js" defer is:inline></script>
+<script src={`/script.js?v=${ASSET_VER}`} defer is:inline></script>
 </body>
 </html>
