@@ -1,0 +1,117 @@
+---
+import Base from '../../layouts/Base.astro';
+import { anonClient } from '../../lib/supabase';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, type Job } from '../../lib/jobs';
+
+const supabase = anonClient();
+const { data, error } = await supabase
+  .from('jobs')
+  .select('id, slug, title, department, location, employment_type, workplace, experience_level, salary_min, salary_max, salary_currency, salary_visible, description_md, requirements_md, status, published_at, created_at')
+  .eq('status', 'open')
+  .order('published_at', { ascending: false, nullsFirst: false })
+  .order('created_at', { ascending: false });
+
+const jobs = (data ?? []) as Job[];
+
+const departments = [...new Set(jobs.map((j) => j.department).filter(Boolean))] as string[];
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'الوظائف المتاحة في Vacant HR',
+  url: 'https://vacanthr.com/careers',
+  inLanguage: 'ar',
+}];
+---
+<Base
+  title="الوظائف المتاحة | Vacant HR"
+  description="تصفّح الوظائف الشاغرة المتاحة حاليًا عبر Vacant HR وقدّم سيرتك الذاتية مباشرة — وظائف تقنية، إدارية، مبيعات وتسويق في شركات موثوقة."
+  active="careers"
+  path="/careers"
+  waText="مرحبًا، عندي استفسار عن الوظائف المتاحة"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>الوظائف المتاحة</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 40px;">
+  <div class="wrap">
+    <div class="eyebrow-line">الوظائف المتاحة</div>
+    <h1 style="max-width:20ch;">دوّر على فرصتك الجاية</h1>
+    <p class="lead" style="max-width:60ch;">دي الوظائف الشاغرة اللي بندوّر لها على مرشحين دلوقتي. اختَر الوظيفة، اعمل حساب، وقدّم سيرتك الذاتية في دقيقتين.</p>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap">
+    {error && (
+      <p class="notice notice-error">تعذّر تحميل الوظائف حاليًا. جرّب تحديث الصفحة، أو <a href="/contact">تواصل معنا</a>.</p>
+    )}
+
+    {!error && jobs.length === 0 && (
+      <div class="empty-state">
+        <h2>مفيش وظائف مفتوحة دلوقتي</h2>
+        <p>سجّل معنا وابعتلنا سيرتك الذاتية، وهنراجعها مع أول فرصة مناسبة.</p>
+        <a href="/signup?role=candidate" class="btn solid">اعمل حساب مرشح</a>
+      </div>
+    )}
+
+    {jobs.length > 0 && (
+      <>
+        <div class="jobs-toolbar">
+          <span class="jobs-count">{jobs.length} وظيفة مفتوحة</span>
+          {departments.length > 1 && (
+            <div class="jobs-filters" role="group" aria-label="تصفية حسب القسم">
+              <button type="button" class="chip is-active" data-dept="">الكل</button>
+              {departments.map((d) => (
+                <button type="button" class="chip" data-dept={d}>{d}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ul class="job-list">
+          {jobs.map((job) => (
+            <li class="job-card" data-dept={job.department ?? ''}>
+              <div class="job-card-main">
+                <h2><a href={`/careers/${job.slug}`}>{job.title}</a></h2>
+                <div class="job-meta">
+                  {job.department && <span>{job.department}</span>}
+                  {job.location && <span>{job.location}</span>}
+                  <span>{EMPLOYMENT_TYPE_AR[job.employment_type]}</span>
+                  <span>{WORKPLACE_AR[job.workplace]}</span>
+                  {job.experience_level && <span>{job.experience_level}</span>}
+                  {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
+                </div>
+              </div>
+              <a href={`/careers/${job.slug}`} class="btn">التفاصيل والتقديم ←</a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+  </div>
+</section>
+
+</main>
+
+<script is:inline>
+(function () {
+  var chips = document.querySelectorAll('.jobs-filters .chip');
+  var cards = document.querySelectorAll('.job-card');
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chips.forEach(function (c) { c.classList.remove('is-active'); });
+      chip.classList.add('is-active');
+      var dept = chip.getAttribute('data-dept');
+      cards.forEach(function (card) {
+        card.hidden = dept && card.getAttribute('data-dept') !== dept;
+      });
+    });
+  });
+})();
+</script>
+</Base>

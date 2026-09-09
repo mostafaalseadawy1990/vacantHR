@@ -1,0 +1,126 @@
+---
+import Base from '../../layouts/Base.astro';
+import { anonClient, getSessionProfile } from '../../lib/supabase';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, renderMarkdown, type Job } from '../../lib/jobs';
+
+const { slug } = Astro.params;
+
+const supabase = anonClient();
+const { data: job } = await supabase
+  .from('jobs')
+  .select('*')
+  .eq('slug', slug)
+  .eq('status', 'open')
+  .maybeSingle<Job>();
+
+if (!job) return Astro.redirect('/careers', 302);
+
+// Is the visitor a signed-in candidate who already applied?
+const { user, profile } = await getSessionProfile(Astro);
+let alreadyApplied = false;
+if (user) {
+  const { data: existing } = await supabase
+    .from('applications')
+    .select('id')
+    .eq('job_id', job.id)
+    .eq('candidate_id', user.id)
+    .maybeSingle();
+  alreadyApplied = !!existing;
+}
+
+const empMap: Record<string, string> = {
+  full_time: 'FULL_TIME', part_time: 'PART_TIME', contract: 'CONTRACTOR', temporary: 'TEMPORARY',
+};
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'JobPosting',
+  title: job.title,
+  description: renderMarkdown(`${job.description_md}\n\n## المتطلبات\n\n${job.requirements_md}`),
+  datePosted: (job.published_at ?? job.created_at)?.slice(0, 10),
+  employmentType: empMap[job.employment_type],
+  hiringOrganization: { '@type': 'Organization', name: 'Vacant HR', sameAs: 'https://vacanthr.com' },
+  jobLocationType: job.workplace === 'remote' ? 'TELECOMMUTE' : undefined,
+  applicantLocationRequirements: { '@type': 'Country', name: 'Egypt' },
+  jobLocation: {
+    '@type': 'Place',
+    address: { '@type': 'PostalAddress', addressLocality: job.location ?? 'القاهرة', addressCountry: 'EG' },
+  },
+  ...(job.salary_visible && (job.salary_min || job.salary_max)
+    ? {
+        baseSalary: {
+          '@type': 'MonetaryAmount',
+          currency: job.salary_currency,
+          value: {
+            '@type': 'QuantitativeValue',
+            minValue: job.salary_min ?? undefined,
+            maxValue: job.salary_max ?? undefined,
+            unitText: 'MONTH',
+          },
+        },
+      }
+    : {}),
+}];
+
+const applyHref = user
+  ? `/careers/${job.slug}/apply`
+  : `/login?next=${encodeURIComponent(`/careers/${job.slug}/apply`)}`;
+---
+<Base
+  title={`${job.title} | وظائف Vacant HR`}
+  description={job.description_md.slice(0, 155).replace(/\s+/g, ' ')}
+  active="careers"
+  path={`/careers/${job.slug}`}
+  waText={`مرحبًا، مهتم بوظيفة: ${job.title}`}
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل">
+    <a href="/">الرئيسية</a><span>/</span><a href="/careers">الوظائف</a><span>/</span>{job.title}
+  </nav>
+</div>
+
+<section class="hero" style="padding:40px 0 30px;">
+  <div class="wrap">
+    <div class="eyebrow-line">وظيفة شاغرة</div>
+    <h1 style="max-width:22ch;">{job.title}</h1>
+    <div class="job-meta job-meta-lg">
+      {job.department && <span>{job.department}</span>}
+      {job.location && <span>{job.location}</span>}
+      <span>{EMPLOYMENT_TYPE_AR[job.employment_type]}</span>
+      <span>{WORKPLACE_AR[job.workplace]}</span>
+      {job.experience_level && <span>{job.experience_level}</span>}
+      {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
+    </div>
+    <div class="btn-row">
+      {alreadyApplied
+        ? <span class="btn" aria-disabled="true" style="opacity:.7;">تم التقديم على هذه الوظيفة ✓</span>
+        : <a href={applyHref} class="btn solid">قدّم على الوظيفة</a>}
+      <a href="/careers" class="btn">كل الوظائف</a>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:10px;">
+  <div class="wrap prose job-body">
+    <h2>الوصف الوظيفي</h2>
+    <Fragment set:html={renderMarkdown(job.description_md)} />
+    <h2>المتطلبات</h2>
+    <Fragment set:html={renderMarkdown(job.requirements_md)} />
+
+    <div class="job-apply-cta">
+      {alreadyApplied
+        ? <p>قدّمت على الوظيفة دي بالفعل. تقدر تتابع حالة طلبك من <a href="/dashboard">لوحتك</a>.</p>
+        : (
+          <>
+            <p>جاهز تقدّم؟ {user ? 'اضغط الزر وارفع سيرتك الذاتية.' : 'محتاج تعمل حساب مرشح الأول (دقيقة واحدة).'}</p>
+            <a href={applyHref} class="btn solid">قدّم على الوظيفة</a>
+          </>
+        )}
+    </div>
+  </div>
+</section>
+
+</main>
+</Base>

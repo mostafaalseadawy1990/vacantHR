@@ -62,7 +62,10 @@ header.site{
   color:var(--brass);letter-spacing:0.5px;
 }
 .nav-links{
-  display:flex;gap:34px;font-size:0.98rem;font-weight:500;
+  display:flex;align-items:center;gap:22px;font-size:0.95rem;font-weight:500;
+}
+@media(min-width:881px) and (max-width:1040px){
+  .nav-links{gap:15px;font-size:0.9rem;}
 }
 .nav-links a{
   position:relative;padding-bottom:4px;color:var(--ink);
@@ -400,3 +403,88 @@ textarea:focus-visible,select:focus-visible{
 .value-grid > div{background:var(--paper);padding:28px 24px;}
 .value-grid h3{margin-bottom:8px;}
 @media(max-width:760px){.value-grid{grid-template-columns:1fr;}}
+
+/* ===== Notices ===== */
+.notice{border:1px solid var(--line);padding:16px 18px;border-radius:2px;font-size:0.95rem;}
+.notice-error{border-color:#C0562E;background:#FBEBE3;color:#8A3B1E;}
+.notice-ok{border-color:var(--brass);background:#FBF3E4;color:#7A5320;}
+
+/* ===== Careers / job board ===== */
+.empty-state{
+  border:1px solid var(--line);padding:48px 32px;text-align:center;
+}
+.empty-state h2{margin-bottom:10px;}
+.empty-state p{margin:0 auto 20px;}
+
+.jobs-toolbar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:16px;
+  justify-content:space-between;margin-bottom:20px;
+}
+.jobs-count{font-size:0.9rem;color:var(--teal-2);font-weight:600;}
+.jobs-filters{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  border:1px solid var(--line);background:var(--paper);
+  padding:7px 16px;border-radius:20px;font-size:0.85rem;color:var(--teal-2);
+  font-family:'Cairo',sans-serif;cursor:pointer;transition:all .15s;
+}
+.chip:hover{border-color:var(--brass);color:var(--brass);}
+.chip.is-active{background:var(--teal);border-color:var(--teal);color:var(--paper);}
+
+.job-list{list-style:none;padding:0;margin:0;border-top:1px solid var(--line);}
+.job-card{
+  display:flex;flex-wrap:wrap;gap:18px 24px;align-items:center;justify-content:space-between;
+  padding:26px 4px;border-bottom:1px solid var(--line);
+}
+.job-card-main{flex:1;min-width:260px;}
+.job-card h2{font-size:1.3rem;margin-bottom:10px;}
+.job-card h2 a:hover{color:var(--brass);}
+.job-meta{display:flex;flex-wrap:wrap;gap:8px 10px;font-size:0.85rem;color:var(--teal-2);}
+.job-meta > span{
+  position:relative;padding-left:11px;
+}
+.job-meta > span:not(:last-child)::after{
+  content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;
+  background:var(--brass);transform:translateY(-50%);
+}
+.job-meta .job-salary{color:var(--brass);font-weight:600;}
+.job-meta-lg{margin-top:16px;font-size:0.95rem;gap:10px 14px;}
+.job-meta-lg > span{padding-left:15px;}
+
+.job-body h2{font-size:1.5rem;}
+.job-body ul{padding-right:22px;color:var(--teal-2);}
+.job-body li{margin-bottom:8px;}
+.job-body code{background:var(--sand-2);padding:1px 6px;border-radius:3px;font-size:0.9em;}
+.job-apply-cta{
+  margin-top:40px;padding:28px;border:1px solid var(--line);background:var(--sand);
+}
+.job-apply-cta p{margin-bottom:16px;}
+
+/* ===== Auth + dashboard forms ===== */
+.auth-wrap{max-width:440px;margin:0 auto;}
+.auth-wrap .form-box{max-width:none;}
+.auth-switch{margin-top:20px;font-size:0.9rem;color:var(--teal-2);text-align:center;}
+.auth-switch a{color:var(--brass);font-weight:600;}
+.role-toggle{display:flex;gap:0;border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-bottom:22px;}
+.role-toggle label{
+  flex:1;margin:0;text-align:center;padding:12px;cursor:pointer;font-weight:600;
+  color:var(--teal-2);background:var(--paper);transition:all .15s;
+}
+.role-toggle input{position:absolute;opacity:0;pointer-events:none;}
+.role-toggle input:checked + label{background:var(--teal);color:var(--paper);}
+
+.dash-head{display:flex;flex-wrap:wrap;gap:16px;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.dash-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 34px;}
+.dash-nav a{
+  border:1px solid var(--line);padding:8px 18px;border-radius:2px;font-size:0.9rem;font-weight:600;color:var(--teal-2);
+}
+.dash-nav a.active{background:var(--teal);color:var(--paper);border-color:var(--teal);}
+.data-table{width:100%;border-collapse:collapse;font-size:0.92rem;}
+.data-table th,.data-table td{text-align:right;padding:12px 14px;border-bottom:1px solid var(--line);}
+.data-table th{color:var(--teal-2);font-weight:700;background:var(--sand);}
+.status-pill{display:inline-block;padding:3px 12px;border-radius:20px;font-size:0.8rem;border:1px solid var(--line);}
+.status-submitted{background:#FBF3E4;color:#7A5320;border-color:var(--brass);}
+.status-reviewing,.status-in_progress{background:#EAF0EE;color:var(--teal);}
+.status-shortlisted,.status-candidates_sent{background:#E7F0E7;color:#2C5D2C;border-color:#2C5D2C;}
+.status-rejected,.status-closed{background:#F3E7E3;color:#8A3B1E;}
+.status-hired{background:#2C5049;color:#fff;border-color:#2C5049;}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
