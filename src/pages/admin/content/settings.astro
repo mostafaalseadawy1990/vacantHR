@@ -31,7 +31,7 @@ if (Astro.request.method === 'POST') {
   for (const f of TEXT_FIELDS) {
     rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
   }
-  for (const k of ['logo_path', 'favicon_path', 'theme_color']) {
+  for (const k of ['logo_path', 'favicon_path', 'theme_color', 'home_hero_image']) {
     rows.push({ key: k, value: String(form.get(k) ?? '').trim(), updated_at: now });
   }
   // stats: 4 pairs
@@ -85,6 +85,13 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
         </div>
       </div>
       {cur.logo_path && <img src={mediaUrl(cur.logo_path)} alt="" style="max-height:44px;margin-bottom:10px;" />}
+      <div class="form-row">
+        <label for="home_hero_image">صورة هيرو الصفحة الرئيسية (بديل الرسمة)</label>
+        <select id="home_hero_image" name="home_hero_image">
+          <option value="">— الرسمة الافتراضية —</option>
+          {(media ?? []).map((m: any) => <option value={m.path} selected={cur.home_hero_image === m.path}>{m.alt || m.path}</option>)}
+        </select>
+      </div>
       <div class="form-row">
         <label for="theme_color">لون التاب في المتصفح (theme-color)</label>
         <input type="color" id="theme_color" name="theme_color" value={cur.theme_color || '#0E7C66'} style="width:80px;height:40px;padding:2px;" />

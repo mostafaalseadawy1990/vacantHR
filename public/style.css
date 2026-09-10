@@ -167,16 +167,17 @@ section.alt{background:var(--surface-soft);}
   .hero-figure{order:-1;aspect-ratio:16/10;}
 }
 
-/* recolor legacy placeholder SVGs to the modern palette */
-.hero-figure svg [fill="#E8E0CB"],.feature-media svg [fill="#E8E0CB"]{fill:#EDF3F1;}
-.hero-figure svg [fill="#FBF9F3"],.feature-media svg [fill="#FBF9F3"]{fill:#FFFFFF;}
-.hero-figure svg [fill="#1F3B36"],.feature-media svg [fill="#1F3B36"]{fill:var(--accent);}
-.hero-figure svg [stroke="#1F3B36"],.feature-media svg [stroke="#1F3B36"]{stroke:var(--accent);}
-.hero-figure svg [fill="#2C5049"],.feature-media svg [fill="#2C5049"]{fill:#6FB3A2;}
-.hero-figure svg [stroke="#2C5049"],.feature-media svg [stroke="#2C5049"]{stroke:#6FB3A2;}
-.hero-figure svg [fill="#B07A2E"],.feature-media svg [fill="#B07A2E"]{fill:var(--ink);}
-.hero-figure svg [stroke="#B07A2E"],.feature-media svg [stroke="#B07A2E"]{stroke:var(--ink);}
-.hero-figure svg [fill="#D9A354"]{fill:var(--ink);}
+/* recolor legacy placeholder SVGs to the modern palette (site-wide) */
+main svg [fill="#E8E0CB"]{fill:#EDF3F1;}
+main svg [fill="#FBF9F3"]{fill:#FFFFFF;}
+main svg [fill="#1F3B36"]{fill:var(--accent);}
+main svg [stroke="#1F3B36"]{stroke:var(--accent);}
+main svg [fill="#2C5049"]{fill:#6FB3A2;}
+main svg [stroke="#2C5049"]{stroke:#6FB3A2;}
+main svg [fill="#B07A2E"]{fill:var(--ink);}
+main svg [stroke="#B07A2E"]{stroke:var(--ink);}
+main svg [fill="#D9A354"]{fill:var(--accent);}
+main svg [stroke="#D9A354"]{stroke:var(--accent);}
 
 /* ===== Services (home) ===== */
 .services-list{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}

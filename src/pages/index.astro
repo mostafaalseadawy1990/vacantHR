@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getSettings, getTestimonials, getFaqs } from '../lib/settings';
+import { getSettings, getTestimonials, getFaqs, mediaUrl } from '../lib/settings';
 
 const [s, testimonials, faqs] = await Promise.all([getSettings(), getTestimonials(), getFaqs()]);
 
@@ -58,17 +58,21 @@ function statAttrs(value: string) {
       </div>
     </div>
     <div class="hero-figure" aria-hidden="true">
-      <svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
-        <rect width="400" height="500" fill="#E8E0CB"/>
-        <rect x="40" y="40" width="320" height="420" fill="none" stroke="#B07A2E" stroke-width="1.5"/>
-        <circle cx="200" cy="170" r="60" fill="#1F3B36"/>
-        <path d="M110 380 q90 -120 180 0" fill="none" stroke="#1F3B36" stroke-width="10" stroke-linecap="round"/>
-        <circle cx="120" cy="110" r="10" fill="#B07A2E"/>
-        <circle cx="290" cy="120" r="6" fill="#2C5049"/>
-        <line x1="70" y1="300" x2="330" y2="300" stroke="#B07A2E" stroke-width="1.5"/>
-        <rect x="70" y="320" width="120" height="8" fill="#2C5049"/>
-        <rect x="70" y="338" width="80" height="8" fill="#B07A2E"/>
-      </svg>
+      {s.home_hero_image ? (
+        <img src={mediaUrl(s.home_hero_image)} alt="" style="width:100%;height:100%;object-fit:cover;" />
+      ) : (
+        <svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
+          <rect width="400" height="500" fill="#E8E0CB"/>
+          <rect x="40" y="40" width="320" height="420" fill="none" stroke="#B07A2E" stroke-width="1.5"/>
+          <circle cx="200" cy="170" r="60" fill="#1F3B36"/>
+          <path d="M110 380 q90 -120 180 0" fill="none" stroke="#1F3B36" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="120" cy="110" r="10" fill="#B07A2E"/>
+          <circle cx="290" cy="120" r="6" fill="#2C5049"/>
+          <line x1="70" y1="300" x2="330" y2="300" stroke="#B07A2E" stroke-width="1.5"/>
+          <rect x="70" y="320" width="120" height="8" fill="#2C5049"/>
+          <rect x="70" y="338" width="80" height="8" fill="#B07A2E"/>
+        </svg>
+      )}
     </div>
   </div>
 </section>

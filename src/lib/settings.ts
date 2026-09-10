@@ -17,6 +17,7 @@ export type Settings = {
   logo_path: string;
   favicon_path: string;
   theme_color: string;
+  home_hero_image: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   logo_path: '',
   favicon_path: '',
   theme_color: '#0E7C66',
+  home_hero_image: '',
 };
 
 export type Post = {
