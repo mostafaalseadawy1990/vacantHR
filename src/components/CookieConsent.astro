@@ -58,8 +58,10 @@ const { analytics = '' } = Astro.props;
     position:fixed;bottom:16px;left:16px;right:16px;z-index:70;margin:0 auto;max-width:640px;
     background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     box-shadow:var(--shadow-lg);padding:18px 20px;
-    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    display:flex;
   }
+  #cookie-bar[hidden]{display:none;}
   #cookie-bar p{margin:0;font-size:0.9rem;color:var(--body);flex:1;min-width:220px;}
   #cookie-bar a{color:var(--accent);font-weight:600;}
   #cookie-bar .cc-actions{display:flex;gap:8px;}
