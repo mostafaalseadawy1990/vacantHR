@@ -709,3 +709,16 @@ input[type=checkbox]{width:auto;}
   .guide-nav ul{border-right:0;display:flex;flex-wrap:wrap;gap:6px;}
   .guide-nav a{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:0.85rem;margin:0;}
 }
+
+/* ===== Brand logo + account link ===== */
+.brand-logo{height:34px;width:auto;display:block;}
+@media(max-width:640px){ .brand-logo{height:28px;} }
+.nav-account{
+  border:1px solid var(--line);border-radius:var(--radius-pill);
+  padding:8px 16px!important;color:var(--ink)!important;font-weight:600;
+}
+.nav-account:hover{border-color:var(--accent);color:var(--accent)!important;background:transparent!important;}
+.nav-account.active{border-color:var(--accent);color:var(--accent)!important;}
+@media(max-width:880px){
+  .nav-account{margin:6px 8px 2px;text-align:center;}
+}

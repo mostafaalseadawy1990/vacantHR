@@ -2,7 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
-import { DEFAULT_SETTINGS } from '../../../lib/settings';
+import { DEFAULT_SETTINGS, mediaUrl } from '../../../lib/settings';
 
 const supabase = serverClient(Astro);
 
@@ -31,6 +31,9 @@ if (Astro.request.method === 'POST') {
   for (const f of TEXT_FIELDS) {
     rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
   }
+  for (const k of ['logo_path', 'favicon_path', 'theme_color']) {
+    rows.push({ key: k, value: String(form.get(k) ?? '').trim(), updated_at: now });
+  }
   // stats: 4 pairs
   const stats = [];
   for (let i = 0; i < 4; i++) {
@@ -49,6 +52,8 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 const { data } = await supabase.from('site_settings').select('key, value');
 const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
 for (const r of data ?? []) cur[r.key] = r.value;
+
+const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(100);
 const stats: Array<{ value: string; label: string }> = Array.isArray(cur.home_stats) ? cur.home_stats : DEFAULT_SETTINGS.home_stats;
 while (stats.length < 4) stats.push({ value: '', label: '' });
 ---
@@ -62,6 +67,30 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
     <form method="POST" class="form-box" style="max-width:720px;">
+      <h3 style="margin:0 0 12px;">الهوية البصرية</h3>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label for="logo_path">شعار الموقع (يظهر في الهيدر)</label>
+          <select id="logo_path" name="logo_path">
+            <option value="">— نص "Vacant HR" —</option>
+            {(media ?? []).map((m: any) => <option value={m.path} selected={cur.logo_path === m.path}>{m.alt || m.path}</option>)}
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="favicon_path">أيقونة التاب (favicon — PNG/SVG مربّعة)</label>
+          <select id="favicon_path" name="favicon_path">
+            <option value="">— الافتراضية —</option>
+            {(media ?? []).map((m: any) => <option value={m.path} selected={cur.favicon_path === m.path}>{m.alt || m.path}</option>)}
+          </select>
+        </div>
+      </div>
+      {cur.logo_path && <img src={mediaUrl(cur.logo_path)} alt="" style="max-height:44px;margin-bottom:10px;" />}
+      <div class="form-row">
+        <label for="theme_color">لون التاب في المتصفح (theme-color)</label>
+        <input type="color" id="theme_color" name="theme_color" value={cur.theme_color || '#0E7C66'} style="width:80px;height:40px;padding:2px;" />
+      </div>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:22px;">ارفع الشعار والأيقونة من <a href="/admin/media">الوسائط</a> الأول.</p>
+
       {TEXT_FIELDS.map((f) => (
         <div class="form-row">
           <label for={f.key}>{f.label}</label>

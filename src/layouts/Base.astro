@@ -3,7 +3,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import WhatsApp from '../components/WhatsApp.astro';
 import CookieConsent from '../components/CookieConsent.astro';
-import { getSettings } from '../lib/settings';
+import { getSettings, mediaUrl } from '../lib/settings';
 
 interface Props {
   title: string;
@@ -54,7 +54,7 @@ try {
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex" />}
-<meta name="theme-color" content="#0E7C66" />
+<meta name="theme-color" content={settings.theme_color || '#0E7C66'} />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Vacant HR" />
 <meta property="og:locale" content="ar_AR" />
@@ -63,7 +63,8 @@ try {
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={ogImageAbs} />
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href={settings.favicon_path ? mediaUrl(settings.favicon_path) : '/favicon.svg'} />
+<link rel="apple-touch-icon" href={settings.favicon_path ? mediaUrl(settings.favicon_path) : '/favicon.svg'} />
 <link rel="alternate" type="application/rss+xml" title="مدوّنة Vacant HR" href="/rss.xml" />
 {settings.google_site_verification && <meta name="google-site-verification" content={settings.google_site_verification} />}
 <link rel="preconnect" href="https://fonts.googleapis.com" />

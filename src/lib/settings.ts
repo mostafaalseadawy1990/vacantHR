@@ -14,6 +14,9 @@ export type Settings = {
   home_stats: Array<{ value: string; label: string }>;
   analytics_snippet: string;
   google_site_verification: string;
+  logo_path: string;
+  favicon_path: string;
+  theme_color: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +39,9 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   analytics_snippet: '',
   google_site_verification: '',
+  logo_path: '',
+  favicon_path: '',
+  theme_color: '#0E7C66',
 };
 
 export type Post = {
