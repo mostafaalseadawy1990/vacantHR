@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro';
+import { getGuideSections, ytEmbed } from '../lib/settings';
+import { renderMarkdown } from '../lib/jobs';
+
+const sections = await getGuideSections();
+
+const jsonld = sections.length ? [{
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'دليل استخدام برنامج Vacant HR',
+  inLanguage: 'ar',
+  step: sections.map((s, i) => ({ '@type': 'HowToStep', position: i + 1, name: s.title, url: `https://vacanthr.com/hrm-guide#${s.slug}` })),
+}] : [];
+---
+<Base
+  title="دليل استخدام برنامج HRM | Vacant HR"
+  description="شروحات خطوة بخطوة لاستخدام نظام Vacant HR لإدارة الموارد البشرية: الحضور، الرواتب، الإجازات، وتقييم الأداء — مع فيديوهات توضيحية."
+  active="hrm"
+  path="/hrm-guide"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل">
+    <a href="/">الرئيسية</a><span>/</span><a href="/hrm-saas">برنامج HRM</a><span>/</span>دليل الاستخدام
+  </nav>
+</div>
+
+<section class="hero" style="padding:40px 0 32px;">
+  <div class="wrap">
+    <div class="eyebrow-line">دليل الاستخدام</div>
+    <h1 style="max-width:22ch;">شروحات برنامج HRM خطوة بخطوة</h1>
+    <p class="lead" style="max-width:60ch;">كل ما تحتاجه لتشغيل النظام: من إضافة الموظفين لأول دورة رواتب.</p>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap">
+    {sections.length === 0 ? (
+      <p style="color:var(--muted);">الدليل بيتجهّز حاليًا. <a href="/contact">تواصل معنا</a> لأي استفسار.</p>
+    ) : (
+      <div class="guide-layout">
+        <nav class="guide-nav" aria-label="أقسام الدليل">
+          <ul>
+            {sections.map((s) => <li><a href={`#${s.slug}`}>{s.title}</a></li>)}
+          </ul>
+        </nav>
+        <div class="guide-body">
+          {sections.map((s) => {
+            const embed = ytEmbed(s.video_url);
+            return (
+              <article id={s.slug} class="guide-section">
+                <h2>{s.title}</h2>
+                {embed && (
+                  <div class="guide-video">
+                    <iframe src={embed} title={s.title} loading="lazy"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                  </div>
+                )}
+                <div class="prose article-body"><Fragment set:html={renderMarkdown(s.body_md)} /></div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap" style="text-align:center;">
+    <h2 style="margin-bottom:12px;">محتاج مساعدة في الإعداد؟</h2>
+    <p style="margin:0 auto 20px;">فريق الدعم بيساعدك في تهيئة النظام وتدريب فريقك.</p>
+    <a href="/contact" class="btn solid">تواصل مع الدعم</a>
+  </div>
+</section>
+
+</main>
+</Base>

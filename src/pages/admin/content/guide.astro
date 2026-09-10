@@ -1,0 +1,108 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+import { ytEmbed } from '../../../lib/settings';
+
+const supabase = serverClient(Astro);
+let flash = '';
+
+function slugify(s: string) {
+  const base = s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  return base || `section-${Date.now().toString(36)}`;
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') || 'save');
+  const id = String(form.get('id') || '');
+
+  if (action === 'delete' && id) {
+    await supabase.from('guide_sections').delete().eq('id', id);
+    return Astro.redirect('/admin/content/guide?ok=1', 303);
+  }
+  if (action === 'save') {
+    const title = String(form.get('title') || '').trim();
+    const row = {
+      title,
+      slug: (String(form.get('slug') || '').trim() || slugify(title)).replace(/[^a-z0-9-]/g, ''),
+      body_md: String(form.get('body_md') || ''),
+      video_url: String(form.get('video_url') || '').trim() || null,
+      position: parseInt(String(form.get('position') || '0'), 10) || 0,
+      published: form.get('published') === 'on',
+      updated_at: new Date().toISOString(),
+    };
+    if (!title) {
+      flash = 'اكتب عنوان القسم.';
+    } else {
+      const res = id
+        ? await supabase.from('guide_sections').update(row).eq('id', id)
+        : await supabase.from('guide_sections').insert(row);
+      if (!res.error) return Astro.redirect('/admin/content/guide?ok=1', 303);
+      flash = res.error.code === '23505' ? 'الـ slug مستخدم قبل كده.' : `تعذّر الحفظ: ${res.error.message}`;
+    }
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: items } = await supabase.from('guide_sections').select('*').order('position');
+---
+<Base title="دليل HRM | لوحة الإدارة" path="/admin/content/guide" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="content">دليل استخدام HRM</AdminNav>
+    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a> · <a href="/hrm-guide" target="_blank" rel="noopener">معاينة الدليل ↗</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div style="display:grid;gap:16px;max-width:760px;">
+      {(items ?? []).map((it: any) => (
+        <form method="POST" class="form-box" style="max-width:none;">
+          <input type="hidden" name="_action" value="save" />
+          <input type="hidden" name="id" value={it.id} />
+          <div class="form-grid-2">
+            <div class="form-row"><label>عنوان القسم</label><input name="title" value={it.title} required /></div>
+            <div class="form-row"><label>الـ slug</label><input name="slug" value={it.slug} pattern="[a-z0-9-]*" /></div>
+          </div>
+          <div class="form-row">
+            <label>رابط فيديو YouTube (اختياري)</label>
+            <input name="video_url" value={it.video_url ?? ''} placeholder="https://www.youtube.com/watch?v=..." />
+            {it.video_url && !ytEmbed(it.video_url) && <small style="color:#9A3B1C;">الرابط ده مش رابط يوتيوب صحيح.</small>}
+          </div>
+          <div class="form-row">
+            <label>المحتوى (Markdown)</label>
+            <textarea name="body_md" style="min-height:200px;font-family:ui-monospace,monospace;">{it.body_md}</textarea>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={it.position} /></div>
+            <div class="form-row" style="display:flex;align-items:end;">
+              <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked={it.published} /> منشور</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+            <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف القسم؟')">حذف</button>
+          </div>
+        </form>
+      ))}
+
+      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+        <input type="hidden" name="_action" value="save" />
+        <h3 style="margin-bottom:12px;">إضافة قسم</h3>
+        <div class="form-row"><label>عنوان القسم</label><input name="title" required /></div>
+        <div class="form-row"><label>رابط فيديو YouTube (اختياري)</label><input name="video_url" placeholder="https://youtu.be/..." /></div>
+        <div class="form-row"><label>المحتوى (Markdown)</label><textarea name="body_md" style="min-height:140px;font-family:ui-monospace,monospace;"></textarea></div>
+        <div class="form-grid-2">
+          <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
+          <div class="form-row" style="display:flex;align-items:end;">
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked /> منشور</label>
+          </div>
+        </div>
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+</Base>

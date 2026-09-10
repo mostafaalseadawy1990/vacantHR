@@ -44,6 +44,11 @@ export type Post = {
   published_at: string | null; created_at: string; updated_at: string;
 };
 
+export type GuideSection = {
+  id: string; slug: string; title: string; body_md: string;
+  video_url: string | null; position: number; published: boolean;
+};
+
 export type Testimonial = { id: string; name: string; title: string | null; quote: string; position: number; published: boolean };
 export type Faq = { id: string; question: string; answer: string; position: number; published: boolean };
 export type PricingPlan = {
@@ -122,6 +127,22 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   const { data } = await anonClient()
     .from('posts').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
   return (data as Post) ?? null;
+}
+
+export function getGuideSections(): Promise<GuideSection[]> {
+  return cached('guide', async () => {
+    const { data, error } = await anonClient()
+      .from('guide_sections').select('*').eq('published', true).order('position');
+    if (error) throw error;
+    return (data ?? []) as GuideSection[];
+  }).catch(() => []);
+}
+
+/** YouTube watch/share/embed URL -> privacy-enhanced embed URL, or null. */
+export function ytEmbed(url?: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
 }
 
 /** Public URL for a file in the `media` bucket. */
