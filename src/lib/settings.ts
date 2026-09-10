@@ -12,6 +12,8 @@ export type Settings = {
   home_hero_title: string;
   home_hero_lead: string;
   home_stats: Array<{ value: string; label: string }>;
+  analytics_snippet: string;
+  google_site_verification: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -32,6 +34,14 @@ export const DEFAULT_SETTINGS: Settings = {
     { value: '18', label: 'قطاع مختلف' },
     { value: '92%', label: 'نسبة رضا العملاء' },
   ],
+  analytics_snippet: '',
+  google_site_verification: '',
+};
+
+export type Post = {
+  id: string; slug: string; title: string; excerpt: string; cover_path: string | null;
+  body_md: string; tags: string[]; status: 'draft' | 'published';
+  published_at: string | null; created_at: string; updated_at: string;
 };
 
 export type Testimonial = { id: string; name: string; title: string | null; quote: string; position: number; published: boolean };
@@ -93,6 +103,25 @@ export function getPricingPlans(): Promise<PricingPlan[]> {
     if (error) throw error;
     return (data ?? []) as PricingPlan[];
   }).catch(() => []);
+}
+
+export function getPosts(): Promise<Post[]> {
+  return cached('posts', async () => {
+    const { data, error } = await anonClient()
+      .from('posts')
+      .select('id, slug, title, excerpt, cover_path, tags, status, published_at, created_at, updated_at')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .limit(60);
+    if (error) throw error;
+    return (data ?? []) as Post[];
+  }).catch(() => []);
+}
+
+export async function getPostBySlug(slug: string): Promise<Post | null> {
+  const { data } = await anonClient()
+    .from('posts').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
+  return (data as Post) ?? null;
 }
 
 /** Public URL for a file in the `media` bucket. */

@@ -27,6 +27,12 @@ const { data: jobs } = await supabase
   .select('id, slug, title, department, employment_type, status, created_at, applications(count)')
   .order('created_at', { ascending: false });
 
+// total views per job (last 90d)
+const since = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+const { data: vrows } = await supabase.from('job_views').select('job_id, count').gte('day', since);
+const viewsByJob: Record<string, number> = {};
+for (const v of vrows ?? []) viewsByJob[v.job_id] = (viewsByJob[v.job_id] ?? 0) + (v.count ?? 0);
+
 const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتوحة', closed: 'مغلقة' };
 ---
 <Base title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="admin" noindex={true}>
@@ -45,13 +51,14 @@ const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتو
     ) : (
       <div class="table-scroll">
         <table class="data-table">
-          <thead><tr><th>المسمى</th><th>القسم</th><th>النوع</th><th>المتقدمين</th><th>الحالة</th><th></th></tr></thead>
+          <thead><tr><th>المسمى</th><th>القسم</th><th>النوع</th><th>مشاهدات</th><th>المتقدمين</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
             {jobs.map((j: any) => (
               <tr>
                 <td><a href={`/admin/jobs/${j.slug}`}>{j.title}</a></td>
                 <td>{j.department ?? '—'}</td>
                 <td>{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR] ?? j.employment_type}</td>
+                <td>{viewsByJob[j.id] ?? 0}</td>
                 <td>{j.applications?.[0]?.count ?? 0}</td>
                 <td><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{STATUS_AR[j.status]}</span></td>
                 <td>

@@ -1,0 +1,58 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getPosts, mediaUrl } from '../../lib/settings';
+
+const posts = await getPosts();
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'مدوّنة Vacant HR',
+  url: 'https://vacanthr.com/blog',
+  inLanguage: 'ar',
+}];
+const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+---
+<Base
+  title="المدوّنة | Vacant HR"
+  description="مقالات ودلائل عملية في التوظيف وإدارة الموارد البشرية للشركات الناشئة والمتوسطة في مصر — من فريق Vacant HR."
+  active="blog"
+  path="/blog"
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>المدوّنة</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 40px;">
+  <div class="wrap">
+    <div class="eyebrow-line">المدوّنة</div>
+    <h1 style="max-width:20ch;">أفكار ودلائل في التوظيف والموارد البشرية</h1>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap">
+    {posts.length === 0 ? (
+      <p style="color:var(--muted);">لسه مفيش مقالات منشورة.</p>
+    ) : (
+      <div class="post-grid">
+        {posts.map((p) => (
+          <a href={`/blog/${p.slug}`} class="post-card">
+            {p.cover_path && <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" />}
+            <div class="post-card-body">
+              <div class="post-tags">{(p.tags ?? []).slice(0, 3).map((t) => <span>{t}</span>)}</div>
+              <h2>{p.title}</h2>
+              <p>{p.excerpt}</p>
+              <span class="post-date">{fmt(p.published_at)}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
+
+</main>
+</Base>

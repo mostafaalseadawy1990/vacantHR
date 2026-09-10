@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getPostBySlug, mediaUrl } from '../../lib/settings';
+import { renderMarkdown } from '../../lib/jobs';
+
+const { slug } = Astro.params;
+const post = await getPostBySlug(slug!);
+if (!post) return Astro.redirect('/blog', 302);
+
+const date = post.published_at ?? post.created_at;
+const cover = post.cover_path ? mediaUrl(post.cover_path) : 'https://vacanthr.com/og-image.png';
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.title,
+  description: post.excerpt,
+  image: cover,
+  datePublished: date,
+  dateModified: post.updated_at,
+  inLanguage: 'ar',
+  author: { '@type': 'Organization', name: 'Vacant HR' },
+  publisher: { '@type': 'Organization', name: 'Vacant HR', logo: { '@type': 'ImageObject', url: 'https://vacanthr.com/favicon.svg' } },
+  mainEntityOfPage: `https://vacanthr.com/blog/${post.slug}`,
+}];
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base
+  title={`${post.title} | مدوّنة Vacant HR`}
+  description={post.excerpt || post.title}
+  active="blog"
+  path={`/blog/${post.slug}`}
+  ogImage={post.cover_path ? mediaUrl(post.cover_path) : '/og-image.png'}
+  jsonld={jsonld}
+>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل">
+    <a href="/">الرئيسية</a><span>/</span><a href="/blog">المدوّنة</a><span>/</span>{post.title}
+  </nav>
+</div>
+
+<article>
+  <section class="hero" style="padding:40px 0 24px;">
+    <div class="wrap" style="max-width:760px;">
+      <div class="post-tags">{(post.tags ?? []).map((t) => <span>{t}</span>)}</div>
+      <h1 style="margin:12px 0;">{post.title}</h1>
+      <p style="color:var(--muted);margin:0;">{fmt(date)}</p>
+    </div>
+  </section>
+
+  {post.cover_path && (
+    <div class="wrap" style="max-width:900px;margin-bottom:8px;">
+      <img src={mediaUrl(post.cover_path)} alt={post.title} style="width:100%;border-radius:var(--radius);border:1px solid var(--line);" />
+    </div>
+  )}
+
+  <section style="padding-top:24px;">
+    <div class="wrap prose article-body" style="max-width:760px;">
+      <Fragment set:html={renderMarkdown(post.body_md)} />
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap" style="max-width:760px;text-align:center;">
+      <h2 style="margin-bottom:12px;">محتاج مساعدة في التوظيف أو الموارد البشرية؟</h2>
+      <a href="/contact" class="btn solid">احجز استشارة مجانية</a>
+    </div>
+  </section>
+</article>
+
+</main>
+</Base>

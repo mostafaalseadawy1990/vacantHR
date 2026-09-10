@@ -123,4 +123,8 @@ const applyHref = user
 </section>
 
 </main>
+
+<script is:inline define:vars={{ slug: job.slug }}>
+  try { fetch('/careers/' + slug + '/view', { method: 'POST', keepalive: true }); } catch (e) {}
+</script>
 </Base>
