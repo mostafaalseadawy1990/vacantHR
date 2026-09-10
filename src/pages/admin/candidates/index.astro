@@ -1,0 +1,67 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') || '').trim();
+
+let query = supabase
+  .from('profiles')
+  .select('id, full_name, email, phone, company_name, role, created_at, applications(count)')
+  .eq('role', 'candidate')
+  .order('created_at', { ascending: false })
+  .limit(200);
+
+if (q) {
+  const like = `%${q}%`;
+  query = query.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
+}
+
+const { data: rows, error } = await query;
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+---
+<Base title="قاعدة المرشحين | لوحة الإدارة" path="/admin/candidates" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="candidates">قاعدة المرشحين</AdminNav>
+
+    <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;max-width:520px;">
+      <input type="search" name="q" value={q} placeholder="ابحث بالاسم أو الإيميل أو الهاتف" style="flex:1;min-width:220px;" />
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">بحث</button>
+      {q && <a href="/admin/candidates" class="btn">مسح</a>}
+    </form>
+
+    {error && <p class="notice notice-error">تعذّر تحميل القائمة: {error.message}</p>}
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+      <span style="color:var(--muted);font-size:0.9rem;">{rows?.length ?? 0} مرشح{q ? ' (نتيجة البحث)' : ''}</span>
+      <a href={`/admin/candidates.csv${q ? `?q=${encodeURIComponent(q)}` : ''}`} class="btn">تصدير CSV ↓</a>
+    </div>
+
+    {(!rows || rows.length === 0) ? (
+      <p style="color:var(--muted);">مفيش مرشحين مطابقين.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>الاسم</th><th>الإيميل</th><th>الهاتف</th><th>عدد الطلبات</th><th>مسجّل من</th></tr></thead>
+          <tbody>
+            {rows.map((r: any) => (
+              <tr>
+                <td><a href={`/admin/candidates/${r.id}`}>{r.full_name || '—'}</a></td>
+                <td dir="ltr" style="text-align:right;">{r.email || '—'}</td>
+                <td dir="ltr" style="text-align:right;">{r.phone || '—'}</td>
+                <td>{r.applications?.[0]?.count ?? 0}</td>
+                <td>{fmt(r.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>

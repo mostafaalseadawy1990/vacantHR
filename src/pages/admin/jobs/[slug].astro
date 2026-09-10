@@ -126,9 +126,12 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ التعديلات</button>
     </form>
 
-    <h2 id="applicants" style="margin-bottom:16px;">المتقدمون ({apps?.length ?? 0})</h2>
+    <div id="applicants" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <h2 style="margin:0;">المتقدمون ({apps?.length ?? 0})</h2>
+      {apps && apps.length > 0 && <a href={`/admin/jobs/${slug}/applicants.csv`} class="btn">تصدير CSV ↓</a>}
+    </div>
     {(!apps || apps.length === 0) ? (
-      <p style="color:var(--teal-2);">مفيش متقدمين لسه.</p>
+      <p style="color:var(--muted);">مفيش متقدمين لسه.</p>
     ) : (
       <div class="table-scroll">
         <table class="data-table">

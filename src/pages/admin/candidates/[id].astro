@@ -1,0 +1,151 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const { id } = Astro.params;
+const supabase = serverClient(Astro);
+const me = Astro.locals.user!;
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') || '');
+  const appId = String(form.get('app_id') || '');
+
+  if (action === 'set_status') {
+    const st = String(form.get('status') || '');
+    if (appId && ['submitted', 'reviewing', 'shortlisted', 'rejected', 'hired'].includes(st)) {
+      await supabase.from('applications').update({ status: st }).eq('id', appId);
+      return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
+    }
+  }
+  if (action === 'set_rating') {
+    const r = parseInt(String(form.get('rating') || ''), 10);
+    if (appId && r >= 1 && r <= 5) {
+      await supabase.from('applications').update({ rating: r }).eq('id', appId);
+      return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
+    }
+    if (appId && String(form.get('rating')) === '0') {
+      await supabase.from('applications').update({ rating: null }).eq('id', appId);
+      return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
+    }
+  }
+  if (action === 'add_note') {
+    const body = String(form.get('body') || '').trim();
+    if (appId && body) {
+      await supabase.from('application_notes').insert({ application_id: appId, author_id: me.id, body });
+      return Astro.redirect(`/admin/candidates/${id}?ok=1#app-${appId}`, 303);
+    }
+  }
+  if (action === 'del_note') {
+    const noteId = String(form.get('note_id') || '');
+    if (noteId) {
+      await supabase.from('application_notes').delete().eq('id', noteId);
+      return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
+    }
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('id, full_name, email, phone, company_name, role, created_at')
+  .eq('id', id)
+  .maybeSingle();
+if (!profile) return Astro.redirect('/admin/candidates', 302);
+
+const { data: apps } = await supabase
+  .from('applications')
+  .select('id, status, rating, created_at, cover_note, cv_path, jobs(title, slug), application_notes(id, body, created_at)')
+  .eq('candidate_id', id)
+  .order('created_at', { ascending: false });
+
+const STATUS: Array<[string, string]> = [
+  ['submitted', 'تحت المراجعة'], ['reviewing', 'قيد الفحص'], ['shortlisted', 'قائمة مختصرة'],
+  ['rejected', 'مرفوض'], ['hired', 'تم التعيين'],
+];
+const sel = (a: string, b: string) => (a === b ? true : undefined);
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base title={`${profile.full_name || 'مرشح'} | لوحة الإدارة`} path={`/admin/candidates/${id}`} active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="candidates">{profile.full_name || 'مرشح'}</AdminNav>
+    <p style="margin-bottom:18px;"><a href="/admin/candidates">→ رجوع للقائمة</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+
+    <div class="form-box" style="max-width:640px;margin-bottom:32px;">
+      <h3 style="margin-bottom:12px;">{profile.full_name || '—'}</h3>
+      <p style="margin:0;color:var(--muted);line-height:2;">
+        <span dir="ltr">{profile.email || '—'}</span><br />
+        <span dir="ltr">{profile.phone || '—'}</span><br />
+        مسجّل من {fmt(profile.created_at)}
+      </p>
+    </div>
+
+    <h2 style="margin-bottom:16px;">الطلبات ({apps?.length ?? 0})</h2>
+    {(!apps || apps.length === 0) ? (
+      <p style="color:var(--muted);">مفيش طلبات لهذا المرشح.</p>
+    ) : (
+      <div style="display:grid;gap:18px;">
+        {apps.map((a: any) => (
+          <div class="form-box" id={`app-${a.id}`} style="max-width:none;">
+            <div style="display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:baseline;">
+              <h3 style="margin:0;">
+                {a.jobs?.slug ? <a href={`/admin/jobs/${a.jobs.slug}`}>{a.jobs?.title}</a> : (a.jobs?.title ?? 'وظيفة محذوفة')}
+              </h3>
+              <span style="font-size:0.85rem;color:var(--muted);">قدّم في {fmt(a.created_at)}</span>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;">
+              <form method="POST" style="display:flex;gap:6px;">
+                <input type="hidden" name="_action" value="set_status" />
+                <input type="hidden" name="app_id" value={a.id} />
+                <select name="status" class="mini-select">
+                  {STATUS.map(([v, l]) => <option value={v} selected={sel(a.status, v)}>{l}</option>)}
+                </select>
+                <button class="mini-btn">حفظ الحالة</button>
+              </form>
+
+              <form method="POST" style="display:flex;gap:6px;">
+                <input type="hidden" name="_action" value="set_rating" />
+                <input type="hidden" name="app_id" value={a.id} />
+                <select name="rating" class="mini-select">
+                  <option value="0" selected={!a.rating}>بدون تقييم</option>
+                  {[1, 2, 3, 4, 5].map((n) => <option value={n} selected={a.rating === n}>{'★'.repeat(n)}</option>)}
+                </select>
+                <button class="mini-btn">حفظ التقييم</button>
+              </form>
+
+              {a.cv_path && <a href={`/admin/cv/${a.id}`} target="_blank" rel="noopener" class="btn" style="padding:6px 14px;font-size:0.82rem;">فتح الـCV ↗</a>}
+            </div>
+
+            {a.cover_note && <p style="background:var(--surface-soft);padding:12px 14px;border-radius:8px;font-size:0.92rem;white-space:pre-wrap;">{a.cover_note}</p>}
+
+            <h4 style="margin:16px 0 8px;">ملاحظات داخلية</h4>
+            {(a.application_notes ?? []).sort((x: any, y: any) => (x.created_at < y.created_at ? 1 : -1)).map((n: any) => (
+              <div style="display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line-soft);padding:10px 0;font-size:0.92rem;">
+                <span style="white-space:pre-wrap;">{n.body}<br /><span style="color:var(--muted);font-size:0.8rem;">{fmt(n.created_at)}</span></span>
+                <form method="POST" onsubmit="return confirm('حذف الملاحظة؟')">
+                  <input type="hidden" name="_action" value="del_note" />
+                  <input type="hidden" name="note_id" value={n.id} />
+                  <button style="background:none;border:0;color:#9A3B1C;cursor:pointer;font-size:0.8rem;">حذف</button>
+                </form>
+              </div>
+            ))}
+            <form method="POST" style="margin-top:10px;">
+              <input type="hidden" name="_action" value="add_note" />
+              <input type="hidden" name="app_id" value={a.id} />
+              <textarea name="body" placeholder="أضف ملاحظة…" style="min-height:60px;" required></textarea>
+              <button type="submit" class="btn" style="margin-top:8px;padding:8px 18px;font-size:0.85rem;">إضافة ملاحظة</button>
+            </form>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>
