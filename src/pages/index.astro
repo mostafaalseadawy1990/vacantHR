@@ -10,7 +10,7 @@ const jsonld = [
     '@type': 'Organization',
     name: 'Vacant HR',
     url: 'https://vacanthr.com/',
-    logo: 'https://vacanthr.com/favicon.svg',
+    logo: s.logo_path ? mediaUrl(s.logo_path) : 'https://vacanthr.com/og-image.png',
     email: s.contact_email,
     description: s.company_blurb,
     address: { '@type': 'PostalAddress', addressLocality: 'القاهرة', addressCountry: 'EG' },
