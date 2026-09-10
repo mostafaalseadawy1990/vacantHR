@@ -1,0 +1,46 @@
+---
+import Base from '../../../layouts/Base.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const profile = Astro.locals.profile;
+const role = profile?.role ?? 'candidate';
+const supabase = serverClient(Astro);
+
+const { data: convs } = await supabase
+  .from('conversations')
+  .select('id, subject, last_message_at')
+  .order('last_message_at', { ascending: false });
+const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+---
+<Base title="الرسائل | Vacant HR" path="/dashboard/messages" active="dashboard" noindex={true}>
+<main id="main">
+<section style="padding:44px 0 70px;">
+  <div class="wrap">
+    <div class="dash-head">
+      <div><div class="eyebrow-line">الرسائل</div><h1>الرسائل</h1></div>
+      <a href="/logout" class="btn">تسجيل الخروج</a>
+    </div>
+    <nav class="dash-nav">
+      <a href="/dashboard">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
+      <a href="/dashboard/messages" class="active">الرسائل</a>
+      <a href="/dashboard/profile">بياناتي</a>
+    </nav>
+
+    {(!convs || convs.length === 0) ? (
+      <p style="color:var(--muted);">مفيش رسائل. فريق Vacant HR هيبدأ المحادثة معاك لو احتاج.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>الموضوع</th><th>آخر رسالة</th></tr></thead>
+          <tbody>
+            {convs.map((c: any) => (
+              <tr><td><a href={`/dashboard/messages/${c.id}`}>{c.subject}</a></td><td>{fmt(c.last_message_at)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>

@@ -73,7 +73,7 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: req } = await supabase
   .from('client_requests')
-  .select('id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone, email)')
+  .select('id, client_id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone, email)')
   .eq('id', id)
   .maybeSingle();
 if (!req) return Astro.redirect('/admin/requests', 302);
@@ -102,6 +102,7 @@ const DEC: Record<string, string> = { pending: 'بانتظار العميل', ap
         {req.profiles?.email && <span dir="ltr"> · {req.profiles.email}</span>}
       </p>
       {req.details_md && <p style="white-space:pre-wrap;margin-top:12px;">{req.details_md}</p>}
+      <p style="margin-top:12px;"><a href={`/admin/inbox/new?client=${(req as any).client_id ?? ''}&request=${id}`} class="btn" style="padding:6px 14px;font-size:0.82rem;">مراسلة العميل ✉</a></p>
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">

@@ -68,6 +68,40 @@ if (Astro.request.method === 'POST') {
       return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
     }
   }
+  if (action === 'schedule_interview') {
+    const when = String(form.get('scheduled_at') || '');
+    const mode = String(form.get('mode') || 'online');
+    const location = String(form.get('location') || '').trim();
+    if (appId && when) {
+      const { data: iv } = await supabase.from('interviews').insert({
+        application_id: appId, scheduled_at: new Date(when).toISOString(),
+        mode: ['online', 'onsite', 'phone'].includes(mode) ? mode : 'online',
+        location: location || null, status: 'confirmed', created_by: me.id,
+      }).select('id').single();
+      const { data: a } = await supabase.from('applications')
+        .select('profiles(full_name, email), jobs(title)').eq('id', appId).maybeSingle();
+      const email = (a as any)?.profiles?.email;
+      if (email) {
+        const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
+        const dt = new Date(when).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
+        await sendEmail(Astro, {
+          to: email,
+          subject: `موعد مقابلة: ${(a as any)?.jobs?.title ?? 'وظيفة'}`,
+          html: emailLayout('اتحدد موعد مقابلتك',
+            `<p>مرحبًا ${(a as any)?.profiles?.full_name ?? ''}،</p><p>موعد المقابلة: <strong>${dt}</strong> — ${MODE_AR[mode] ?? mode}${location ? `<br>${location}` : ''}</p>`,
+            { text: 'تفاصيل من لوحتي', url: 'https://vacanthr.com/dashboard' }),
+        });
+      }
+      if (iv) return Astro.redirect(`/admin/candidates/${id}?ok=1#app-${appId}`, 303);
+    }
+  }
+  if (action === 'cancel_interview') {
+    const ivId = String(form.get('interview_id') || '');
+    if (ivId) {
+      await supabase.from('interviews').update({ status: 'cancelled' }).eq('id', ivId);
+      return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
+    }
+  }
 }
 const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
@@ -80,7 +114,7 @@ if (!profile) return Astro.redirect('/admin/candidates', 302);
 
 const { data: apps } = await supabase
   .from('applications')
-  .select('id, status, rating, created_at, cover_note, cv_path, jobs(title, slug), application_notes(id, body, created_at)')
+  .select('id, status, rating, created_at, cover_note, cv_path, jobs(title, slug), application_notes(id, body, created_at), interviews(id, scheduled_at, mode, location, status)')
   .eq('candidate_id', id)
   .order('created_at', { ascending: false });
 
@@ -88,8 +122,10 @@ const STATUS: Array<[string, string]> = [
   ['submitted', 'تحت المراجعة'], ['reviewing', 'قيد الفحص'], ['shortlisted', 'قائمة مختصرة'],
   ['rejected', 'مرفوض'], ['hired', 'تم التعيين'],
 ];
+const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
 const sel = (a: string, b: string) => (a === b ? true : undefined);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
 <Base title={`${profile.full_name || 'مرشح'} | لوحة الإدارة`} path={`/admin/candidates/${id}`} active="admin" noindex={true}>
 <main id="main">
@@ -164,6 +200,30 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
               <textarea name="body" placeholder="أضف ملاحظة…" style="min-height:60px;" required></textarea>
               <button type="submit" class="btn" style="margin-top:8px;padding:8px 18px;font-size:0.85rem;">إضافة ملاحظة</button>
             </form>
+
+            <h4 style="margin:18px 0 8px;">المقابلات</h4>
+            {(a.interviews ?? []).filter((v: any) => v.status !== 'cancelled').sort((x: any, y: any) => (x.scheduled_at > y.scheduled_at ? 1 : -1)).map((v: any) => (
+              <div style="display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line-soft);padding:10px 0;font-size:0.9rem;">
+                <span><strong>{fmtDT(v.scheduled_at)}</strong> — {MODE_AR[v.mode] ?? v.mode}{v.location ? ` · ${v.location}` : ''}</span>
+                <form method="POST" onsubmit="return confirm('إلغاء المقابلة؟')">
+                  <input type="hidden" name="_action" value="cancel_interview" />
+                  <input type="hidden" name="interview_id" value={v.id} />
+                  <button style="background:none;border:0;color:#9A3B1C;cursor:pointer;font-size:0.8rem;">إلغاء</button>
+                </form>
+              </div>
+            ))}
+            <form method="POST" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+              <input type="hidden" name="_action" value="schedule_interview" />
+              <input type="hidden" name="app_id" value={a.id} />
+              <input type="datetime-local" name="scheduled_at" required style="width:auto;flex:1;min-width:190px;" />
+              <select name="mode" class="mini-select"><option value="online">أونلاين</option><option value="onsite">في المقر</option><option value="phone">هاتفيًا</option></select>
+              <input type="text" name="location" placeholder="رابط الاجتماع / العنوان" style="width:auto;flex:1;min-width:180px;" />
+              <button type="submit" class="btn" style="padding:8px 16px;font-size:0.85rem;">جدولة مقابلة</button>
+            </form>
+
+            <p style="margin-top:14px;">
+              <a href={`/admin/inbox/new?candidate=${id}&app=${a.id}`} class="btn" style="padding:6px 14px;font-size:0.82rem;">مراسلة المرشح ✉</a>
+            </p>
           </div>
         ))}
       </div>

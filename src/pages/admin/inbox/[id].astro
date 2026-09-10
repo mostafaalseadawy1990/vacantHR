@@ -1,0 +1,70 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+import { sendEmail, emailLayout } from '../../../lib/email';
+
+const { id } = Astro.params;
+const me = Astro.locals.user!;
+const supabase = serverClient(Astro);
+
+const { data: conv } = await supabase
+  .from('conversations')
+  .select('id, subject, participant_id, profiles(full_name, company_name, email)')
+  .eq('id', id).maybeSingle();
+if (!conv) return Astro.redirect('/admin/inbox', 302);
+
+if (Astro.request.method === 'POST') {
+  const body = String((await Astro.request.formData()).get('body') || '').trim().slice(0, 5000);
+  if (body) {
+    await supabase.from('messages').insert({ conversation_id: id, sender_id: me.id, body });
+    const email = (conv as any).profiles?.email;
+    if (email) await sendEmail(Astro, {
+      to: email,
+      subject: `رسالة جديدة من Vacant HR: ${conv.subject}`,
+      html: emailLayout('عندك رسالة جديدة',
+        `<p>${body.replace(/</g, '&lt;').slice(0, 400)}</p>`,
+        { text: 'فتح المحادثة', url: 'https://vacanthr.com/dashboard/messages' }),
+    });
+    return Astro.redirect(`/admin/inbox/${id}#end`, 303);
+  }
+}
+
+const { data: msgs } = await supabase
+  .from('messages').select('id, body, sender_id, created_at').eq('conversation_id', id).order('created_at');
+const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+---
+<Base title={`${conv.subject} | الرسائل`} path={`/admin/inbox/${id}`} active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap" style="max-width:720px;">
+    <AdminNav active="inbox">{conv.subject}</AdminNav>
+    <p style="margin-bottom:16px;"><a href="/admin/inbox">→ كل الرسائل</a></p>
+
+    <div class="chat">
+      {(msgs ?? []).map((m: any) => (
+        <div class={`chat-msg ${m.sender_id === conv.participant_id ? 'them' : 'me'}`}>
+          <p>{m.body}</p>
+          <time>{fmt(m.created_at)}</time>
+        </div>
+      ))}
+      <span id="end"></span>
+    </div>
+
+    <form method="POST" style="margin-top:18px;">
+      <textarea name="body" placeholder="اكتب ردك…" style="min-height:90px;" required></textarea>
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;margin-top:8px;">إرسال</button>
+    </form>
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .chat{display:flex;flex-direction:column;gap:10px;}
+  .chat-msg{max-width:80%;padding:12px 14px;border-radius:14px;font-size:0.95rem;}
+  .chat-msg p{margin:0;white-space:pre-wrap;}
+  .chat-msg time{display:block;margin-top:4px;font-size:0.72rem;opacity:.7;}
+  .chat-msg.me{align-self:flex-start;background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+  .chat-msg.them{align-self:flex-end;background:var(--surface-soft);border:1px solid var(--line);border-bottom-left-radius:4px;}
+</style>

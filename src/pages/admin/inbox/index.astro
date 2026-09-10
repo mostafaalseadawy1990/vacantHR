@@ -1,0 +1,40 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const { data: convs } = await supabase
+  .from('conversations')
+  .select('id, subject, last_message_at, created_at, profiles(full_name, company_name, email)')
+  .order('last_message_at', { ascending: false })
+  .limit(100);
+const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+---
+<Base title="الرسائل | لوحة الإدارة" path="/admin/inbox" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="inbox">الرسائل</AdminNav>
+    {(!convs || convs.length === 0) ? (
+      <p style="color:var(--muted);">مفيش محادثات. تقدر تبدأ محادثة من صفحة أي مرشح أو طلب شركة.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>الطرف</th><th>الموضوع</th><th>آخر رسالة</th></tr></thead>
+          <tbody>
+            {convs.map((c: any) => (
+              <tr>
+                <td><a href={`/admin/inbox/${c.id}`}>{c.profiles?.company_name || c.profiles?.full_name || c.profiles?.email || '—'}</a></td>
+                <td>{c.subject}</td>
+                <td>{fmt(c.last_message_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>

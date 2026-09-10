@@ -87,13 +87,21 @@ if (role === 'client') {
 }
 
 let savedJobs: any[] = [];
+let interviews: any[] = [];
 if (role !== 'client') {
-  const { data: sj } = await supabase
-    .from('saved_jobs')
-    .select('created_at, jobs(title, slug, department, status)')
-    .order('created_at', { ascending: false });
+  const [{ data: sj }, { data: iv }] = await Promise.all([
+    supabase.from('saved_jobs').select('created_at, jobs(title, slug, department, status)').order('created_at', { ascending: false }),
+    supabase.from('interviews')
+      .select('id, scheduled_at, mode, location, status, applications(jobs(title, slug))')
+      .neq('status', 'cancelled')
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at'),
+  ]);
   savedJobs = (sj ?? []).filter((r: any) => r.jobs);
+  interviews = iv ?? [];
 }
+const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
+const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
@@ -111,6 +119,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
 
     <nav class="dash-nav">
       <a href="/dashboard" class="active">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
+      <a href="/dashboard/messages">الرسائل</a>
       <a href="/dashboard/profile">بياناتي</a>
       {role !== 'client' && <a href="/careers">تصفّح الوظائف</a>}
       {profile?.role === 'admin' && <a href="/admin">لوحة الإدارة</a>}
@@ -205,6 +214,22 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
       </>
     ) : (
       <>
+        {interviews.length > 0 && (
+          <div style="margin-bottom:28px;">
+            <h2 style="margin-bottom:12px;">مقابلاتك القادمة</h2>
+            <div style="display:grid;gap:12px;">
+              {interviews.map((v: any) => (
+                <div class="form-box" style="max-width:none;">
+                  <strong>{v.applications?.jobs?.title ?? 'وظيفة'}</strong>
+                  <p style="margin:8px 0 0;color:var(--body);">
+                    {fmtDT(v.scheduled_at)} — {MODE_AR[v.mode] ?? v.mode}
+                    {v.location && <><br /><span dir="ltr">{v.location}</span></>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <h2 style="margin-bottom:16px;">طلبات التقديم بتاعتك</h2>
         {applications.length === 0 ? (
           <div class="empty-state">

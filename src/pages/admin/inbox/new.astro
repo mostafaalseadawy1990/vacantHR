@@ -1,0 +1,30 @@
+---
+import { serverClient } from '../../../lib/supabase';
+
+const url = new URL(Astro.request.url);
+const candidate = url.searchParams.get('candidate') || url.searchParams.get('client');
+const app = url.searchParams.get('app');
+const request = url.searchParams.get('request');
+
+if (!candidate) return Astro.redirect('/admin/inbox', 302);
+
+const supabase = serverClient(Astro);
+
+// reuse an existing conversation with this participant if one exists
+const { data: existing } = await supabase
+  .from('conversations').select('id').eq('participant_id', candidate).order('created_at').limit(1).maybeSingle();
+if (existing) return Astro.redirect(`/admin/inbox/${existing.id}`, 302);
+
+const { data: prof } = await supabase.from('profiles').select('full_name, company_name').eq('id', candidate).maybeSingle();
+const subject = prof?.company_name ? `محادثة مع ${prof.company_name}` : `محادثة مع ${prof?.full_name || 'مستخدم'}`;
+
+const { data: conv, error } = await supabase.from('conversations').insert({
+  participant_id: candidate,
+  subject,
+  application_id: app || null,
+  request_id: request || null,
+}).select('id').single();
+
+if (error || !conv) return Astro.redirect('/admin/inbox', 302);
+return Astro.redirect(`/admin/inbox/${conv.id}`, 303);
+---

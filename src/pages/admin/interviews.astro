@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const nowIso = new Date().toISOString();
+
+const { data: upcoming } = await supabase
+  .from('interviews')
+  .select('id, scheduled_at, mode, location, status, applications(candidate_id, profiles(full_name, phone), jobs(title, slug))')
+  .neq('status', 'cancelled')
+  .gte('scheduled_at', nowIso)
+  .order('scheduled_at');
+
+const { data: past } = await supabase
+  .from('interviews')
+  .select('id, scheduled_at, mode, status, applications(candidate_id, profiles(full_name), jobs(title))')
+  .lt('scheduled_at', nowIso)
+  .order('scheduled_at', { ascending: false })
+  .limit(30);
+
+const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
+const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
+const fmtShort = (s: string) => new Date(s).toLocaleDateString('ar-EG', { dateStyle: 'medium' });
+---
+<Base title="المقابلات | لوحة الإدارة" path="/admin/interviews" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="interviews">المقابلات</AdminNav>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:20px;">تُجدول المقابلات من صفحة كل مرشح.</p>
+
+    <h2 style="margin-bottom:14px;">القادمة ({upcoming?.length ?? 0})</h2>
+    {(!upcoming || upcoming.length === 0) ? <p style="color:var(--muted);">مفيش مقابلات قادمة.</p> : (
+      <div class="table-scroll"><table class="data-table">
+        <thead><tr><th>الموعد</th><th>المرشح</th><th>الوظيفة</th><th>النوع</th><th>المكان/الرابط</th></tr></thead>
+        <tbody>
+          {upcoming.map((v: any) => (
+            <tr>
+              <td>{fmt(v.scheduled_at)}</td>
+              <td>{v.applications?.candidate_id ? <a href={`/admin/candidates/${v.applications.candidate_id}`}>{v.applications?.profiles?.full_name ?? '—'}</a> : (v.applications?.profiles?.full_name ?? '—')}</td>
+              <td>{v.applications?.jobs?.title ?? '—'}</td>
+              <td>{MODE_AR[v.mode] ?? v.mode}</td>
+              <td dir="ltr" style="text-align:right;">{v.location ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    )}
+
+    <h2 style="margin:36px 0 14px;">السابقة</h2>
+    {(!past || past.length === 0) ? <p style="color:var(--muted);">—</p> : (
+      <div class="table-scroll"><table class="data-table">
+        <thead><tr><th>الموعد</th><th>المرشح</th><th>الوظيفة</th></tr></thead>
+        <tbody>
+          {past.map((v: any) => (
+            <tr><td>{fmtShort(v.scheduled_at)}</td><td>{v.applications?.profiles?.full_name ?? '—'}</td><td>{v.applications?.jobs?.title ?? '—'}</td></tr>
+          ))}
+        </tbody>
+      </table></div>
+    )}
+  </div>
+</section>
+</main>
+</Base>

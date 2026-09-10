@@ -1,0 +1,95 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const today = new Date();
+const d14 = new Date(today.getTime() - 13 * 864e5).toISOString().slice(0, 10);
+const d30 = new Date(today.getTime() - 29 * 864e5).toISOString().slice(0, 10);
+
+const [{ data: ev }, { count: apps30 }, { data: jv }, { data: signups }] = await Promise.all([
+  supabase.from('events').select('path, ref, day').eq('kind', 'pageview').gte('day', d14).limit(20000),
+  supabase.from('applications').select('id', { count: 'exact', head: true }).gte('created_at', d30),
+  supabase.from('job_views').select('count').gte('day', d30),
+  supabase.from('profiles').select('created_at, role').gte('created_at', d30),
+]);
+
+const events = ev ?? [];
+// daily pageviews
+const days: string[] = [];
+for (let i = 0; i < 14; i++) days.push(new Date(today.getTime() - (13 - i) * 864e5).toISOString().slice(0, 10));
+const perDay: Record<string, number> = Object.fromEntries(days.map((d) => [d, 0]));
+for (const e of events) if (perDay[e.day] !== undefined) perDay[e.day]++;
+const maxDay = Math.max(1, ...Object.values(perDay));
+const totalViews = events.length;
+
+const topPages = Object.entries(events.reduce((a: Record<string, number>, e) => {
+  a[e.path || '/'] = (a[e.path || '/'] || 0) + 1; return a;
+}, {})).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+const topRefs = Object.entries(events.reduce((a: Record<string, number>, e) => {
+  const r = e.ref || '(مباشر)'; a[r] = (a[r] || 0) + 1; return a;
+}, {})).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+const jobViews30 = (jv ?? []).reduce((s: number, r: any) => s + (r.count ?? 0), 0);
+const conv = jobViews30 > 0 ? Math.round(((apps30 ?? 0) / jobViews30) * 100) : 0;
+const newCandidates = (signups ?? []).filter((r: any) => r.role === 'candidate').length;
+const newClients = (signups ?? []).filter((r: any) => r.role === 'client').length;
+
+const label = (p: string) => p === '/' ? 'الرئيسية' : p;
+---
+<Base title="التحليلات | لوحة الإدارة" path="/admin/analytics" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="analytics">التحليلات</AdminNav>
+
+    <div class="stat-cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:8px;">
+      <div class="stat-card"><span class="n">{totalViews.toLocaleString('en-US')}</span><span class="l">مشاهدات صفحات (14 يوم)</span></div>
+      <div class="stat-card"><span class="n">{jobViews30.toLocaleString('en-US')}</span><span class="l">مشاهدات وظائف (30 يوم)</span></div>
+      <div class="stat-card"><span class="n">{apps30 ?? 0}</span><span class="l">تقديمات (30 يوم)</span></div>
+      <div class="stat-card"><span class="n">{conv}%</span><span class="l">تحويل مشاهدة → تقديم</span></div>
+    </div>
+    <p style="color:var(--muted);font-size:0.88rem;margin:14px 0 26px;">
+      تسجيلات جديدة (30 يوم): {newCandidates} مرشح · {newClients} شركة —
+      لتحليلات أعمق (دول، أجهزة) استخدم <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">Cloudflare Web Analytics</a>.
+    </p>
+
+    <h2 style="margin-bottom:14px;">مشاهدات الصفحات — آخر 14 يوم</h2>
+    <div class="mini-bars">
+      {days.map((d) => (
+        <div class="mini-bar" title={`${d}: ${perDay[d]}`}>
+          <span style={`height:${Math.round((perDay[d] / maxDay) * 100)}%`}></span>
+          <em>{d.slice(8)}</em>
+        </div>
+      ))}
+    </div>
+
+    <div class="split-2" style="margin-top:36px;">
+      <div>
+        <h2 style="margin-bottom:12px;">أكثر الصفحات زيارة</h2>
+        <div class="table-scroll"><table class="data-table">
+          <thead><tr><th>الصفحة</th><th>مشاهدات</th></tr></thead>
+          <tbody>{topPages.map(([p, n]) => <tr><td>{label(p)}</td><td>{n}</td></tr>)}</tbody>
+        </table></div>
+      </div>
+      <div>
+        <h2 style="margin-bottom:12px;">مصادر الزيارات</h2>
+        <div class="table-scroll"><table class="data-table">
+          <thead><tr><th>المصدر</th><th>مشاهدات</th></tr></thead>
+          <tbody>{topRefs.map(([r, n]) => <tr><td dir="ltr" style="text-align:right;">{r}</td><td>{n}</td></tr>)}</tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+</Base>
+
+<style is:global>
+  .mini-bars{display:flex;gap:6px;align-items:flex-end;height:160px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+  .mini-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;}
+  .mini-bar > span{width:100%;max-width:34px;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;}
+  .mini-bar > em{font-size:0.7rem;color:var(--muted);font-style:normal;}
+</style>

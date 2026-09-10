@@ -81,5 +81,15 @@ try {
 {showChrome && <Footer settings={settings} />}
 {showChrome && <WhatsApp text={waText} number={settings.whatsapp_number} />}
 <script src={`/script.js?v=${ASSET_VER}`} defer is:inline></script>
+{!noindex && (
+  <script is:inline>
+    try {
+      if (!location.pathname.startsWith('/admin')) {
+        fetch('/e', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'pageview', path: location.pathname, ref: document.referrer || '' }) });
+      }
+    } catch (e) {}
+  </script>
+)}
 </body>
 </html>
