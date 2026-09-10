@@ -15,17 +15,17 @@ const { data: job } = await supabase
 
 if (!job) return Astro.redirect('/careers', 302);
 
-// Is the visitor a signed-in candidate who already applied?
+// Is the visitor a signed-in candidate who already applied? saved?
 const { user, profile } = await getSessionProfile(Astro);
 let alreadyApplied = false;
+let isSaved = false;
 if (user) {
-  const { data: existing } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('job_id', job.id)
-    .eq('candidate_id', user.id)
-    .maybeSingle();
+  const [{ data: existing }, { data: sv }] = await Promise.all([
+    supabase.from('applications').select('id').eq('job_id', job.id).eq('candidate_id', user.id).maybeSingle(),
+    supabase.from('saved_jobs').select('job_id').eq('job_id', job.id).eq('candidate_id', user.id).maybeSingle(),
+  ]);
   alreadyApplied = !!existing;
+  isSaved = !!sv;
 }
 
 const empMap: Record<string, string> = {
@@ -93,10 +93,14 @@ const applyHref = user
       {job.experience_level && <span>{job.experience_level}</span>}
       {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
     </div>
-    <div class="btn-row">
+    <div class="btn-row" style="align-items:center;">
       {alreadyApplied
         ? <span class="btn" aria-disabled="true" style="opacity:.7;">تم التقديم على هذه الوظيفة ✓</span>
         : <a href={applyHref} class="btn solid">قدّم على الوظيفة</a>}
+      {user && (
+        <button type="button" class="save-btn" id="saveBtn" data-slug={job.slug} data-saved={isSaved ? '1' : '0'} title="حفظ الوظيفة">{isSaved ? '★' : '☆'}</button>
+      )}
+      <button type="button" class="share-btn" id="shareBtn">مشاركة</button>
       <a href="/careers" class="btn">كل الوظائف</a>
     </div>
   </div>
@@ -124,7 +128,34 @@ const applyHref = user
 
 </main>
 
-<script is:inline define:vars={{ slug: job.slug }}>
+<script is:inline define:vars={{ slug: job.slug, jobTitle: job.title }}>
   try { fetch('/careers/' + slug + '/view', { method: 'POST', keepalive: true }); } catch (e) {}
+
+  var share = document.getElementById('shareBtn');
+  if (share) share.addEventListener('click', function () {
+    var url = location.href;
+    if (navigator.share) { navigator.share({ title: jobTitle, url: url }).catch(function () {}); }
+    else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        share.textContent = 'تم نسخ الرابط ✓';
+        setTimeout(function () { share.textContent = 'مشاركة'; }, 2000);
+      });
+    }
+  });
+
+  var save = document.getElementById('saveBtn');
+  if (save) save.addEventListener('click', function () {
+    var saved = save.getAttribute('data-saved') === '1';
+    var next = saved ? '0' : '1';
+    save.setAttribute('data-saved', next);
+    save.textContent = next === '1' ? '★' : '☆';
+    fetch('/careers/' + save.getAttribute('data-slug') + '/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: next === '1' ? 'save' : 'unsave' }),
+    }).catch(function () {
+      save.setAttribute('data-saved', saved ? '1' : '0');
+      save.textContent = saved ? '★' : '☆';
+    });
+  });
 </script>
 </Base>

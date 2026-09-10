@@ -1,6 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { serverClient } from '../../lib/supabase';
+import { getSettings } from '../../lib/settings';
+import { sendEmail, emailLayout } from '../../lib/email';
 
 const user = Astro.locals.user!;
 const profile = Astro.locals.profile;
@@ -35,7 +37,18 @@ if (Astro.request.method === 'POST' && role === 'client') {
         client_id: user.id, role_title: roleTitle, headcount, details_md: details || '',
       });
       formMsg = error ? 'تعذّر إرسال الطلب.' : 'ok';
-      if (!error) return Astro.redirect('/dashboard?sent=1', 303);
+      if (!error) {
+        const s = await getSettings();
+        await sendEmail(Astro, {
+          to: s.contact_email,
+          subject: `طلب توظيف جديد من عميل: ${roleTitle}`,
+          html: emailLayout('طلب توظيف جديد',
+            `<p><strong>${profile?.company_name || profile?.full_name || user.email}</strong> طلب توظيف لـ <strong>${roleTitle}</strong> (${headcount}).</p>${details ? `<p>${details}</p>` : ''}`,
+            { text: 'فتح الطلب', url: 'https://vacanthr.com/admin/requests' }),
+          replyTo: user.email!,
+        });
+        return Astro.redirect('/dashboard?sent=1', 303);
+      }
     }
   }
 }
@@ -71,6 +84,15 @@ if (role === 'client') {
     .select('id, status, created_at, cover_note, jobs(title, slug)')
     .order('created_at', { ascending: false });
   applications = data ?? [];
+}
+
+let savedJobs: any[] = [];
+if (role !== 'client') {
+  const { data: sj } = await supabase
+    .from('saved_jobs')
+    .select('created_at, jobs(title, slug, department, status)')
+    .order('created_at', { ascending: false });
+  savedJobs = (sj ?? []).filter((r: any) => r.jobs);
 }
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -205,6 +227,26 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
               </tbody>
             </table>
           </div>
+        )}
+
+        {savedJobs.length > 0 && (
+          <>
+            <h2 style="margin:40px 0 16px;">الوظائف المحفوظة</h2>
+            <ul class="job-list">
+              {savedJobs.map((s: any) => (
+                <li class="job-card">
+                  <div class="job-card-main">
+                    <h2><a href={`/careers/${s.jobs.slug}`}>{s.jobs.title}</a></h2>
+                    <div class="job-meta">
+                      {s.jobs.department && <span>{s.jobs.department}</span>}
+                      {s.jobs.status !== 'open' && <span>لم تعد متاحة</span>}
+                    </div>
+                  </div>
+                  {s.jobs.status === 'open' && <a href={`/careers/${s.jobs.slug}`} class="btn">التفاصيل ←</a>}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </>
     )}

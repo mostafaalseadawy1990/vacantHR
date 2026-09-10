@@ -1,6 +1,8 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import { serverClient } from '../../../lib/supabase';
+import { getSettings } from '../../../lib/settings';
+import { sendEmail, emailLayout } from '../../../lib/email';
 import type { Job } from '../../../lib/jobs';
 
 const { slug } = Astro.params;
@@ -68,6 +70,23 @@ if (Astro.request.method === 'POST') {
           ? 'قدّمت على الوظيفة دي قبل كده.'
           : 'تعذّر إرسال الطلب. جرّب تاني.';
       } else {
+        const s = await getSettings();
+        const name = profile?.full_name || user.email;
+        await sendEmail(Astro, {
+          to: user.email!,
+          subject: `تم استلام طلبك على وظيفة: ${job.title}`,
+          html: emailLayout('تم استلام طلبك',
+            `<p>شكرًا ${name}. استلمنا طلبك على وظيفة <strong>${job.title}</strong> وهنراجعه ونرجعلك.</p>`,
+            { text: 'متابعة طلباتي', url: 'https://vacanthr.com/dashboard' }),
+        });
+        await sendEmail(Astro, {
+          to: s.contact_email,
+          subject: `متقدّم جديد على ${job.title}`,
+          html: emailLayout('متقدّم جديد',
+            `<p><strong>${name}</strong> قدّم على وظيفة <strong>${job.title}</strong>.</p><p>الإيميل: ${user.email}</p>`,
+            { text: 'فتح لوحة الإدارة', url: `https://vacanthr.com/admin/jobs/${job.slug}` }),
+          replyTo: user.email!,
+        });
         return Astro.redirect('/dashboard?applied=1', 303);
       }
     }

@@ -1,26 +1,48 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { anonClient } from '../../lib/supabase';
+import { anonClient, serverClient } from '../../lib/supabase';
 import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, type Job } from '../../lib/jobs';
 
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') || '').trim();
+const type = url.searchParams.get('type') || '';
+const workplace = url.searchParams.get('workplace') || '';
+const dept = url.searchParams.get('dept') || '';
+const sort = url.searchParams.get('sort') || 'newest';
+
 const supabase = anonClient();
-const { data, error } = await supabase
+
+// department options (from all open jobs, unfiltered)
+const { data: deptRows } = await supabase.from('jobs').select('department').eq('status', 'open');
+const departments = [...new Set((deptRows ?? []).map((r: any) => r.department).filter(Boolean))].sort() as string[];
+
+let query = supabase
   .from('jobs')
   .select('id, slug, title, department, location, employment_type, workplace, experience_level, salary_min, salary_max, salary_currency, salary_visible, description_md, requirements_md, status, published_at, created_at')
-  .eq('status', 'open')
-  .order('published_at', { ascending: false, nullsFirst: false })
-  .order('created_at', { ascending: false });
+  .eq('status', 'open');
 
+if (q) query = query.or(`title.ilike.%${q}%,description_md.ilike.%${q}%,department.ilike.%${q}%`);
+if (['full_time', 'part_time', 'contract', 'temporary'].includes(type)) query = query.eq('employment_type', type);
+if (['onsite', 'hybrid', 'remote'].includes(workplace)) query = query.eq('workplace', workplace);
+if (dept) query = query.eq('department', dept);
+
+if (sort === 'salary') query = query.order('salary_max', { ascending: false, nullsFirst: false });
+else query = query.order('published_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+
+const { data, error } = await query;
 const jobs = (data ?? []) as Job[];
 
-const departments = [...new Set(jobs.map((j) => j.department).filter(Boolean))] as string[];
+// which are saved by the current user?
+let savedIds = new Set<string>();
+if (Astro.locals.user) {
+  const { data: sv } = await serverClient(Astro).from('saved_jobs').select('job_id');
+  savedIds = new Set((sv ?? []).map((r: any) => r.job_id));
+}
 
+const hasFilter = !!(q || type || workplace || dept || sort !== 'newest');
 const jsonld = [{
-  '@context': 'https://schema.org',
-  '@type': 'CollectionPage',
-  name: 'الوظائف المتاحة في Vacant HR',
-  url: 'https://vacanthr.com/careers',
-  inLanguage: 'ar',
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: 'الوظائف المتاحة في Vacant HR', url: 'https://vacanthr.com/careers', inLanguage: 'ar',
 }];
 ---
 <Base
@@ -37,45 +59,59 @@ const jsonld = [{
   <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>الوظائف المتاحة</nav>
 </div>
 
-<section class="hero" style="padding:40px 0 40px;">
+<section class="hero" style="padding:40px 0 32px;">
   <div class="wrap">
     <div class="eyebrow-line">الوظائف المتاحة</div>
     <h1 style="max-width:20ch;">دوّر على فرصتك الجاية</h1>
-    <p class="lead" style="max-width:60ch;">دي الوظائف الشاغرة اللي بندوّر لها على مرشحين دلوقتي. اختَر الوظيفة، اعمل حساب، وقدّم سيرتك الذاتية في دقيقتين.</p>
+    <p class="lead" style="max-width:60ch;">اختَر الوظيفة، اعمل حساب، وقدّم سيرتك الذاتية في دقيقتين.</p>
   </div>
 </section>
 
 <section style="padding-top:0;">
   <div class="wrap">
-    {error && (
-      <p class="notice notice-error">تعذّر تحميل الوظائف حاليًا. جرّب تحديث الصفحة، أو <a href="/contact">تواصل معنا</a>.</p>
-    )}
+    <form method="GET" class="filter-bar">
+      <input type="search" name="q" value={q} placeholder="ابحث بالمسمى أو الكلمات المفتاحية" />
+      <select name="dept" aria-label="القسم">
+        <option value="">كل الأقسام</option>
+        {departments.map((d) => <option value={d} selected={dept === d}>{d}</option>)}
+      </select>
+      <select name="type" aria-label="نوع التعاقد">
+        <option value="">كل الأنواع</option>
+        <option value="full_time" selected={type === 'full_time'}>دوام كامل</option>
+        <option value="part_time" selected={type === 'part_time'}>دوام جزئي</option>
+        <option value="contract" selected={type === 'contract'}>عقد مؤقت</option>
+        <option value="temporary" selected={type === 'temporary'}>مشروعي</option>
+      </select>
+      <select name="workplace" aria-label="مكان العمل">
+        <option value="">أي مكان</option>
+        <option value="onsite" selected={workplace === 'onsite'}>من المقر</option>
+        <option value="hybrid" selected={workplace === 'hybrid'}>هجين</option>
+        <option value="remote" selected={workplace === 'remote'}>عن بُعد</option>
+      </select>
+      <select name="sort" aria-label="الترتيب">
+        <option value="newest" selected={sort === 'newest'}>الأحدث</option>
+        <option value="salary" selected={sort === 'salary'}>الأعلى راتبًا</option>
+      </select>
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">تطبيق</button>
+      {hasFilter && <a href="/careers" class="btn">مسح</a>}
+    </form>
+
+    {error && <p class="notice notice-error">تعذّر تحميل الوظائف حاليًا. <a href="/contact">تواصل معنا</a>.</p>}
 
     {!error && jobs.length === 0 && (
       <div class="empty-state">
-        <h2>مفيش وظائف مفتوحة دلوقتي</h2>
-        <p>سجّل معنا وابعتلنا سيرتك الذاتية، وهنراجعها مع أول فرصة مناسبة.</p>
-        <a href="/signup?role=candidate" class="btn solid">اعمل حساب مرشح</a>
+        <h2>{hasFilter ? 'مفيش وظائف مطابقة للفلاتر' : 'مفيش وظائف مفتوحة دلوقتي'}</h2>
+        <p>{hasFilter ? 'جرّب توسّع البحث أو امسح الفلاتر.' : 'سجّل معنا وابعتلنا سيرتك الذاتية، وهنراجعها مع أول فرصة مناسبة.'}</p>
+        <a href={hasFilter ? '/careers' : '/signup?role=candidate'} class="btn solid">{hasFilter ? 'مسح الفلاتر' : 'اعمل حساب مرشح'}</a>
       </div>
     )}
 
     {jobs.length > 0 && (
       <>
-        <div class="jobs-toolbar">
-          <span class="jobs-count">{jobs.length} وظيفة مفتوحة</span>
-          {departments.length > 1 && (
-            <div class="jobs-filters" role="group" aria-label="تصفية حسب القسم">
-              <button type="button" class="chip is-active" data-dept="">الكل</button>
-              {departments.map((d) => (
-                <button type="button" class="chip" data-dept={d}>{d}</button>
-              ))}
-            </div>
-          )}
-        </div>
-
+        <p class="jobs-count" style="margin-bottom:14px;">{jobs.length} وظيفة{hasFilter ? ' مطابقة' : ' مفتوحة'}</p>
         <ul class="job-list">
           {jobs.map((job) => (
-            <li class="job-card" data-dept={job.department ?? ''}>
+            <li class="job-card">
               <div class="job-card-main">
                 <h2><a href={`/careers/${job.slug}`}>{job.title}</a></h2>
                 <div class="job-meta">
@@ -87,7 +123,14 @@ const jsonld = [{
                   {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
                 </div>
               </div>
-              <a href={`/careers/${job.slug}`} class="btn">التفاصيل والتقديم ←</a>
+              <div style="display:flex;gap:8px;align-items:center;">
+                {Astro.locals.user && (
+                  <button type="button" class="save-btn" data-slug={job.slug} data-saved={savedIds.has(job.id) ? '1' : '0'} aria-label="حفظ الوظيفة" title="حفظ">
+                    {savedIds.has(job.id) ? '★' : '☆'}
+                  </button>
+                )}
+                <a href={`/careers/${job.slug}`} class="btn">التفاصيل والتقديم ←</a>
+              </div>
             </li>
           ))}
         </ul>
@@ -100,15 +143,18 @@ const jsonld = [{
 
 <script is:inline>
 (function () {
-  var chips = document.querySelectorAll('.jobs-filters .chip');
-  var cards = document.querySelectorAll('.job-card');
-  chips.forEach(function (chip) {
-    chip.addEventListener('click', function () {
-      chips.forEach(function (c) { c.classList.remove('is-active'); });
-      chip.classList.add('is-active');
-      var dept = chip.getAttribute('data-dept');
-      cards.forEach(function (card) {
-        card.hidden = dept && card.getAttribute('data-dept') !== dept;
+  document.querySelectorAll('.save-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var saved = btn.getAttribute('data-saved') === '1';
+      var next = saved ? '0' : '1';
+      btn.setAttribute('data-saved', next);
+      btn.textContent = next === '1' ? '★' : '☆';
+      fetch('/careers/' + btn.getAttribute('data-slug') + '/save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: next === '1' ? 'save' : 'unsave' }),
+      }).catch(function () {
+        btn.setAttribute('data-saved', saved ? '1' : '0');
+        btn.textContent = saved ? '★' : '☆';
       });
     });
   });

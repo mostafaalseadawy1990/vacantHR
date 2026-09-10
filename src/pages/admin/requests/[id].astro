@@ -2,6 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
+import { sendEmail, emailLayout } from '../../../lib/email';
 
 const { id } = Astro.params;
 const supabase = serverClient(Astro);
@@ -55,6 +56,16 @@ if (Astro.request.method === 'POST') {
   if (action === 'send_all') {
     await supabase.from('client_shortlist').update({ admin_status: 'sent' }).eq('request_id', id).eq('admin_status', 'draft');
     await supabase.from('client_requests').update({ status: 'candidates_sent' }).eq('id', id);
+    const { data: r } = await supabase
+      .from('client_requests').select('role_title, profiles(full_name, email)').eq('id', id).maybeSingle();
+    const email = (r as any)?.profiles?.email;
+    if (email) await sendEmail(Astro, {
+      to: email,
+      subject: `مرشحون جاهزون للمراجعة: ${(r as any)?.role_title ?? ''}`,
+      html: emailLayout('مرشحون جاهزون للمراجعة',
+        `<p>مرحبًا ${(r as any)?.profiles?.full_name ?? ''}،</p><p>جهّزنا قائمة مرشحين لطلبك <strong>${(r as any)?.role_title ?? ''}</strong>. راجعها ووافق أو ارفض كل مرشح من لوحتك.</p>`,
+        { text: 'مراجعة المرشحين', url: 'https://vacanthr.com/dashboard' }),
+    });
     return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
   }
 }

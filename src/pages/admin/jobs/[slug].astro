@@ -2,7 +2,14 @@
 import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
+import { sendEmail, emailLayout } from '../../../lib/email';
 import type { Job } from '../../../lib/jobs';
+
+const STATUS_MSG: Record<string, string> = {
+  shortlisted: 'وصل طلبك للقائمة المختصرة — خطوة كويسة! هنتواصل معاك للخطوة الجاية.',
+  rejected: 'بعد المراجعة، اخترنا نكمّل مع مرشحين تانيين للدور ده. نتمنالك التوفيق.',
+  hired: 'مبروك! تم اختيارك للوظيفة. فريقنا هيتواصل معاك بتفاصيل العرض.',
+};
 
 const { slug } = Astro.params;
 const supabase = serverClient(Astro);
@@ -42,7 +49,21 @@ if (Astro.request.method === 'POST') {
     const st = String(form.get('status') || '');
     if (appId && ['submitted', 'reviewing', 'shortlisted', 'rejected', 'hired'].includes(st)) {
       const { error } = await supabase.from('applications').update({ status: st }).eq('id', appId);
-      if (!error) return Astro.redirect(`/admin/jobs/${slug}?ok=1#applicants`, 303);
+      if (!error) {
+        if (STATUS_MSG[st]) {
+          const { data: a } = await supabase
+            .from('applications').select('profiles(full_name, email)').eq('id', appId).maybeSingle();
+          const email = (a as any)?.profiles?.email;
+          if (email) await sendEmail(Astro, {
+            to: email,
+            subject: 'تحديث على طلب توظيفك',
+            html: emailLayout('تحديث على طلبك',
+              `<p>مرحبًا ${(a as any)?.profiles?.full_name ?? ''}،</p><p>${STATUS_MSG[st]}</p>`,
+              { text: 'متابعة طلباتي', url: 'https://vacanthr.com/dashboard' }),
+          });
+        }
+        return Astro.redirect(`/admin/jobs/${slug}?ok=1#applicants`, 303);
+      }
       flash = 'تعذّر تحديث حالة المتقدم.';
     }
   }

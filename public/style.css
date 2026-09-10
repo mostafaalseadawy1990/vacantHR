@@ -669,3 +669,24 @@ input[type=checkbox]{width:auto;}
 .article-body li{margin-bottom:8px;}
 .article-body a{color:var(--accent);text-decoration:underline;}
 .article-body code{background:var(--surface-soft);padding:1px 6px;border-radius:4px;font-size:0.9em;}
+
+/* ===== Job filter bar + save ===== */
+.filter-bar{
+  display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;
+  padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-soft);
+}
+.filter-bar input[type=search]{flex:2;min-width:180px;}
+.filter-bar select{flex:1;min-width:130px;}
+.filter-bar .btn{flex:0 0 auto;}
+@media(max-width:640px){
+  .filter-bar{gap:8px;}
+  .filter-bar input[type=search],.filter-bar select{flex:1 1 100%;}
+  .filter-bar .btn{flex:1;}
+}
+.save-btn{
+  background:none;border:1px solid var(--line);border-radius:10px;
+  width:40px;height:40px;font-size:1.2rem;color:var(--accent);cursor:pointer;
+  flex:0 0 auto;transition:background .15s;
+}
+.save-btn:hover{background:var(--accent-soft);}
+.share-btn{background:none;border:0;color:var(--accent);font-weight:600;cursor:pointer;font-family:inherit;font-size:0.9rem;padding:0;}
