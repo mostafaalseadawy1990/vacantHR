@@ -83,7 +83,7 @@ header.site{
   backdrop-filter:saturate(180%) blur(12px);
   border-bottom:1px solid var(--line-soft);
 }
-.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0;}
+.nav{display:flex;align-items:center;justify-content:space-between;padding-block:16px;}
 .brand{
   font-size:1.3rem;font-weight:700;color:var(--ink);letter-spacing:-0.02em;
   display:flex;align-items:baseline;gap:8px;
@@ -577,7 +577,7 @@ input[type=checkbox]{width:auto;}
   .section-head{margin-bottom:28px;}
 
   /* header */
-  header.site .nav{padding:12px 0;}
+  header.site .nav{padding-block:12px;}
   .brand{font-size:1.05rem;}
   .brand span{display:none;}
   .burger{font-size:1.7rem;padding:6px 6px;margin-right:-6px;}
