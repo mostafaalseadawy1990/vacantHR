@@ -22,6 +22,7 @@ if (Astro.request.method === 'POST') {
     employment_type: get('employment_type'), workplace: get('workplace'), experience_level: get('experience_level'),
     salary_min: get('salary_min'), salary_max: get('salary_max'),
     description_md: get('description_md'), requirements_md: get('requirements_md'), status: get('status'),
+    skills: get('skills'),
   });
   const salaryVisible = form.get('salary_visible') === 'on';
 
@@ -43,6 +44,7 @@ if (Astro.request.method === 'POST') {
       salary_visible: salaryVisible,
       description_md: v.description_md,
       requirements_md: v.requirements_md || '',
+      skills: (v.skills || '').split(',').map((x: string) => x.trim()).filter(Boolean),
       status,
       created_by: user.id,
       published_at: status === 'open' ? new Date().toISOString() : null,
@@ -134,6 +136,10 @@ if (Astro.request.method === 'POST') {
       <div class="form-row">
         <label for="requirements_md">المتطلبات (Markdown)</label>
         <textarea id="requirements_md" name="requirements_md" style="min-height:140px;">{v.requirements_md}</textarea>
+      </div>
+      <div class="form-row">
+        <label for="skills">المهارات (مفصولة بفواصل — تُستخدم لمطابقة المرشحين)</label>
+        <input id="skills" name="skills" value={v.skills ?? ''} placeholder="Node.js, SQL, Git" />
       </div>
 
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الوظيفة</button>

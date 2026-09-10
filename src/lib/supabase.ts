@@ -40,7 +40,7 @@ export async function getSessionProfile(context: { request: Request; cookies: As
   if (!user) return { user: null, profile: null, supabase };
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, role, full_name, phone, company_name')
+    .select('id, role, full_name, phone, company_name, skills')
     .eq('id', user.id)
     .single();
   return { user, profile, supabase };

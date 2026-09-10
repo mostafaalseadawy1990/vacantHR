@@ -35,6 +35,7 @@ if (Astro.request.method === 'POST') {
       salary_visible: form.get('salary_visible') === 'on',
       description_md: get('description_md'),
       requirements_md: get('requirements_md') || '',
+      skills: get('skills').split(',').map((x) => x.trim()).filter(Boolean),
       status,
       updated_at: new Date().toISOString(),
     };
@@ -75,7 +76,7 @@ if (!job) return Astro.redirect('/admin/jobs', 302);
 
 const { data: apps } = await supabase
   .from('applications')
-  .select('id, status, created_at, cover_note, cv_path, profiles(full_name, phone)')
+  .select('id, status, created_at, cover_note, cv_path, candidate_id, profiles(full_name, phone, skills)')
   .eq('job_id', job.id)
   .order('created_at', { ascending: false });
 
@@ -84,6 +85,14 @@ const APP_STATUS: Array<[string, string]> = [
   ['rejected', 'مرفوض'], ['hired', 'تم التعيين'],
 ];
 const sel = (cur: string, val: string) => (cur === val ? true : undefined);
+
+const jobSkills = ((job.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()).filter(Boolean);
+function matchPct(candSkills: string[] | null | undefined): number | null {
+  if (jobSkills.length === 0) return null;
+  const cs = new Set((candSkills ?? []).map((s) => s.toLowerCase().trim()));
+  const hit = jobSkills.filter((s) => cs.has(s)).length;
+  return Math.round((hit / jobSkills.length) * 100);
+}
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
 <Base title={`${job.title} | إدارة | Vacant HR`} path={`/admin/jobs/${slug}`} active="admin" noindex={true}>
@@ -146,6 +155,7 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
       </div>
       <div class="form-row"><label for="description_md">الوصف (Markdown) *</label><textarea id="description_md" name="description_md" style="min-height:180px;" required>{job.description_md}</textarea></div>
       <div class="form-row"><label for="requirements_md">المتطلبات (Markdown)</label><textarea id="requirements_md" name="requirements_md" style="min-height:140px;">{job.requirements_md}</textarea></div>
+      <div class="form-row"><label for="skills">المهارات (مفصولة بفواصل — للمطابقة)</label><input id="skills" name="skills" value={(job.skills ?? []).join(', ')} placeholder="Node.js, SQL, Git" /></div>
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ التعديلات</button>
     </form>
 
@@ -158,11 +168,14 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
     ) : (
       <div class="table-scroll">
         <table class="data-table">
-          <thead><tr><th>المرشح</th><th>الهاتف</th><th>نبذة</th><th>CV</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+          <thead><tr><th>المرشح</th><th>مطابقة</th><th>الهاتف</th><th>نبذة</th><th>CV</th><th>التاريخ</th><th>الحالة</th></tr></thead>
           <tbody>
-            {apps.map((a: any) => (
+            {apps.map((a: any) => {
+              const mp = matchPct(a.profiles?.skills);
+              return (
               <tr>
-                <td>{a.profiles?.full_name ?? '—'}</td>
+                <td>{a.candidate_id ? <a href={`/admin/candidates/${a.candidate_id}`}>{a.profiles?.full_name ?? '—'}</a> : (a.profiles?.full_name ?? '—')}</td>
+                <td>{mp === null ? '—' : <span class={`status-pill ${mp >= 60 ? 'status-shortlisted' : mp >= 30 ? 'status-submitted' : 'status-rejected'}`}>{mp}%</span>}</td>
                 <td dir="ltr" style="text-align:right;">{a.profiles?.phone ?? '—'}</td>
                 <td style="max-width:280px;">{a.cover_note ? <span title={a.cover_note}>{a.cover_note.slice(0, 90)}{a.cover_note.length > 90 ? '…' : ''}</span> : '—'}</td>
                 <td>{a.cv_path ? <a href={`/admin/cv/${a.id}`} target="_blank" rel="noopener">فتح ↗</a> : '—'}</td>
@@ -180,7 +193,7 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
                   </form>
                 </td>
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
       </div>

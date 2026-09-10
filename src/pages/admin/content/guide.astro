@@ -105,4 +105,25 @@ const { data: items } = await supabase.from('guide_sections').select('*').order(
   </div>
 </section>
 </main>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.js" is:inline></script>
+<script is:inline>
+  (function () {
+    if (!window.EasyMDE) return;
+    document.querySelectorAll('textarea[name="body_md"]').forEach(function (el) {
+      new EasyMDE({
+        element: el, spellChecker: false, direction: 'rtl', minHeight: '160px',
+        status: false,
+        toolbar: ['bold', 'italic', 'heading', '|', 'unordered-list', 'ordered-list', 'link', '|', 'preview'],
+        previewRender: function (plain) { return this.parent.markdown(plain); },
+      });
+    });
+  })();
+</script>
+<style is:global>
+  .EasyMDEContainer .CodeMirror{border-radius:var(--radius-sm);border-color:var(--line);}
+  .editor-toolbar{border-radius:var(--radius-sm) var(--radius-sm) 0 0;border-color:var(--line);}
+  .editor-preview{direction:rtl;background:var(--surface-soft);}
+</style>
 </Base>

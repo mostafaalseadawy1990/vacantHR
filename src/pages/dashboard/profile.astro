@@ -7,11 +7,15 @@ const profile = Astro.locals.profile;
 const supabase = serverClient(Astro);
 const role = profile?.role ?? 'candidate';
 
+// current skills
+const { data: meRow } = await supabase.from('profiles').select('skills').eq('id', user.id).maybeSingle();
+
 let msg = '';
 let values = {
   full_name: profile?.full_name ?? '',
   phone: profile?.phone ?? '',
   company_name: profile?.company_name ?? '',
+  skills: ((meRow?.skills ?? []) as string[]).join(', '),
 };
 
 if (Astro.request.method === 'POST') {
@@ -20,6 +24,7 @@ if (Astro.request.method === 'POST') {
     full_name: String(form.get('full_name') || '').trim(),
     phone: String(form.get('phone') || '').trim(),
     company_name: String(form.get('company_name') || '').trim(),
+    skills: String(form.get('skills') || '').trim(),
   };
   if (!values.full_name) {
     msg = 'الاسم مطلوب.';
@@ -30,6 +35,7 @@ if (Astro.request.method === 'POST') {
         full_name: values.full_name,
         phone: values.phone || null,
         company_name: role === 'client' ? (values.company_name || null) : profile?.company_name ?? null,
+        skills: role === 'client' ? (meRow?.skills ?? []) : values.skills.split(',').map((s) => s.trim()).filter(Boolean),
       })
       .eq('id', user.id);
     msg = error ? 'تعذّر الحفظ.' : 'اتحفظت التعديلات ✓';
@@ -73,6 +79,12 @@ if (Astro.request.method === 'POST') {
         <div class="form-row">
           <label for="company_name">اسم الشركة</label>
           <input type="text" id="company_name" name="company_name" value={values.company_name} />
+        </div>
+      )}
+      {role !== 'client' && (
+        <div class="form-row">
+          <label for="skills">مهاراتك (مفصولة بفواصل — تساعدنا نرشّحك لوظائف مناسبة)</label>
+          <input type="text" id="skills" name="skills" value={values.skills} placeholder="Node.js, تسويق رقمي, Excel" />
         </div>
       )}
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>

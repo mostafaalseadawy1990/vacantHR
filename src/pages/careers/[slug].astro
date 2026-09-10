@@ -64,6 +64,11 @@ const jsonld = [{
 const applyHref = user
   ? `/careers/${job.slug}/apply`
   : `/login?next=${encodeURIComponent(`/careers/${job.slug}/apply`)}`;
+
+const jobSkills = ((job.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()).filter(Boolean);
+const mySkills = new Set(((profile?.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()));
+const matched = jobSkills.filter((s) => mySkills.has(s));
+const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && mySkills.size > 0;
 ---
 <Base
   title={`${job.title} | وظائف Vacant HR`}
@@ -103,6 +108,12 @@ const applyHref = user
       <button type="button" class="share-btn" id="shareBtn">مشاركة</button>
       <a href="/careers" class="btn">كل الوظائف</a>
     </div>
+    {showMatch && (
+      <p style="margin-top:14px;font-size:0.92rem;color:var(--muted);">
+        مهاراتك المطابقة لهذه الوظيفة: <strong style="color:var(--accent);">{matched.length} من {jobSkills.length}</strong>
+        {matched.length > 0 && ` (${matched.join('، ')})`}
+      </p>
+    )}
   </div>
 </section>
 

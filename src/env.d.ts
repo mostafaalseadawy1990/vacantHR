@@ -19,6 +19,7 @@ declare namespace App {
       full_name: string | null;
       phone: string | null;
       company_name: string | null;
+      skills: string[] | null;
     } | null;
   }
 }
