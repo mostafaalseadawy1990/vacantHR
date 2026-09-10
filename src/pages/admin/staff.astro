@@ -1,0 +1,115 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+import { logAction } from '../../lib/audit';
+
+const supabase = serverClient(Astro);
+const me = Astro.locals.user!;
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const uid = String(form.get('uid') || '');
+  const role = String(form.get('role') || '');
+  if (!uid || !['admin', 'recruiter', 'candidate', 'client'].includes(role)) {
+    flash = 'بيانات غير صحيحة.';
+  } else if (uid === me.id && role !== 'admin') {
+    flash = 'لا يمكنك إزالة صلاحية المدير عن نفسك.';
+  } else {
+    const { data: target } = await supabase.from('profiles').select('full_name, email').eq('id', uid).maybeSingle();
+    const { error } = await supabase.from('profiles').update({ role }).eq('id', uid);
+    if (error) flash = `تعذّر التحديث: ${error.message}`;
+    else {
+      await logAction(Astro, supabase, `تغيير دور إلى ${role}`, target?.email ?? uid);
+      return Astro.redirect('/admin/staff?ok=1', 303);
+    }
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: staff } = await supabase
+  .from('profiles').select('id, full_name, email, role, created_at')
+  .in('role', ['admin', 'recruiter']).order('created_at');
+
+const q = (new URL(Astro.request.url).searchParams.get('q') || '').trim();
+let found: any[] = [];
+if (q) {
+  const { data } = await supabase.from('profiles')
+    .select('id, full_name, email, role')
+    .or(`email.ilike.%${q}%,full_name.ilike.%${q}%`).limit(20);
+  found = data ?? [];
+}
+const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤول توظيف', candidate: 'مرشح', client: 'عميل' };
+---
+<Base title="الفريق | لوحة الإدارة" path="/admin/staff" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="staff">فريق الإدارة</AdminNav>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <h2 style="margin-bottom:14px;">الأعضاء الحاليون</h2>
+    <div class="table-scroll" style="margin-bottom:32px;">
+      <table class="data-table">
+        <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>تغيير</th></tr></thead>
+        <tbody>
+          {(staff ?? []).map((u: any) => (
+            <tr>
+              <td>{u.full_name ?? '—'}</td>
+              <td dir="ltr" style="text-align:right;">{u.email ?? '—'}</td>
+              <td>{ROLE_AR[u.role]}</td>
+              <td>
+                <form method="POST" style="display:flex;gap:6px;">
+                  <input type="hidden" name="uid" value={u.id} />
+                  <select name="role" class="mini-select">
+                    <option value="admin" selected={u.role === 'admin'}>مدير</option>
+                    <option value="recruiter" selected={u.role === 'recruiter'}>مسؤول توظيف</option>
+                    <option value="candidate">إزالة (مرشح)</option>
+                  </select>
+                  <button class="mini-btn">حفظ</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-bottom:14px;">إضافة عضو</h2>
+    <p style="color:var(--muted);font-size:0.9rem;">لازم يكون عنده حساب على الموقع الأول. ابحث بالإيميل وعيّن الدور.</p>
+    <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;max-width:480px;">
+      <input type="search" name="q" value={q} placeholder="إيميل أو اسم" style="flex:1;min-width:200px;" />
+      <button class="btn solid" style="border:none;cursor:pointer;">بحث</button>
+    </form>
+    {q && (
+      found.length === 0 ? <p style="color:var(--muted);">مفيش نتائج.</p> : (
+        <div class="table-scroll"><table class="data-table">
+          <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور الحالي</th><th>تعيين</th></tr></thead>
+          <tbody>
+            {found.map((u: any) => (
+              <tr>
+                <td>{u.full_name ?? '—'}</td>
+                <td dir="ltr" style="text-align:right;">{u.email ?? '—'}</td>
+                <td>{ROLE_AR[u.role] ?? u.role}</td>
+                <td>
+                  <form method="POST" style="display:flex;gap:6px;">
+                    <input type="hidden" name="uid" value={u.id} />
+                    <select name="role" class="mini-select">
+                      <option value="recruiter">مسؤول توظيف</option>
+                      <option value="admin">مدير</option>
+                    </select>
+                    <button class="mini-btn">تعيين</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      )
+    )}
+  </div>
+</section>
+</main>
+</Base>

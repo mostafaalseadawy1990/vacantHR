@@ -2,6 +2,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import WhatsApp from '../components/WhatsApp.astro';
+import CookieConsent from '../components/CookieConsent.astro';
 import { getSettings } from '../lib/settings';
 
 interface Props {
@@ -72,7 +73,6 @@ try {
 {jsonld.map((block) => (
   <script type="application/ld+json" set:html={JSON.stringify(block)} />
 ))}
-{settings.analytics_snippet && <Fragment set:html={settings.analytics_snippet} />}
 </head>
 <body>
 <a href="#main" class="skip-link">تخطَّ إلى المحتوى</a>
@@ -80,6 +80,7 @@ try {
 <slot />
 {showChrome && <Footer settings={settings} />}
 {showChrome && <WhatsApp text={waText} number={settings.whatsapp_number} />}
+{showChrome && <CookieConsent analytics={settings.analytics_snippet} />}
 <script src={`/script.js?v=${ASSET_VER}`} defer is:inline></script>
 {!noindex && (
   <script is:inline>

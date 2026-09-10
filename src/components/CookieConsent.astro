@@ -1,0 +1,68 @@
+---
+interface Props { analytics?: string }
+const { analytics = '' } = Astro.props;
+---
+{analytics && (
+  <template id="analytics-tpl" set:html={analytics} />
+)}
+
+<div id="cookie-bar" hidden>
+  <p>
+    بنستخدم ملفات تعريف ارتباط أساسية لتشغيل الموقع، وملفات تحليلية اختيارية لفهم استخدام الموقع.
+    <a href="/privacy">سياسة الخصوصية</a>
+  </p>
+  <div class="cc-actions">
+    <button type="button" id="cc-accept" class="btn solid">موافق</button>
+    <button type="button" id="cc-reject" class="btn">الأساسية فقط</button>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var KEY = 'vh-consent';
+    function loadAnalytics() {
+      var tpl = document.getElementById('analytics-tpl');
+      if (!tpl || tpl.dataset.loaded) return;
+      tpl.dataset.loaded = '1';
+      var frag = tpl.content.cloneNode(true);
+      // move scripts so they execute
+      frag.querySelectorAll('script').forEach(function (old) {
+        var s = document.createElement('script');
+        for (var i = 0; i < old.attributes.length; i++) s.setAttribute(old.attributes[i].name, old.attributes[i].value);
+        s.text = old.text;
+        old.replaceWith(s);
+      });
+      document.head.appendChild(frag);
+    }
+    var choice;
+    try { choice = localStorage.getItem(KEY); } catch (e) {}
+    if (choice === 'accepted') { loadAnalytics(); return; }
+    if (choice === 'rejected') return;
+
+    var bar = document.getElementById('cookie-bar');
+    if (!bar) return;
+    bar.hidden = false;
+    document.getElementById('cc-accept').addEventListener('click', function () {
+      try { localStorage.setItem(KEY, 'accepted'); } catch (e) {}
+      bar.hidden = true; loadAnalytics();
+    });
+    document.getElementById('cc-reject').addEventListener('click', function () {
+      try { localStorage.setItem(KEY, 'rejected'); } catch (e) {}
+      bar.hidden = true;
+    });
+  })();
+</script>
+
+<style is:global>
+  #cookie-bar{
+    position:fixed;bottom:16px;left:16px;right:16px;z-index:70;margin:0 auto;max-width:640px;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow-lg);padding:18px 20px;
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  }
+  #cookie-bar p{margin:0;font-size:0.9rem;color:var(--body);flex:1;min-width:220px;}
+  #cookie-bar a{color:var(--accent);font-weight:600;}
+  #cookie-bar .cc-actions{display:flex;gap:8px;}
+  #cookie-bar .btn{padding:9px 18px;font-size:0.85rem;}
+  @media(max-width:520px){ #cookie-bar .cc-actions{width:100%;} #cookie-bar .cc-actions .btn{flex:1;} }
+</style>

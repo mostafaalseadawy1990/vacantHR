@@ -3,6 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
+import { logAction } from '../../../lib/audit';
 
 const STATUS_MSG: Record<string, string> = {
   shortlisted: 'وصل طلبك للقائمة المختصرة — خطوة كويسة! هنتواصل معاك للخطوة الجاية.',
@@ -92,7 +93,10 @@ if (Astro.request.method === 'POST') {
             { text: 'تفاصيل من لوحتي', url: 'https://vacanthr.com/dashboard' }),
         });
       }
-      if (iv) return Astro.redirect(`/admin/candidates/${id}?ok=1#app-${appId}`, 303);
+      if (iv) {
+        await logAction(Astro, supabase, 'جدولة مقابلة', (a as any)?.jobs?.title ?? (a as any)?.profiles?.full_name ?? '');
+        return Astro.redirect(`/admin/candidates/${id}?ok=1#app-${appId}`, 303);
+      }
     }
   }
   if (action === 'cancel_interview') {

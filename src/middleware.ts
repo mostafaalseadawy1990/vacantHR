@@ -17,12 +17,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const path = context.url.pathname;
+  const role = context.locals.profile?.role;
 
   if (PROTECTED.some((re) => re.test(path)) && !context.locals.user) {
     return context.redirect(`/login?next=${encodeURIComponent(path)}`, 302);
   }
-  if (path.startsWith('/admin') && context.locals.profile?.role !== 'admin') {
-    return context.redirect('/dashboard', 302);
+  if (path.startsWith('/admin')) {
+    // Admin-only sections vs. sections recruiters may also use.
+    const ADMIN_ONLY = /^\/admin\/(content|media|analytics|blog|staff)/;
+    if (ADMIN_ONLY.test(path) && role !== 'admin') return context.redirect('/admin', 302);
+    if (!ADMIN_ONLY.test(path) && role !== 'admin' && role !== 'recruiter') {
+      return context.redirect('/dashboard', 302);
+    }
   }
 
   return next();

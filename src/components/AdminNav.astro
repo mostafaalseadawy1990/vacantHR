@@ -1,22 +1,26 @@
 ---
 interface Props { active?: string }
 const { active = '' } = Astro.props;
+const isAdmin = Astro.locals?.profile?.role === 'admin';
+
 const items = [
-  { href: '/admin', label: 'نظرة عامة', key: 'home' },
-  { href: '/admin/jobs', label: 'الوظائف', key: 'jobs' },
-  { href: '/admin/candidates', label: 'المرشحون', key: 'candidates' },
-  { href: '/admin/requests', label: 'طلبات الشركات', key: 'requests' },
-  { href: '/admin/inbox', label: 'الرسائل', key: 'inbox' },
-  { href: '/admin/interviews', label: 'المقابلات', key: 'interviews' },
-  { href: '/admin/analytics', label: 'التحليلات', key: 'analytics' },
-  { href: '/admin/blog', label: 'المدوّنة', key: 'blog' },
-  { href: '/admin/content', label: 'المحتوى', key: 'content' },
-  { href: '/admin/media', label: 'الوسائط', key: 'media' },
-];
+  { href: '/admin', label: 'نظرة عامة', key: 'home', adminOnly: false },
+  { href: '/admin/jobs', label: 'الوظائف', key: 'jobs', adminOnly: false },
+  { href: '/admin/candidates', label: 'المرشحون', key: 'candidates', adminOnly: false },
+  { href: '/admin/requests', label: 'طلبات الشركات', key: 'requests', adminOnly: false },
+  { href: '/admin/inbox', label: 'الرسائل', key: 'inbox', adminOnly: false },
+  { href: '/admin/interviews', label: 'المقابلات', key: 'interviews', adminOnly: false },
+  { href: '/admin/analytics', label: 'التحليلات', key: 'analytics', adminOnly: true },
+  { href: '/admin/blog', label: 'المدوّنة', key: 'blog', adminOnly: true },
+  { href: '/admin/content', label: 'المحتوى', key: 'content', adminOnly: true },
+  { href: '/admin/media', label: 'الوسائط', key: 'media', adminOnly: true },
+  { href: '/admin/activity', label: 'سجل النشاط', key: 'activity', adminOnly: true },
+  { href: '/admin/staff', label: 'الفريق', key: 'staff', adminOnly: true },
+].filter((i) => isAdmin || !i.adminOnly);
 ---
 <div class="dash-head">
   <div>
-    <div class="eyebrow-line">لوحة الإدارة</div>
+    <div class="eyebrow-line">لوحة الإدارة{!isAdmin ? ' · مسؤول توظيف' : ''}</div>
     <h1><slot>Vacant HR</slot></h1>
   </div>
   <a href="/logout" class="btn">تسجيل الخروج</a>

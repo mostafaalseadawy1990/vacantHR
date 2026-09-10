@@ -2,6 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 
 const supabase = serverClient(Astro);
 const user = Astro.locals.user!;
@@ -50,6 +51,7 @@ if (Astro.request.method === 'POST') {
     if (error) {
       errorMsg = error.code === '23505' ? 'الـ slug مستخدم قبل كده — غيّره.' : `تعذّر الحفظ: ${error.message}`;
     } else {
+      await logAction(Astro, supabase, 'إنشاء وظيفة', v.title);
       return Astro.redirect(`/admin/jobs/${slug}`, 303);
     }
   }

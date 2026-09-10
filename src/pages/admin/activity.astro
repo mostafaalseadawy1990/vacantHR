@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { serverClient } from '../../lib/supabase';
+
+const supabase = serverClient(Astro);
+const { data: rows } = await supabase
+  .from('audit_log')
+  .select('id, actor_name, action, target, created_at')
+  .order('created_at', { ascending: false })
+  .limit(200);
+const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+---
+<Base title="سجل النشاط | لوحة الإدارة" path="/admin/activity" active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="activity">سجل النشاط</AdminNav>
+    {(!rows || rows.length === 0) ? (
+      <p style="color:var(--muted);">مفيش نشاط مسجّل لسه.</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>على</th></tr></thead>
+          <tbody>
+            {rows.map((r: any) => (
+              <tr><td>{fmt(r.created_at)}</td><td>{r.actor_name ?? '—'}</td><td>{r.action}</td><td>{r.target ?? '—'}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
+</main>
+</Base>
