@@ -12,23 +12,35 @@ const justApplied = url.searchParams.get('applied') === '1';
 const role = profile?.role ?? 'candidate';
 let formMsg = '';
 
-// Client: submit a new hiring request
 if (Astro.request.method === 'POST' && role === 'client') {
   const form = await Astro.request.formData();
-  const roleTitle = String(form.get('role_title') || '').trim();
-  const headcount = Math.max(1, Math.min(50, parseInt(String(form.get('headcount') || '1'), 10) || 1));
-  const details = String(form.get('details_md') || '').trim().slice(0, 4000);
-  if (!roleTitle) {
-    formMsg = 'اكتب المسمى الوظيفي المطلوب.';
+  const action = String(form.get('_action') || 'new_request');
+
+  if (action === 'decide') {
+    const itemId = String(form.get('item_id') || '');
+    const decision = String(form.get('decision') || '');
+    const note = String(form.get('note') || '').trim().slice(0, 1000) || null;
+    if (itemId && (decision === 'approved' || decision === 'rejected')) {
+      await supabase.rpc('client_decide_shortlist', { item: itemId, decision, note });
+      return Astro.redirect('/dashboard?decided=1', 303);
+    }
   } else {
-    const { error } = await supabase.from('client_requests').insert({
-      client_id: user.id, role_title: roleTitle, headcount, details_md: details || '',
-    });
-    formMsg = error ? 'تعذّر إرسال الطلب.' : 'ok';
-    if (!error) return Astro.redirect('/dashboard?sent=1', 303);
+    const roleTitle = String(form.get('role_title') || '').trim();
+    const headcount = Math.max(1, Math.min(50, parseInt(String(form.get('headcount') || '1'), 10) || 1));
+    const details = String(form.get('details_md') || '').trim().slice(0, 4000);
+    if (!roleTitle) {
+      formMsg = 'اكتب المسمى الوظيفي المطلوب.';
+    } else {
+      const { error } = await supabase.from('client_requests').insert({
+        client_id: user.id, role_title: roleTitle, headcount, details_md: details || '',
+      });
+      formMsg = error ? 'تعذّر إرسال الطلب.' : 'ok';
+      if (!error) return Astro.redirect('/dashboard?sent=1', 303);
+    }
   }
 }
 const justSent = url.searchParams.get('sent') === '1';
+const justDecided = url.searchParams.get('decided') === '1';
 
 const STATUS_AR: Record<string, string> = {
   submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة',
@@ -38,12 +50,21 @@ const STATUS_AR: Record<string, string> = {
 
 let applications: any[] = [];
 let requests: any[] = [];
+let shortlistByReq: Record<string, any[]> = {};
 if (role === 'client') {
   const { data } = await supabase
     .from('client_requests')
     .select('id, role_title, headcount, status, created_at, details_md')
     .order('created_at', { ascending: false });
   requests = data ?? [];
+
+  const { data: sl } = await supabase
+    .from('client_shortlist')
+    .select('id, request_id, headline, summary, client_decision, client_note, created_at')
+    .order('created_at');
+  for (const item of sl ?? []) {
+    (shortlistByReq[item.request_id] ??= []).push(item);
+  }
 } else {
   const { data } = await supabase
     .from('applications')
@@ -75,6 +96,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
 
     {justApplied && <p class="notice notice-ok" style="margin-bottom:24px;">تم إرسال طلبك بنجاح. هتلاقيه تحت.</p>}
     {justSent && <p class="notice notice-ok" style="margin-bottom:24px;">استلمنا طلبك، وهنبدأ نشتغل عليه ونرجعلك.</p>}
+    {justDecided && <p class="notice notice-ok" style="margin-bottom:24px;">تم تسجيل قرارك. شكرًا!</p>}
 
     {role === 'client' ? (
       <>
@@ -115,6 +137,48 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
               </tbody>
             </table>
           </div>
+        )}
+
+        {requests.some((r) => (shortlistByReq[r.id] ?? []).length > 0) && (
+          <>
+            <h2 style="margin:40px 0 16px;">المرشحون المقترحون لك</h2>
+            {requests.filter((r) => (shortlistByReq[r.id] ?? []).length > 0).map((r) => (
+              <div style="margin-bottom:28px;">
+                <h3 style="margin-bottom:12px;">{r.role_title}</h3>
+                <div style="display:grid;gap:14px;">
+                  {(shortlistByReq[r.id] ?? []).map((it: any) => (
+                    <div class="form-box" style="max-width:none;">
+                      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <strong>{it.headline}</strong>
+                        <span class={`status-pill status-${it.client_decision === 'approved' ? 'shortlisted' : it.client_decision === 'rejected' ? 'rejected' : 'submitted'}`}>
+                          {it.client_decision === 'approved' ? 'وافقت' : it.client_decision === 'rejected' ? 'رفضت' : 'بانتظار قرارك'}
+                        </span>
+                      </div>
+                      {it.summary && <p style="margin:10px 0 0;color:var(--muted);white-space:pre-wrap;">{it.summary}</p>}
+                      {it.client_decision === 'pending' && (
+                        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+                          <form method="POST">
+                            <input type="hidden" name="_action" value="decide" />
+                            <input type="hidden" name="item_id" value={it.id} />
+                            <input type="hidden" name="decision" value="approved" />
+                            <button class="btn solid" style="border:none;cursor:pointer;">أوافق على المرشح</button>
+                          </form>
+                          <form method="POST" style="display:flex;gap:8px;">
+                            <input type="hidden" name="_action" value="decide" />
+                            <input type="hidden" name="item_id" value={it.id} />
+                            <input type="hidden" name="decision" value="rejected" />
+                            <input type="text" name="note" placeholder="سبب الرفض (اختياري)" style="width:180px;" />
+                            <button class="btn" style="cursor:pointer;">أرفض</button>
+                          </form>
+                        </div>
+                      )}
+                      {it.client_note && <p style="margin-top:10px;font-size:0.9rem;color:var(--muted);">ملاحظتك: {it.client_note}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         )}
       </>
     ) : (

@@ -52,13 +52,16 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
               {r.profiles?.phone && <span dir="ltr"> · {r.profiles.phone}</span>}
             </p>
             {r.details_md && <p style="white-space:pre-wrap;">{r.details_md}</p>}
-            <form method="POST" style="display:flex;gap:8px;margin-top:12px;">
-              <input type="hidden" name="id" value={r.id} />
-              <select name="status" class="mini-select">
-                {ST.map(([v, l]) => <option value={v} selected={sel(r.status, v)}>{l}</option>)}
-              </select>
-              <button type="submit" class="mini-btn">تحديث الحالة</button>
-            </form>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
+              <form method="POST" style="display:flex;gap:8px;">
+                <input type="hidden" name="id" value={r.id} />
+                <select name="status" class="mini-select">
+                  {ST.map(([v, l]) => <option value={v} selected={sel(r.status, v)}>{l}</option>)}
+                </select>
+                <button type="submit" class="mini-btn">تحديث الحالة</button>
+              </form>
+              <a href={`/admin/requests/${r.id}`} class="btn" style="padding:6px 14px;font-size:0.82rem;">المرشحون المقترحون ←</a>
+            </div>
           </div>
         ))}
       </div>

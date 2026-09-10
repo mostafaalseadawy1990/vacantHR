@@ -1,0 +1,112 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import AdminNav from '../../../../components/AdminNav.astro';
+import { serverClient } from '../../../../lib/supabase';
+
+const { slug } = Astro.params;
+const supabase = serverClient(Astro);
+
+const { data: job } = await supabase.from('jobs').select('id, title, slug').eq('slug', slug).maybeSingle();
+if (!job) return Astro.redirect('/admin/jobs', 302);
+
+const { data: apps } = await supabase
+  .from('applications')
+  .select('id, candidate_id, status, rating, created_at, profiles(full_name, phone)')
+  .eq('job_id', job.id)
+  .order('created_at', { ascending: false });
+
+const COLUMNS: Array<[string, string]> = [
+  ['submitted', 'تحت المراجعة'],
+  ['reviewing', 'قيد الفحص'],
+  ['shortlisted', 'قائمة مختصرة'],
+  ['hired', 'تم التعيين'],
+  ['rejected', 'مرفوض'],
+];
+const byStatus = (st: string) => (apps ?? []).filter((a: any) => a.status === st);
+const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+---
+<Base title={`لوحة المراحل — ${job.title}`} path={`/admin/jobs/${slug}/board`} active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="jobs">لوحة المراحل — {job.title}</AdminNav>
+    <p style="margin-bottom:18px;">
+      <a href={`/admin/jobs/${slug}`}>→ رجوع لتفاصيل الوظيفة</a>
+      <span style="color:var(--line);margin:0 10px;">|</span>
+      <span style="color:var(--muted);font-size:0.9rem;">اسحب الكارت بين الأعمدة لتغيير الحالة</span>
+    </p>
+
+    <div class="kanban">
+      {COLUMNS.map(([st, label]) => (
+        <div class="kanban-col">
+          <div class="kanban-col-head">{label} <span>{byStatus(st).length}</span></div>
+          <div class="kanban-list" data-status={st}>
+            {byStatus(st).map((a: any) => (
+              <div class="kanban-card" data-id={a.id} draggable="true">
+                <a href={`/admin/candidates/${a.candidate_id ?? ''}`} style="font-weight:600;">{a.profiles?.full_name ?? '—'}</a>
+                <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;" dir="ltr">{a.profiles?.phone ?? ''}</div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.75rem;color:var(--muted);">
+                  <span>{fmt(a.created_at)}</span>
+                  <span>{a.rating ? '★'.repeat(a.rating) : ''}</span>
+                </div>
+                <a href={`/admin/cv/${a.id}`} target="_blank" rel="noopener" class="kanban-cv">CV ↗</a>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    <p class="board-msg" role="status" aria-live="polite"></p>
+  </div>
+</section>
+</main>
+</Base>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js" is:inline></script>
+<script is:inline>
+  (function () {
+    var msg = document.querySelector('.board-msg');
+    document.querySelectorAll('.kanban-list').forEach(function (list) {
+      new Sortable(list, {
+        group: 'board',
+        animation: 150,
+        ghostClass: 'kanban-ghost',
+        onAdd: function (evt) {
+          var id = evt.item.getAttribute('data-id');
+          var status = evt.to.getAttribute('data-status');
+          fetch('/admin/applications/' + id + '/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              if (!j.ok) throw new Error();
+              msg.textContent = 'تم التحديث';
+              msg.style.color = 'var(--accent)';
+              // refresh column counts
+              document.querySelectorAll('.kanban-col').forEach(function (col) {
+                col.querySelector('.kanban-col-head span').textContent = col.querySelectorAll('.kanban-card').length;
+              });
+            })
+            .catch(function () {
+              msg.textContent = 'تعذّر التحديث — حدّث الصفحة';
+              msg.style.color = '#9A3B1C';
+            });
+        },
+      });
+    });
+  })();
+</script>
+
+<style is:global>
+  .kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:14px;overflow-x:auto;padding-bottom:8px;}
+  .kanban-col{background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--radius);padding:12px;}
+  .kanban-col-head{font-weight:700;font-size:0.9rem;margin-bottom:10px;display:flex;justify-content:space-between;}
+  .kanban-col-head span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:0.78rem;color:var(--muted);}
+  .kanban-list{display:flex;flex-direction:column;gap:8px;min-height:60px;}
+  .kanban-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:grab;box-shadow:var(--shadow-sm);}
+  .kanban-card:active{cursor:grabbing;}
+  .kanban-ghost{opacity:.4;}
+  .kanban-cv{display:inline-block;margin-top:8px;font-size:0.78rem;color:var(--accent);font-weight:600;}
+</style>

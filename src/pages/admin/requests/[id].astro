@@ -1,0 +1,139 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import { serverClient } from '../../../lib/supabase';
+
+const { id } = Astro.params;
+const supabase = serverClient(Astro);
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') || '');
+
+  if (action === 'add') {
+    const headline = String(form.get('headline') || '').trim();
+    const summary = String(form.get('summary') || '').trim();
+    const email = String(form.get('candidate_email') || '').trim().toLowerCase();
+    if (!headline) {
+      flash = 'اكتب عنوان المرشح.';
+    } else {
+      let candidate_id: string | null = null;
+      if (email) {
+        const { data: p } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+        candidate_id = p?.id ?? null;
+      }
+      const { error } = await supabase.from('client_shortlist').insert({
+        request_id: id, headline, summary, candidate_id,
+      });
+      if (!error) return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
+      flash = `تعذّر الإضافة: ${error.message}`;
+    }
+  }
+
+  if (action === 'update') {
+    const itemId = String(form.get('item_id') || '');
+    const patch: Record<string, unknown> = {
+      headline: String(form.get('headline') || '').trim(),
+      summary: String(form.get('summary') || '').trim(),
+      admin_status: form.get('admin_status') === 'sent' ? 'sent' : 'draft',
+    };
+    if (itemId && patch.headline) {
+      await supabase.from('client_shortlist').update(patch).eq('id', itemId);
+      return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
+    }
+  }
+
+  if (action === 'delete') {
+    const itemId = String(form.get('item_id') || '');
+    if (itemId) {
+      await supabase.from('client_shortlist').delete().eq('id', itemId);
+      return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
+    }
+  }
+
+  if (action === 'send_all') {
+    await supabase.from('client_shortlist').update({ admin_status: 'sent' }).eq('request_id', id).eq('admin_status', 'draft');
+    await supabase.from('client_requests').update({ status: 'candidates_sent' }).eq('id', id);
+    return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+
+const { data: req } = await supabase
+  .from('client_requests')
+  .select('id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone, email)')
+  .eq('id', id)
+  .maybeSingle();
+if (!req) return Astro.redirect('/admin/requests', 302);
+
+const { data: items } = await supabase
+  .from('client_shortlist')
+  .select('*')
+  .eq('request_id', id)
+  .order('created_at');
+
+const DEC: Record<string, string> = { pending: 'بانتظار العميل', approved: 'وافق العميل', rejected: 'رفض العميل' };
+---
+<Base title={`${req.role_title} | طلبات الشركات`} path={`/admin/requests/${id}`} active="admin" noindex={true}>
+<main id="main">
+<section style="padding:40px 0 70px;">
+  <div class="wrap">
+    <AdminNav active="requests">{req.role_title}</AdminNav>
+    <p style="margin-bottom:18px;"><a href="/admin/requests">→ رجوع للطلبات</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div class="form-box" style="max-width:640px;margin-bottom:30px;">
+      <h3 style="margin:0 0 8px;">{req.role_title} <span style="color:var(--muted);font-size:0.85rem;">× {req.headcount}</span></h3>
+      <p style="margin:0;color:var(--muted);">
+        {req.profiles?.company_name ?? '—'} — {req.profiles?.full_name ?? '—'}
+        {req.profiles?.email && <span dir="ltr"> · {req.profiles.email}</span>}
+      </p>
+      {req.details_md && <p style="white-space:pre-wrap;margin-top:12px;">{req.details_md}</p>}
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <h2 style="margin:0;">المرشحون المقترحون ({items?.length ?? 0})</h2>
+      {items && items.some((i: any) => i.admin_status === 'draft') && (
+        <form method="POST"><input type="hidden" name="_action" value="send_all" />
+          <button class="btn solid" style="border:none;cursor:pointer;">إرسال كل المسودّات للعميل</button>
+        </form>
+      )}
+    </div>
+
+    <div style="display:grid;gap:16px;max-width:720px;">
+      {(items ?? []).map((it: any) => (
+        <form method="POST" class="form-box" style="max-width:none;">
+          <input type="hidden" name="_action" value="update" />
+          <input type="hidden" name="item_id" value={it.id} />
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+            <span class={`status-pill status-${it.client_decision === 'approved' ? 'shortlisted' : it.client_decision === 'rejected' ? 'rejected' : 'submitted'}`}>{DEC[it.client_decision]}</span>
+            <span style="font-size:0.8rem;color:var(--muted);">{it.admin_status === 'sent' ? 'مُرسل للعميل' : 'مسودة'}</span>
+          </div>
+          <div class="form-row"><label>عنوان المرشح</label><input name="headline" value={it.headline} required /></div>
+          <div class="form-row"><label>نبذة للعميل</label><textarea name="summary" style="min-height:80px;">{it.summary}</textarea></div>
+          {it.client_note && <p style="background:var(--surface-soft);padding:10px 12px;border-radius:8px;font-size:0.9rem;">ملاحظة العميل: {it.client_note}</p>}
+          <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-bottom:12px;">
+            <input type="checkbox" name="admin_status" value="sent" checked={it.admin_status === 'sent'} /> مُرسل للعميل (يظهر في بوابته)
+          </label>
+          <div style="display:flex;gap:10px;">
+            <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+            <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;">حذف</button>
+          </div>
+        </form>
+      ))}
+
+      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+        <input type="hidden" name="_action" value="add" />
+        <h3 style="margin-bottom:12px;">إضافة مرشح للقائمة</h3>
+        <div class="form-row"><label>عنوان المرشح *</label><input name="headline" placeholder="مطوّر Backend — 4 سنوات خبرة" required /></div>
+        <div class="form-row"><label>نبذة للعميل</label><textarea name="summary" style="min-height:80px;" placeholder="ملخّص خبرة المرشح وسبب ترشيحه"></textarea></div>
+        <div class="form-row"><label>إيميل المرشح في النظام (اختياري — للربط)</label><input type="email" name="candidate_email" /></div>
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+</Base>
