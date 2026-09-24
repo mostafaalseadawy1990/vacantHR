@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { anonClient, getSessionProfile } from '../../lib/supabase';
+import { anonClient } from '../../lib/supabase';
 import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, renderMarkdown, type Job } from '../../lib/jobs';
 
 const { slug } = Astro.params;
@@ -13,10 +13,13 @@ const { data: job } = await supabase
   .eq('status', 'open')
   .maybeSingle<Job>();
 
-if (!job) return Astro.redirect('/careers', 302);
+// Closed/removed job: a real 404 (not a redirect) so Google drops the URL cleanly.
+if (!job) return Astro.rewrite('/404');
 
 // Is the visitor a signed-in candidate who already applied? saved?
-const { user, profile } = await getSessionProfile(Astro);
+// Middleware already resolved the session (and swallows auth errors) — reuse it
+// instead of a second, unguarded auth round-trip that could 500 the page.
+const { user, profile } = Astro.locals;
 let alreadyApplied = false;
 let isSaved = false;
 if (user) {

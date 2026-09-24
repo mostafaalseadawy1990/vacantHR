@@ -1,4 +1,12 @@
 User-agent: *
 Allow: /
+# Private / action URLs: they only redirect to /login or return JSON — keep crawlers out.
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /logout
+Disallow: /e
+Disallow: /careers/*/apply
+Disallow: /careers/*/save
+Disallow: /careers/*/view
 
 Sitemap: https://vacanthr.com/sitemap.xml

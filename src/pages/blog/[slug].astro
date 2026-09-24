@@ -5,7 +5,7 @@ import { renderMarkdown } from '../../lib/jobs';
 
 const { slug } = Astro.params;
 const post = await getPostBySlug(slug!);
-if (!post) return Astro.redirect('/blog', 302);
+if (!post) return Astro.rewrite('/404');
 
 const date = post.published_at ?? post.created_at;
 const cover = post.cover_path ? mediaUrl(post.cover_path) : 'https://vacanthr.com/og-image.png';
