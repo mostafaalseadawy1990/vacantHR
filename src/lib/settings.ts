@@ -68,6 +68,9 @@ type CacheEntry<T> = { at: number; data: T };
 const TTL = 60_000;
 const cache = new Map<string, CacheEntry<unknown>>();
 
+/** Drop the in-memory cache (call after the admin saves settings/content so the change shows at once). */
+export function clearSettingsCache() { cache.clear(); }
+
 async function cached<T>(key: string, loader: () => Promise<T>): Promise<T> {
   const hit = cache.get(key) as CacheEntry<T> | undefined;
   if (hit && Date.now() - hit.at < TTL) return hit.data;
