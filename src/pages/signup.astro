@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Track from '../components/Track.astro';
 import { serverClient } from '../lib/supabase';
 
 const url = new URL(Astro.request.url);
@@ -43,7 +44,8 @@ if (Astro.request.method === 'POST') {
         ? 'البريد ده مسجّل قبل كده. جرّب تسجيل الدخول.'
         : 'تعذّر إنشاء الحساب. جرّب تاني أو تواصل معنا.';
     } else if (data.session) {
-      return Astro.redirect(dest, 303);
+      // registered=1 lets the landing page fire the CompleteRegistration pixel event.
+      return Astro.redirect(dest + (dest.includes('?') ? '&' : '?') + 'registered=1', 303);
     } else {
       checkEmail = true;
     }

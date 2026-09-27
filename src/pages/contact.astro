@@ -137,6 +137,7 @@ const jsonld = [{
       .then(function (json) {
         if (!json.success) throw new Error(json.message || 'failed');
         form.reset();
+        if (window.vhTrack) window.vhTrack('Lead', { content_name: 'contact' });
         status.style.color = 'var(--brass)';
         status.textContent = 'تم استلام رسالتك، هنتواصل معاك خلال يوم عمل.';
       })

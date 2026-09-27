@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Track from '../components/Track.astro';
 ---
 <Base title="تم استلام طلبك | Vacant HR" path="/thanks" noindex={true}>
 <main id="main">
@@ -17,4 +18,5 @@ import Base from '../layouts/Base.astro';
   </div>
 </section>
 </main>
+<Track event="Lead" params={{ content_name: 'contact' }} />
 </Base>

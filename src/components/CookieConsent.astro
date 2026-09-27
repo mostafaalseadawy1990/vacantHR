@@ -20,6 +20,17 @@ const { analytics = '' } = Astro.props;
 <script is:inline>
   (function () {
     var KEY = 'vh-consent';
+    // window.vhTrack('Lead', {...}) — forwards a conversion event to Meta Pixel / GA once
+    // the (consent-gated) analytics snippet has loaded. Retries for ~10s, then gives up.
+    window.vhTrack = function (name, params) {
+      var tries = 0;
+      (function attempt() {
+        var fb = typeof window.fbq === 'function', ga = typeof window.gtag === 'function';
+        if (fb) window.fbq('track', name, params || {});
+        if (ga) window.gtag('event', name, params || {});
+        if (!fb && !ga && tries++ < 20) setTimeout(attempt, 500);
+      })();
+    };
     function loadAnalytics() {
       var tpl = document.getElementById('analytics-tpl');
       if (!tpl || tpl.dataset.loaded) return;

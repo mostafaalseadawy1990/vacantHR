@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Track from '../../components/Track.astro';
 import { serverClient } from '../../lib/supabase';
 import { getSettings } from '../../lib/settings';
 import { sendEmail, emailLayout } from '../../lib/email';
@@ -10,6 +11,7 @@ const supabase = serverClient(Astro);
 
 const url = new URL(Astro.request.url);
 const justApplied = url.searchParams.get('applied') === '1';
+const justRegistered = url.searchParams.get('registered') === '1';
 
 const role = profile?.role ?? 'candidate';
 let formMsg = '';
@@ -278,4 +280,6 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
   </div>
 </section>
 </main>
+{justApplied && <Track event="SubmitApplication" />}
+{justRegistered && <Track event="CompleteRegistration" params={{ content_name: role }} />}
 </Base>
