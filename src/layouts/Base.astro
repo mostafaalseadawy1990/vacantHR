@@ -38,10 +38,10 @@ const ASSET_VER = '20260911a';
 
 const settings = await getSettings();
 
-// Edge-cache anonymous HTML so CMS edits appear within ~a minute without a redeploy.
+// Edge-cache anonymous HTML so CMS/job edits appear within ~2 minutes without a redeploy.
 try {
   if (!Astro.locals?.user) {
-    Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=600');
+    Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=60');
   }
 } catch { /* prerendered: no response object */ }
 ---
