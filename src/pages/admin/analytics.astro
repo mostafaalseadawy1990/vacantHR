@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -39,11 +38,9 @@ const newClients = (signups ?? []).filter((r: any) => r.role === 'client').lengt
 
 const label = (p: string) => p === '/' ? 'الرئيسية' : p;
 ---
-<Base title="التحليلات | لوحة الإدارة" path="/admin/analytics" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="analytics">التحليلات</AdminNav>
+<Admin title="التحليلات | لوحة الإدارة" path="/admin/analytics" active="analytics">
+<Fragment slot="heading">التحليلات</Fragment>
+<div class="admin-body">
 
     <div class="stat-cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:8px;">
       <div class="stat-card"><span class="n">{totalViews.toLocaleString('en-US')}</span><span class="l">مشاهدات صفحات (14 يوم)</span></div>
@@ -82,10 +79,8 @@ const label = (p: string) => p === '/' ? 'الرئيسية' : p;
         </table></div>
       </div>
     </div>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <style is:global>
   .mini-bars{display:flex;gap:6px;align-items:flex-end;height:160px;border-bottom:1px solid var(--line);padding-bottom:4px;}

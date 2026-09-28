@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -33,11 +32,9 @@ const { data: posts } = await supabase
   .order('created_at', { ascending: false });
 const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 ---
-<Base title="المدوّنة | لوحة الإدارة" path="/admin/blog" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="blog">المدوّنة</AdminNav>
+<Admin title="المدوّنة | لوحة الإدارة" path="/admin/blog" active="blog">
+<Fragment slot="heading">المدوّنة</Fragment>
+<div class="admin-body">
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
     <form method="POST" class="form-box" style="max-width:560px;margin-bottom:30px;">
@@ -66,7 +63,5 @@ const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { 
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

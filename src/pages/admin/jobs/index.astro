@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { EMPLOYMENT_TYPE_AR } from '../../../lib/jobs';
 
@@ -35,11 +34,9 @@ for (const v of vrows ?? []) viewsByJob[v.job_id] = (viewsByJob[v.job_id] ?? 0) 
 
 const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتوحة', closed: 'مغلقة' };
 ---
-<Base title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="jobs">الوظائف</AdminNav>
+<Admin title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="jobs">
+<Fragment slot="heading">الوظائف</Fragment>
+<div class="admin-body">
 
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
@@ -78,10 +75,8 @@ const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتو
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <style is:global>
   .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:#fff;}

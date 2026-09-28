@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -11,11 +10,9 @@ const { data: rows } = await supabase
   .limit(200);
 const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title="سجل النشاط | لوحة الإدارة" path="/admin/activity" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="activity">سجل النشاط</AdminNav>
+<Admin title="سجل النشاط | لوحة الإدارة" path="/admin/activity" active="activity">
+<Fragment slot="heading">سجل النشاط</Fragment>
+<div class="admin-body">
     {(!rows || rows.length === 0) ? (
       <p style="color:var(--muted);">مفيش نشاط مسجّل لسه.</p>
     ) : (
@@ -30,7 +27,5 @@ const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'med
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

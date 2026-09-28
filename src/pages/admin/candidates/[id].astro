@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { logAction } from '../../../lib/audit';
@@ -131,11 +130,9 @@ const sel = (a: string, b: string) => (a === b ? true : undefined);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title={`${profile.full_name || 'مرشح'} | لوحة الإدارة`} path={`/admin/candidates/${id}`} active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="candidates">{profile.full_name || 'مرشح'}</AdminNav>
+<Admin title={`${profile.full_name || 'مرشح'} | لوحة الإدارة`} path={`/admin/candidates/${id}`} active="candidates">
+<Fragment slot="heading">{profile.full_name || 'مرشح'}</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:18px;"><a href="/admin/candidates">→ رجوع للقائمة</a></p>
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
 
@@ -232,7 +229,5 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'm
         ))}
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

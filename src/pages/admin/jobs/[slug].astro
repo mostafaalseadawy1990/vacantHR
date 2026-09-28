@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { normalizeApplyUrl, type Job } from '../../../lib/jobs';
@@ -100,11 +99,9 @@ function matchPct(candSkills: string[] | null | undefined): number | null {
 }
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
-<Base title={`${job.title} | إدارة | Vacant HR`} path={`/admin/jobs/${slug}`} active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="jobs">{job.title}</AdminNav>
+<Admin title={`${job.title} | إدارة | Vacant HR`} path={`/admin/jobs/${slug}`} active="jobs">
+<Fragment slot="heading">{job.title}</Fragment>
+<div class="admin-body">
 
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
@@ -207,10 +204,8 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <style is:global>
   .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;}

@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 import { mediaUrl } from '../../lib/settings';
 
@@ -51,11 +50,9 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: items } = await supabase.from('media').select('*').order('created_at', { ascending: false });
 ---
-<Base title="مكتبة الصور | لوحة الإدارة" path="/admin/media" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="media">مكتبة الصور</AdminNav>
+<Admin title="مكتبة الصور | لوحة الإدارة" path="/admin/media" active="media">
+<Fragment slot="heading">مكتبة الصور</Fragment>
+<div class="admin-body">
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
@@ -95,7 +92,5 @@ const { data: items } = await supabase.from('media').select('*').order('created_
         ))}
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

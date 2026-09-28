@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -32,11 +31,9 @@ const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'ف�
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title="لوحة الإدارة | Vacant HR" path="/admin" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="home">نظرة عامة</AdminNav>
+<Admin title="لوحة الإدارة | Vacant HR" path="/admin" active="home">
+<Fragment slot="heading">نظرة عامة</Fragment>
+<div class="admin-body">
 
     <div class="stat-cards" style="grid-template-columns:repeat(4,1fr);">
       <a href="/admin/jobs" class="stat-card"><span class="n">{openJobs ?? 0}</span><span class="l">وظيفة مفتوحة</span></a>
@@ -124,10 +121,8 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'm
         </div>
       )}
     </div>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <style is:global>
   .stat-cards{display:grid;gap:14px;}

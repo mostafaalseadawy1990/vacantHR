@@ -1,6 +1,5 @@
 ---
-import Base from '../../../../layouts/Base.astro';
-import AdminNav from '../../../../components/AdminNav.astro';
+import Admin from '../../../../layouts/Admin.astro';
 import { serverClient } from '../../../../lib/supabase';
 
 const { slug } = Astro.params;
@@ -25,11 +24,9 @@ const COLUMNS: Array<[string, string]> = [
 const byStatus = (st: string) => (apps ?? []).filter((a: any) => a.status === st);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 ---
-<Base title={`لوحة المراحل — ${job.title}`} path={`/admin/jobs/${slug}/board`} active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="jobs">لوحة المراحل — {job.title}</AdminNav>
+<Admin title={`لوحة المراحل — ${job.title}`} path={`/admin/jobs/${slug}/board`} active="jobs">
+<Fragment slot="heading">لوحة المراحل — {job.title}</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:18px;">
       <a href={`/admin/jobs/${slug}`}>→ رجوع لتفاصيل الوظيفة</a>
       <span style="color:var(--line);margin:0 10px;">|</span>
@@ -57,10 +54,8 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'sho
       ))}
     </div>
     <p class="board-msg" role="status" aria-live="polite"></p>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js" is:inline></script>
 <script is:inline>

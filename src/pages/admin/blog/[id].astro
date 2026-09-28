@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { mediaUrl } from '../../../lib/settings';
 
@@ -48,11 +47,9 @@ if (!post) return Astro.redirect('/admin/blog', 302);
 // media picker options
 const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(100);
 ---
-<Base title={`${post.title} | تحرير مقال`} path={`/admin/blog/${id}`} active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="blog">{post.title}</AdminNav>
+<Admin title={`${post.title} | تحرير مقال`} path={`/admin/blog/${id}`} active="blog">
+<Fragment slot="heading">{post.title}</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:16px;">
       <a href="/admin/blog">→ رجوع للمدوّنة</a>
       {post.status === 'published' && <> <span style="color:var(--line);margin:0 8px;">|</span> <a href={`/blog/${post.slug}`} target="_blank" rel="noopener">معاينة ↗</a></>}
@@ -94,9 +91,7 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
         <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف المقال نهائيًا؟')">حذف</button>
       </div>
     </form>
-  </div>
-</section>
-</main>
+</div>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.js" is:inline></script>
@@ -118,4 +113,4 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
   .editor-toolbar{border-radius:var(--radius-sm) var(--radius-sm) 0 0;border-color:var(--line);}
   .editor-preview,.editor-preview-side{direction:rtl;background:var(--surface-soft);}
 </style>
-</Base>
+</Admin>

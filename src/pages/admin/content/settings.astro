@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { DEFAULT_SETTINGS, mediaUrl, clearSettingsCache } from '../../../lib/settings';
 
@@ -57,11 +56,9 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
 const stats: Array<{ value: string; label: string }> = Array.isArray(cur.home_stats) ? cur.home_stats : DEFAULT_SETTINGS.home_stats;
 while (stats.length < 4) stats.push({ value: '', label: '' });
 ---
-<Base title="إعدادات الموقع | لوحة الإدارة" path="/admin/content/settings" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="content">إعدادات الموقع</AdminNav>
+<Admin title="إعدادات الموقع | لوحة الإدارة" path="/admin/content/settings" active="settings">
+<Fragment slot="heading">إعدادات الموقع</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ. التعديلات تظهر على الموقع خلال دقيقة.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
@@ -117,7 +114,5 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
 
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الإعدادات</button>
     </form>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -24,11 +23,9 @@ const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'ف�
 const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
 const fmtShort = (s: string) => new Date(s).toLocaleDateString('ar-EG', { dateStyle: 'medium' });
 ---
-<Base title="المقابلات | لوحة الإدارة" path="/admin/interviews" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="interviews">المقابلات</AdminNav>
+<Admin title="المقابلات | لوحة الإدارة" path="/admin/interviews" active="interviews">
+<Fragment slot="heading">المقابلات</Fragment>
+<div class="admin-body">
     <p style="color:var(--muted);font-size:0.9rem;margin-bottom:20px;">تُجدول المقابلات من صفحة كل مرشح.</p>
 
     <h2 style="margin-bottom:14px;">القادمة ({upcoming?.length ?? 0})</h2>
@@ -60,7 +57,5 @@ const fmtShort = (s: string) => new Date(s).toLocaleDateString('ar-EG', { dateSt
         </tbody>
       </table></div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

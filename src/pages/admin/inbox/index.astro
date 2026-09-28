@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -11,11 +10,9 @@ const { data: convs } = await supabase
   .limit(100);
 const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title="الرسائل | لوحة الإدارة" path="/admin/inbox" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="inbox">الرسائل</AdminNav>
+<Admin title="الرسائل | لوحة الإدارة" path="/admin/inbox" active="inbox">
+<Fragment slot="heading">الرسائل</Fragment>
+<div class="admin-body">
     {(!convs || convs.length === 0) ? (
       <p style="color:var(--muted);">مفيش محادثات. تقدر تبدأ محادثة من صفحة أي مرشح أو طلب شركة.</p>
     ) : (
@@ -34,7 +31,5 @@ const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'med
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

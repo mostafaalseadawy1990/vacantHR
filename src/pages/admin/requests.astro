@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -29,11 +28,9 @@ const ST: Array<[string, string]> = [
 const sel = (c: string, v: string) => (c === v ? true : undefined);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
-<Base title="طلبات الشركات | Vacant HR" path="/admin/requests" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="requests">طلبات الشركات</AdminNav>
+<Admin title="طلبات الشركات | Vacant HR" path="/admin/requests" active="requests">
+<Fragment slot="heading">طلبات الشركات</Fragment>
+<div class="admin-body">
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
@@ -66,10 +63,8 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
         ))}
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
 
 <style is:global>
   .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 12px;border:1px solid var(--line);border-radius:2px;background:#fff;}

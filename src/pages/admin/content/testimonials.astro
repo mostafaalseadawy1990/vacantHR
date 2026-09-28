@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -38,11 +37,9 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: items } = await supabase.from('testimonials').select('*').order('position');
 ---
-<Base title="آراء العملاء | لوحة الإدارة" path="/admin/content/testimonials" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="content">آراء العملاء</AdminNav>
+<Admin title="آراء العملاء | لوحة الإدارة" path="/admin/content/testimonials" active="content">
+<Fragment slot="heading">آراء العملاء</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
@@ -87,7 +84,5 @@ const { data: items } = await supabase.from('testimonials').select('*').order('p
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
       </form>
     </div>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

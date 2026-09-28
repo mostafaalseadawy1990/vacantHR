@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 
 const cards = [
   { href: '/admin/content/settings', title: 'إعدادات الموقع', desc: 'بيانات التواصل، واتساب، لينكدإن، نصوص الرئيسية، أرقام الإحصائيات' },
@@ -11,11 +10,9 @@ const cards = [
   { href: '/admin/media', title: 'مكتبة الصور', desc: 'رفع الصور والحصول على روابطها لاستخدامها في المحتوى' },
 ];
 ---
-<Base title="المحتوى | لوحة الإدارة" path="/admin/content" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="content">إدارة المحتوى</AdminNav>
+<Admin title="المحتوى | لوحة الإدارة" path="/admin/content" active="content">
+<Fragment slot="heading">إدارة المحتوى</Fragment>
+<div class="admin-body">
     <div class="stat-cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
       {cards.map((c) => (
         <a href={c.href} class="stat-card" style="gap:8px;">
@@ -24,7 +21,5 @@ const cards = [
         </a>
       ))}
     </div>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

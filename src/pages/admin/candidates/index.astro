@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 
 const supabase = serverClient(Astro);
@@ -24,11 +23,9 @@ if (skill) query = query.contains('skills', [skill]);
 const { data: rows, error } = await query;
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
 ---
-<Base title="قاعدة المرشحين | لوحة الإدارة" path="/admin/candidates" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="candidates">قاعدة المرشحين</AdminNav>
+<Admin title="قاعدة المرشحين | لوحة الإدارة" path="/admin/candidates" active="candidates">
+<Fragment slot="heading">قاعدة المرشحين</Fragment>
+<div class="admin-body">
 
     <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;max-width:640px;">
       <input type="search" name="q" value={q} placeholder="اسم / إيميل / هاتف" style="flex:2;min-width:200px;" />
@@ -64,7 +61,5 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

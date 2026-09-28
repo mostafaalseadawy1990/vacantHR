@@ -1,6 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { logAction } from '../../../lib/audit';
@@ -88,11 +87,9 @@ const { data: items } = await supabase
 
 const DEC: Record<string, string> = { pending: 'بانتظار العميل', approved: 'وافق العميل', rejected: 'رفض العميل' };
 ---
-<Base title={`${req.role_title} | طلبات الشركات`} path={`/admin/requests/${id}`} active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="requests">{req.role_title}</AdminNav>
+<Admin title={`${req.role_title} | طلبات الشركات`} path={`/admin/requests/${id}`} active="requests">
+<Fragment slot="heading">{req.role_title}</Fragment>
+<div class="admin-body">
     <p style="margin-bottom:18px;"><a href="/admin/requests">→ رجوع للطلبات</a></p>
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
@@ -147,7 +144,5 @@ const DEC: Record<string, string> = { pending: 'بانتظار العميل', ap
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
       </form>
     </div>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>

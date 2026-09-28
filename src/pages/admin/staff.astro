@@ -1,6 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 import { logAction } from '../../lib/audit';
 
@@ -42,11 +41,9 @@ if (q) {
 }
 const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤول توظيف', candidate: 'مرشح', client: 'عميل' };
 ---
-<Base title="الفريق | لوحة الإدارة" path="/admin/staff" active="admin" noindex={true}>
-<main id="main">
-<section style="padding:40px 0 70px;">
-  <div class="wrap">
-    <AdminNav active="staff">فريق الإدارة</AdminNav>
+<Admin title="الفريق | لوحة الإدارة" path="/admin/staff" active="staff">
+<Fragment slot="heading">فريق الإدارة</Fragment>
+<div class="admin-body">
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
@@ -109,7 +106,5 @@ const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤ�
         </table></div>
       )
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Admin>
