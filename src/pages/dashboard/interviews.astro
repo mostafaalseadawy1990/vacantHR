@@ -1,0 +1,48 @@
+---
+import Portal from '../../layouts/Portal.astro';
+import { serverClient } from '../../lib/supabase';
+
+if (Astro.locals.profile?.role === 'client') return Astro.redirect('/dashboard', 302);
+const supabase = serverClient(Astro);
+const { data: all } = await supabase
+  .from('interviews')
+  .select('id, scheduled_at, mode, location, status, applications(jobs(title, slug))')
+  .neq('status', 'cancelled')
+  .order('scheduled_at', { ascending: false });
+const now = Date.now();
+const upcoming = (all ?? []).filter((v) => new Date(v.scheduled_at).getTime() >= now).reverse();
+const past = (all ?? []).filter((v) => new Date(v.scheduled_at).getTime() < now);
+const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
+const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
+const ics = (v: any) => {
+  const t = new Date(v.scheduled_at); const end = new Date(t.getTime() + 60 * 60 * 1000);
+  const f = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const title = encodeURIComponent(`مقابلة: ${v.applications?.jobs?.title ?? 'Vacant HR'}`);
+  return `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${f(t)}/${f(end)}&details=${encodeURIComponent(v.location ?? '')}`;
+};
+---
+<Portal title="المقابلات | Vacant HR" path="/dashboard/interviews" active="interviews">
+<Fragment slot="heading">المقابلات</Fragment>
+<div class="admin-body">
+  <section class="psec">
+    <div class="psec-head"><h2>القادمة</h2></div>
+    {upcoming.length === 0 ? <p class="pempty">مفيش مقابلات قادمة حاليًا.</p> : upcoming.map((v: any) => (
+      <div class="prow">
+        <div class="prow-main">
+          <strong>{v.applications?.jobs?.title ?? 'وظيفة'}</strong>
+          <small>{fmtDT(v.scheduled_at)} — {MODE_AR[v.mode] ?? v.mode}{v.location && <> · <span dir="ltr">{v.mode === 'online' && /^https?:/.test(v.location) ? <a href={v.location} target="_blank" rel="noopener">رابط الاجتماع</a> : v.location}</span></>}</small>
+        </div>
+        <a href={ics(v)} target="_blank" rel="noopener" class="btn" style="padding:6px 12px;font-size:.82rem;">أضف للتقويم</a>
+      </div>
+    ))}
+  </section>
+  {past.length > 0 && (
+    <section class="psec">
+      <div class="psec-head"><h2>السابقة</h2></div>
+      {past.map((v: any) => (
+        <div class="prow"><div class="prow-main"><strong>{v.applications?.jobs?.title ?? 'وظيفة'}</strong><small>{fmtDT(v.scheduled_at)} — {MODE_AR[v.mode] ?? v.mode}</small></div></div>
+      ))}
+    </section>
+  )}
+</div>
+</Portal>

@@ -1,0 +1,33 @@
+---
+import Portal from '../../layouts/Portal.astro';
+import { serverClient } from '../../lib/supabase';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR } from '../../lib/jobs';
+
+if (Astro.locals.profile?.role === 'client') return Astro.redirect('/dashboard', 302);
+const supabase = serverClient(Astro);
+const { data: sj } = await supabase
+  .from('saved_jobs')
+  .select('created_at, jobs(title, slug, department, location, employment_type, workplace, status)')
+  .order('created_at', { ascending: false });
+const saved = (sj ?? []).filter((r: any) => r.jobs);
+---
+<Portal title="الوظائف المحفوظة | Vacant HR" path="/dashboard/saved" active="saved">
+<Fragment slot="heading">الوظائف المحفوظة</Fragment>
+<div class="admin-body">
+  {saved.length === 0 ? (
+    <div class="empty-state"><h2>مفيش وظائف محفوظة</h2><p>اضغط ☆ على أي وظيفة عشان ترجعلها بعدين.</p><a href="/careers" class="btn solid">تصفّح الوظائف</a></div>
+  ) : (
+    <section class="psec" style="max-width:860px;">
+      {saved.map((s: any) => (
+        <div class="prow">
+          <div class="prow-main">
+            <strong><a href={`/careers/${s.jobs.slug}`}>{s.jobs.title}</a></strong>
+            <small>{[s.jobs.department, s.jobs.location, EMPLOYMENT_TYPE_AR[s.jobs.employment_type], WORKPLACE_AR[s.jobs.workplace]].filter(Boolean).join(' · ')}{s.jobs.status !== 'open' && ' · لم تعد متاحة'}</small>
+          </div>
+          {s.jobs.status === 'open' && <a href={`/careers/${s.jobs.slug}`} class="btn" style="padding:6px 12px;font-size:.82rem;">قدّم الآن</a>}
+        </div>
+      ))}
+    </section>
+  )}
+</div>
+</Portal>

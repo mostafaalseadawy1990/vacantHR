@@ -1,0 +1,43 @@
+---
+import Portal from '../../layouts/Portal.astro';
+import { serverClient } from '../../lib/supabase';
+
+if (Astro.locals.profile?.role === 'client') return Astro.redirect('/dashboard', 302);
+const supabase = serverClient(Astro);
+const { data: apps } = await supabase
+  .from('applications')
+  .select('id, status, created_at, cover_note, jobs(title, slug, department, status), interviews(scheduled_at, status)')
+  .order('created_at', { ascending: false });
+
+const STEPS = ['submitted', 'reviewing', 'shortlisted', 'hired'];
+const STATUS_AR: Record<string, string> = { submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة', rejected: 'غير مناسب حاليًا', hired: 'تم التعيين' };
+const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Portal title="طلباتي | Vacant HR" path="/dashboard/applications" active="applications">
+<Fragment slot="heading">طلبات التقديم</Fragment>
+<div class="admin-body">
+  {(!apps || apps.length === 0) ? (
+    <div class="empty-state"><h2>لسه ماقدّمتش على وظيفة</h2><p>تصفّح الوظائف المتاحة واختَر اللي يناسبك.</p><a href="/careers" class="btn solid">تصفّح الوظائف</a></div>
+  ) : (
+    <div style="display:grid;gap:12px;max-width:860px;">
+      {apps.map((a: any) => {
+        const idx = STEPS.indexOf(a.status);
+        const upcoming = (a.interviews ?? []).filter((v: any) => v.status !== 'cancelled' && new Date(v.scheduled_at) > new Date()).length;
+        return (
+          <section class="psec" style="margin:0;">
+            <div class="psec-head" style="margin-bottom:6px;">
+              <h2>{a.jobs?.slug && a.jobs.status === 'open' ? <a href={`/careers/${a.jobs.slug}`}>{a.jobs?.title}</a> : (a.jobs?.title ?? '—')}</h2>
+              <span class={`status-pill status-${a.status}`}>{STATUS_AR[a.status] ?? a.status}</span>
+            </div>
+            <small style="color:var(--muted);">{a.jobs?.department && <>{a.jobs.department} · </>}قدّمت في {fmtDate(a.created_at)}{upcoming > 0 && <> · <a href="/dashboard/interviews">عندك مقابلة قادمة</a></>}</small>
+            <div class:list={['steps', { rejected: a.status === 'rejected' }]} title="مراحل الطلب">
+              {STEPS.map((s, i) => <i class:list={{ on: a.status === 'rejected' ? i === 0 : i <= idx }}></i>)}
+            </div>
+            <small style="color:var(--muted);display:flex;justify-content:space-between;margin-top:4px;font-size:.75rem;"><span>تقديم</span><span>مراجعة</span><span>قائمة مختصرة</span><span>تعيين</span></small>
+          </section>
+        );
+      })}
+    </div>
+  )}
+</div>
+</Portal>
