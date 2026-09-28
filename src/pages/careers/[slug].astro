@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { anonClient } from '../../lib/supabase';
-import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, renderMarkdown, type Job } from '../../lib/jobs';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, renderMarkdown, timeAgo, type Job } from '../../lib/jobs';
 
 const { slug } = Astro.params;
 
@@ -77,6 +77,10 @@ const jobSkills = ((job.skills ?? []) as string[]).map((s) => s.toLowerCase().tr
 const mySkills = new Set(((profile?.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()));
 const matched = jobSkills.filter((s) => mySkills.has(s));
 const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && mySkills.size > 0;
+// Similar open jobs: same department first, then latest.
+const { data: simRows } = await supabase.from('jobs').select('slug, title, department, location, employment_type, workplace, published_at, created_at')
+  .eq('status', 'open').neq('id', job.id).order('published_at', { ascending: false, nullsFirst: false }).limit(12);
+const similar = [...(simRows ?? [])].sort((a: any, b: any) => (b.department === job.department ? 1 : 0) - (a.department === job.department ? 1 : 0)).slice(0, 3);
 ---
 <Base
   title={`${job.title} | وظائف Vacant HR`}
@@ -106,27 +110,13 @@ const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && 
       {job.experience_level && <span>{job.experience_level}</span>}
       {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
     </div>
-    <div class="btn-row" style="align-items:center;">
-      {alreadyApplied && !external
-        ? <span class="btn" aria-disabled="true" style="opacity:.7;">تم التقديم على هذه الوظيفة ✓</span>
-        : <a href={applyHref} class="btn solid" {...applyAttrs}>قدّم على الوظيفة{external && ' ↗'}</a>}
-      {user && (
-        <button type="button" class="save-btn" id="saveBtn" data-slug={job.slug} data-saved={isSaved ? '1' : '0'} title="حفظ الوظيفة">{isSaved ? '★' : '☆'}</button>
-      )}
-      <button type="button" class="share-btn" id="shareBtn">مشاركة</button>
-      <a href="/careers" class="btn">كل الوظائف</a>
-    </div>
-    {showMatch && (
-      <p style="margin-top:14px;font-size:0.92rem;color:var(--muted);">
-        مهاراتك المطابقة لهذه الوظيفة: <strong style="color:var(--accent);">{matched.length} من {jobSkills.length}</strong>
-        {matched.length > 0 && ` (${matched.join('، ')})`}
-      </p>
-    )}
+    <p style="margin:12px 0 0;color:var(--muted);font-size:.9rem;">نُشرت {timeAgo(job.published_at ?? job.created_at)}</p>
   </div>
 </section>
 
 <section style="padding-top:10px;">
-  <div class="wrap prose job-body">
+  <div class="wrap job-layout">
+  <div class="prose job-body">
     <h2>الوصف الوظيفي</h2>
     <Fragment set:html={renderMarkdown(job.description_md)} />
     <h2>المتطلبات</h2>
@@ -149,6 +139,42 @@ const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && 
           </>
         )}
     </div>
+  </div>
+
+  <aside class="job-aside">
+    <div class="job-apply-card">
+      {alreadyApplied && !external
+        ? <span class="btn" aria-disabled="true" style="opacity:.7;width:100%;text-align:center;">تم التقديم ✓</span>
+        : <a href={applyHref} class="btn solid" style="width:100%;text-align:center;" {...applyAttrs}>قدّم على الوظيفة{external && ' ↗'}</a>}
+      <div class="job-aside-acts">
+        {user && <button type="button" class="save-btn" id="saveBtn" data-slug={job.slug} data-saved={isSaved ? '1' : '0'} title="حفظ الوظيفة">{isSaved ? '★ محفوظة' : '☆ حفظ'}</button>}
+        <button type="button" class="share-btn" id="shareBtn">مشاركة</button>
+      </div>
+      {!user && !external && <p class="job-aside-note">محتاج حساب مرشح للتقديم — بياخد دقيقة واحدة.</p>}
+      {showMatch && <p class="job-aside-note">مهاراتك المطابقة: <strong style="color:var(--accent);">{matched.length} من {jobSkills.length}</strong></p>}
+      <dl class="job-facts">
+        {job.department && <><dt>القسم</dt><dd>{job.department}</dd></>}
+        {job.location && <><dt>المكان</dt><dd>{job.location}</dd></>}
+        <dt>نوع التعاقد</dt><dd>{EMPLOYMENT_TYPE_AR[job.employment_type]}</dd>
+        <dt>مكان العمل</dt><dd>{WORKPLACE_AR[job.workplace]}</dd>
+        {job.experience_level && <><dt>الخبرة</dt><dd>{job.experience_level}</dd></>}
+        {salaryLabel(job) && <><dt>الراتب</dt><dd>{salaryLabel(job)}</dd></>}
+      </dl>
+      {jobSkills.length > 0 && <div class="job-skills">{(job.skills ?? []).map((k: string) => <span class:list={{ hit: mySkills.has(k.toLowerCase().trim()) }}>{k}</span>)}</div>}
+    </div>
+    {similar.length > 0 && (
+      <div class="job-similar">
+        <h3>وظائف مشابهة</h3>
+        {similar.map((j: any) => (
+          <a href={`/careers/${j.slug}`} class="job-sim">
+            <strong>{j.title}</strong>
+            <small>{[j.department, j.location, WORKPLACE_AR[j.workplace as keyof typeof WORKPLACE_AR]].filter(Boolean).join(' · ')} · {timeAgo(j.published_at ?? j.created_at)}</small>
+          </a>
+        ))}
+        <a href="/careers" class="job-sim-all">كل الوظائف ←</a>
+      </div>
+    )}
+  </aside>
   </div>
 </section>
 
@@ -174,13 +200,13 @@ const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && 
     var saved = save.getAttribute('data-saved') === '1';
     var next = saved ? '0' : '1';
     save.setAttribute('data-saved', next);
-    save.textContent = next === '1' ? '★' : '☆';
+    save.textContent = next === '1' ? '★ محفوظة' : '☆ حفظ';
     fetch('/careers/' + save.getAttribute('data-slug') + '/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: next === '1' ? 'save' : 'unsave' }),
     }).catch(function () {
       save.setAttribute('data-saved', saved ? '1' : '0');
-      save.textContent = saved ? '★' : '☆';
+      save.textContent = saved ? '★ محفوظة' : '☆ حفظ';
     });
   });
 </script>

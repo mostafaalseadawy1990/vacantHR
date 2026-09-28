@@ -96,3 +96,17 @@ export function normalizeApplyUrl(raw: string): string | null {
     return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
   } catch { return null; }
 }
+
+/** "منذ ٣ أيام" style relative time (Arabic). */
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const d = Math.floor(diff / 864e5);
+  if (d === 0) return 'اليوم';
+  if (d === 1) return 'أمس';
+  if (d < 7) return `منذ ${d} أيام`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return w === 1 ? 'منذ أسبوع' : `منذ ${w} أسابيع`;
+  const m = Math.floor(d / 30);
+  return m <= 1 ? 'منذ شهر' : `منذ ${m} أشهر`;
+}

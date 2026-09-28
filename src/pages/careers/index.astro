@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { anonClient, serverClient } from '../../lib/supabase';
-import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, type Job } from '../../lib/jobs';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, salaryLabel, timeAgo, type Job } from '../../lib/jobs';
 
 const url = new URL(Astro.request.url);
 const q = (url.searchParams.get('q') || '').trim();
@@ -18,7 +18,7 @@ const departments = [...new Set((deptRows ?? []).map((r: any) => r.department).f
 
 let query = supabase
   .from('jobs')
-  .select('id, slug, title, department, location, employment_type, workplace, experience_level, salary_min, salary_max, salary_currency, salary_visible, description_md, requirements_md, status, published_at, created_at')
+  .select('id, slug, title, department, location, employment_type, workplace, experience_level, salary_min, salary_max, salary_currency, salary_visible, description_md, requirements_md, status, published_at, created_at, skills')
   .eq('status', 'open');
 
 if (q) query = query.or(`title.ilike.%${q}%,description_md.ilike.%${q}%,department.ilike.%${q}%`);
@@ -106,6 +106,13 @@ const jsonld = [{
       </div>
     )}
 
+    {!Astro.locals.user && (
+      <div class="alerts-cta">
+        <div><strong>ما تفوّتش فرصة</strong><span>اعمل حساب مرشح، ارفع سيرتك الذاتية، وهنرشّحك لأي وظيفة تناسب مهاراتك.</span></div>
+        <a href="/signup?role=candidate" class="btn solid">اعمل حساب مجانًا</a>
+      </div>
+    )}
+
     {jobs.length > 0 && (
       <>
         <p class="jobs-count" style="margin-bottom:14px;">{jobs.length} وظيفة{hasFilter ? ' مطابقة' : ' مفتوحة'}</p>
@@ -113,6 +120,7 @@ const jsonld = [{
           {jobs.map((job) => (
             <li class="job-card">
               <div class="job-card-main">
+                <div class="job-top">{job.department && <span class="job-dept">{job.department}</span>}<small>{timeAgo(job.published_at ?? job.created_at)}</small></div>
                 <h2><a href={`/careers/${job.slug}`}>{job.title}</a></h2>
                 <div class="job-meta">
                   {job.department && <span>{job.department}</span>}
@@ -122,6 +130,7 @@ const jsonld = [{
                   {job.experience_level && <span>{job.experience_level}</span>}
                   {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
                 </div>
+                {((job as any).skills?.length) ? <div class="job-skills">{(job as any).skills.slice(0, 6).map((k: string) => <span>{k}</span>)}</div> : null}
               </div>
               <div style="display:flex;gap:8px;align-items:center;">
                 {Astro.locals.user && (
