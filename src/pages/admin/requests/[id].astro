@@ -3,6 +3,7 @@ import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { logAction } from '../../../lib/audit';
+import { AVAILABILITY_AR } from '../../../lib/candidates';
 
 const { id } = Astro.params;
 const supabase = serverClient(Astro);
@@ -28,6 +29,28 @@ if (Astro.request.method === 'POST') {
         request_id: id, headline, summary, candidate_id,
       });
       if (!error) return Astro.redirect(`/admin/requests/${id}?ok=1`, 303);
+      flash = `تعذّر الإضافة: ${error.message}`;
+    }
+  }
+
+  if (action === 'add_many') {
+    // Multi-select from the candidate base: headline/summary are pre-filled from the profile.
+    const ids = form.getAll('candidate_ids').map(String).filter(Boolean);
+    if (ids.length === 0) {
+      flash = 'اختر مرشح واحد على الأقل.';
+    } else {
+      const { data: profs } = await supabase.from('profiles')
+        .select('id, full_name, headline, years_experience, city, education, skills, bio').in('id', ids);
+      const { data: existing } = await supabase.from('client_shortlist').select('candidate_id').eq('request_id', id);
+      const already = new Set((existing ?? []).map((e: any) => e.candidate_id));
+      const rows = (profs ?? []).filter((p: any) => !already.has(p.id)).map((p: any) => ({
+        request_id: id,
+        candidate_id: p.id,
+        headline: [p.headline || p.full_name, p.years_experience != null ? `${p.years_experience} سنوات خبرة` : null].filter(Boolean).join(' — '),
+        summary: [p.education, p.city, (p.skills ?? []).length ? `المهارات: ${p.skills.slice(0, 8).join('، ')}` : null, p.bio].filter(Boolean).join('\n'),
+      }));
+      const { error } = rows.length ? await supabase.from('client_shortlist').insert(rows) : { error: null };
+      if (!error) { await logAction(Astro, supabase, `إضافة ${rows.length} مرشح لقائمة عميل`, id); return Astro.redirect(`/admin/requests/${id}?ok=1`, 303); }
       flash = `تعذّر الإضافة: ${error.message}`;
     }
   }
@@ -85,6 +108,14 @@ const { data: items } = await supabase
   .eq('request_id', id)
   .order('created_at');
 
+// Candidate pool for the multi-select picker (latest 300, minus those already on the list).
+const onList = new Set((items ?? []).map((i: any) => i.candidate_id).filter(Boolean));
+const { data: pool } = await supabase.from('profiles')
+  .select('id, full_name, email, headline, city, years_experience, availability, skills, tags')
+  .eq('role', 'candidate').order('created_at', { ascending: false }).limit(300);
+const candidates = (pool ?? []).filter((p: any) => !onList.has(p.id));
+const byId = new Map((pool ?? []).map((p: any) => [p.id, p]));
+
 const DEC: Record<string, string> = { pending: 'بانتظار العميل', approved: 'وافق العميل', rejected: 'رفض العميل' };
 ---
 <Admin title={`${req.role_title} | طلبات الشركات`} path={`/admin/requests/${id}`} active="requests">
@@ -122,6 +153,9 @@ const DEC: Record<string, string> = { pending: 'بانتظار العميل', ap
             <span class={`status-pill status-${it.client_decision === 'approved' ? 'shortlisted' : it.client_decision === 'rejected' ? 'rejected' : 'submitted'}`}>{DEC[it.client_decision]}</span>
             <span style="font-size:0.8rem;color:var(--muted);">{it.admin_status === 'sent' ? 'مُرسل للعميل' : 'مسودة'}</span>
           </div>
+          {it.candidate_id && byId.get(it.candidate_id) && (
+            <p style="margin:0 0 8px;font-size:.85rem;">مرتبط بالمرشح: <a href={`/admin/candidates/${it.candidate_id}`}>{byId.get(it.candidate_id).full_name}</a></p>
+          )}
           <div class="form-row"><label>عنوان المرشح</label><input name="headline" value={it.headline} required /></div>
           <div class="form-row"><label>نبذة للعميل</label><textarea name="summary" style="min-height:80px;">{it.summary}</textarea></div>
           {it.client_note && <p style="background:var(--surface-soft);padding:10px 12px;border-radius:8px;font-size:0.9rem;">ملاحظة العميل: {it.client_note}</p>}
@@ -135,14 +169,67 @@ const DEC: Record<string, string> = { pending: 'بانتظار العميل', ap
         </form>
       ))}
 
-      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+      <form method="POST" class="form-box picker" style="max-width:none;">
+        <input type="hidden" name="_action" value="add_many" />
+        <h3 style="margin-bottom:4px;">اختيار مرشحين من قاعدة المرشحين</h3>
+        <p style="margin:0 0 10px;font-size:.88rem;color:var(--muted);">علّم على أكتر من مرشح — العنوان والنبذة بيتملوا تلقائيًا من ملفه وتقدر تعدّلهم بعدين.</p>
+        <input type="search" class="picker-q" placeholder="ابحث بالاسم / المسمى / المهارة / المدينة…" autocomplete="off" />
+        <div class="picker-list">
+          {candidates.length === 0 && <p style="color:var(--muted);margin:8px 0;">كل المرشحين المسجّلين موجودين في القائمة بالفعل.</p>}
+          {candidates.map((c: any) => (
+            <label class="picker-row" data-text={[c.full_name, c.headline, c.city, c.email, ...(c.skills ?? []), ...(c.tags ?? [])].join(' ').toLowerCase()}>
+              <input type="checkbox" name="candidate_ids" value={c.id} />
+              <span class="picker-main">
+                <strong>{c.full_name || '—'}</strong>
+                <span>{c.headline || <em style="color:var(--muted);">بدون مسمى</em>}{c.city && <> · {c.city}</>}{c.years_experience != null && <> · {c.years_experience} سنة</>}{c.availability && <> · {AVAILABILITY_AR[c.availability]}</>}</span>
+                {(c.skills?.length) ? <small>{c.skills.slice(0, 6).join('، ')}</small> : null}
+              </span>
+              <a href={`/admin/candidates/${c.id}`} target="_blank" rel="noopener" class="picker-open" title="فتح الملف">↗</a>
+            </label>
+          ))}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          <span class="picker-count" style="font-size:.88rem;color:var(--muted);">لم يتم اختيار أحد</span>
+          <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة المختارين للقائمة</button>
+        </div>
+      </form>
+
+      <details class="form-box" style="max-width:none;border-style:dashed;">
+        <summary style="cursor:pointer;font-weight:600;">إضافة مرشح يدويًا (مش مسجّل على الموقع)</summary>
+      <form method="POST" style="margin-top:12px;">
         <input type="hidden" name="_action" value="add" />
-        <h3 style="margin-bottom:12px;">إضافة مرشح للقائمة</h3>
         <div class="form-row"><label>عنوان المرشح *</label><input name="headline" placeholder="مطوّر Backend — 4 سنوات خبرة" required /></div>
         <div class="form-row"><label>نبذة للعميل</label><textarea name="summary" style="min-height:80px;" placeholder="ملخّص خبرة المرشح وسبب ترشيحه"></textarea></div>
         <div class="form-row"><label>إيميل المرشح في النظام (اختياري — للربط)</label><input type="email" name="candidate_email" /></div>
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
       </form>
+      </details>
     </div>
 </div>
+<script is:inline>
+  (function () {
+    document.querySelectorAll('.picker').forEach(function (p) {
+      var q = p.querySelector('.picker-q'), rows = p.querySelectorAll('.picker-row'), count = p.querySelector('.picker-count');
+      q.addEventListener('input', function () {
+        var t = q.value.trim().toLowerCase();
+        rows.forEach(function (r) { r.hidden = !!t && r.dataset.text.indexOf(t) === -1; });
+      });
+      p.addEventListener('change', function () {
+        var n = p.querySelectorAll('input[name="candidate_ids"]:checked').length;
+        count.textContent = n ? 'تم اختيار ' + n + ' مرشح' : 'لم يتم اختيار أحد';
+      });
+    });
+  })();
+</script>
+<style is:global>
+  .picker-list{ max-height:380px; overflow:auto; border:1px solid var(--line); border-radius:var(--radius-sm); margin-top:8px; background:var(--surface); }
+  .picker-row{ display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid var(--line-soft); cursor:pointer; font-weight:400; }
+  .picker-row:hover{ background:var(--surface-soft); }
+  .picker-row:has(input:checked){ background:var(--accent-soft); }
+  .picker-row input{ width:auto; margin-top:4px; }
+  .picker-main{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .picker-main span{ font-size:.88rem; color:var(--body); }
+  .picker-main small{ font-size:.78rem; color:var(--muted); }
+  .picker-open{ color:var(--muted); text-decoration:none; padding:2px 6px; }
+</style>
 </Admin>

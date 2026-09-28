@@ -1,65 +1,155 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { AVAILABILITY_AR, SOURCE_AR } from '../../../lib/candidates';
 
 const supabase = serverClient(Astro);
 const url = new URL(Astro.request.url);
-const q = (url.searchParams.get('q') || '').trim();
-const skill = (url.searchParams.get('skill') || '').trim();
+const P = (k: string) => (url.searchParams.get(k) || '').trim();
+const q = P('q'), skill = P('skill'), city = P('city'), tag = P('tag'), availability = P('availability');
+const minExp = parseInt(P('min_exp'), 10);
+const hasCv = P('has_cv') === '1';
+const sort = P('sort') || 'newest';
+const filtersOn = !!(q || skill || city || tag || availability || Number.isFinite(minExp) || hasCv);
 
 let query = supabase
   .from('profiles')
-  .select('id, full_name, email, phone, company_name, role, created_at, skills, applications(count)')
+  .select('id, full_name, email, phone, city, headline, years_experience, availability, source, cv_path, created_at, skills, tags, applications(count)')
   .eq('role', 'candidate')
-  .order('created_at', { ascending: false })
-  .limit(200);
+  .limit(300);
 
 if (q) {
   const like = `%${q}%`;
-  query = query.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
+  query = query.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like},headline.ilike.${like},current_company.ilike.${like}`);
 }
 if (skill) query = query.contains('skills', [skill]);
+if (tag) query = query.contains('tags', [tag]);
+if (city) query = query.ilike('city', `%${city}%`);
+if (availability) query = query.eq('availability', availability);
+if (Number.isFinite(minExp)) query = query.gte('years_experience', minExp);
+if (hasCv) query = query.not('cv_path', 'is', null);
+query = sort === 'name' ? query.order('full_name') : sort === 'exp' ? query.order('years_experience', { ascending: false, nullsFirst: false }) : query.order('created_at', { ascending: false });
 
 const { data: rows, error } = await query;
+
+// Distinct cities / tags for the filter dropdowns (from the candidate base, capped).
+const { data: meta } = await supabase.from('profiles').select('city, tags').eq('role', 'candidate').limit(1000);
+const cities = [...new Set((meta ?? []).map((m: any) => m.city).filter(Boolean))].sort();
+const tags = [...new Set((meta ?? []).flatMap((m: any) => m.tags ?? []))].sort();
+
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+const csvQs = url.search;
 ---
 <Admin title="قاعدة المرشحين | لوحة الإدارة" path="/admin/candidates" active="candidates">
 <Fragment slot="heading">قاعدة المرشحين</Fragment>
 <div class="admin-body">
 
-    <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;max-width:640px;">
-      <input type="search" name="q" value={q} placeholder="اسم / إيميل / هاتف" style="flex:2;min-width:200px;" />
-      <input type="text" name="skill" value={skill} placeholder="مهارة (مثال: Node.js)" style="flex:1;min-width:150px;" />
-      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">بحث</button>
-      {(q || skill) && <a href="/admin/candidates" class="btn">مسح</a>}
+    <form method="GET" class="cand-filters">
+      <input type="search" name="q" value={q} placeholder="اسم / إيميل / هاتف / مسمى / شركة" class="cand-q" />
+      <input type="text" name="skill" value={skill} placeholder="مهارة" list="skills-dl" />
+      <select name="city">
+        <option value="">كل المدن</option>
+        {cities.map((c) => <option value={c} selected={city === c}>{c}</option>)}
+      </select>
+      <select name="availability">
+        <option value="">الجاهزية</option>
+        {Object.entries(AVAILABILITY_AR).map(([v, l]) => <option value={v} selected={availability === v}>{l}</option>)}
+      </select>
+      <select name="min_exp">
+        <option value="">الخبرة</option>
+        {[0, 1, 2, 3, 5, 8, 10].map((n) => <option value={n} selected={minExp === n}>{n === 0 ? 'بدون خبرة' : `${n}+ سنوات`}</option>)}
+      </select>
+      {tags.length > 0 && (
+        <select name="tag">
+          <option value="">كل الوسوم</option>
+          {tags.map((t) => <option value={t} selected={tag === t}>{t}</option>)}
+        </select>
+      )}
+      <select name="sort">
+        <option value="newest" selected={sort === 'newest'}>الأحدث</option>
+        <option value="exp" selected={sort === 'exp'}>الأكثر خبرة</option>
+        <option value="name" selected={sort === 'name'}>بالاسم</option>
+      </select>
+      <label class="cand-check"><input type="checkbox" name="has_cv" value="1" checked={hasCv} /> عنده CV</label>
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">تصفية</button>
+      {filtersOn && <a href="/admin/candidates" class="btn">مسح</a>}
     </form>
 
     {error && <p class="notice notice-error">تعذّر تحميل القائمة: {error.message}</p>}
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
-      <span style="color:var(--muted);font-size:0.9rem;">{rows?.length ?? 0} مرشح{q ? ' (نتيجة البحث)' : ''}</span>
-      <a href={`/admin/candidates.csv${q ? `?q=${encodeURIComponent(q)}` : ''}`} class="btn">تصدير CSV ↓</a>
+    <div class="cand-bar">
+      <span style="color:var(--muted);font-size:0.9rem;">{rows?.length ?? 0} مرشح{filtersOn ? ' (نتيجة التصفية)' : ''}</span>
+      <a href={`/admin/candidates.csv${csvQs}`} class="btn">تصدير CSV ↓</a>
     </div>
 
     {(!rows || rows.length === 0) ? (
       <p style="color:var(--muted);">مفيش مرشحين مطابقين.</p>
     ) : (
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead><tr><th>الاسم</th><th>المهارات</th><th>الهاتف</th><th>عدد الطلبات</th><th>مسجّل من</th></tr></thead>
-          <tbody>
-            {rows.map((r: any) => (
-              <tr>
-                <td><a href={`/admin/candidates/${r.id}`}>{r.full_name || '—'}</a><br /><span dir="ltr" style="color:var(--muted);font-size:0.8rem;">{r.email || ''}</span></td>
-                <td style="max-width:240px;font-size:0.85rem;color:var(--muted);">{(r.skills ?? []).slice(0, 6).join('، ') || '—'}</td>
-                <td dir="ltr" style="text-align:right;">{r.phone || '—'}</td>
-                <td>{r.applications?.[0]?.count ?? 0}</td>
-                <td>{fmt(r.created_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div class="cand-list">
+        {rows.map((r: any) => (
+          <a href={`/admin/candidates/${r.id}`} class="cand-card">
+            <span class="cand-avatar">{(r.full_name || '?').trim().slice(0, 1)}</span>
+            <span class="cand-main">
+              <strong>{r.full_name || '—'}</strong>
+              <span class="cand-sub">{r.headline || <em style="color:var(--muted);">بدون مسمى مهني</em>}</span>
+              <span class="cand-meta">
+                {r.city && <span>📍 {r.city}</span>}
+                {r.years_experience != null && <span>{r.years_experience} سنة خبرة</span>}
+                {r.availability && <span>{AVAILABILITY_AR[r.availability]}</span>}
+                {r.source && <span>عبر {SOURCE_AR[r.source] ?? r.source}</span>}
+              </span>
+              {(r.skills?.length || r.tags?.length) ? (
+                <span class="cand-chips">
+                  {(r.tags ?? []).map((t: string) => <b class="chip chip-tag">{t}</b>)}
+                  {(r.skills ?? []).slice(0, 6).map((s: string) => <b class="chip">{s}</b>)}
+                  {(r.skills?.length ?? 0) > 6 && <b class="chip">+{r.skills.length - 6}</b>}
+                </span>
+              ) : null}
+            </span>
+            <span class="cand-side">
+              <span dir="ltr">{r.phone || '—'}</span>
+              <span dir="ltr" class="cand-email">{r.email || ''}</span>
+              <span class="cand-stats">
+                <b title="عدد الطلبات">{r.applications?.[0]?.count ?? 0} طلب</b>
+                {r.cv_path && <b title="عنده سيرة ذاتية على الملف">CV ✓</b>}
+              </span>
+              <small>مسجّل {fmt(r.created_at)}</small>
+            </span>
+          </a>
+        ))}
       </div>
     )}
 </div>
+
+<datalist id="skills-dl">
+  {[...new Set((rows ?? []).flatMap((r: any) => r.skills ?? []))].slice(0, 100).map((s) => <option value={s} />)}
+</datalist>
+
+<style is:global>
+  .cand-filters{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; align-items:center; margin-bottom:18px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px; }
+  .cand-filters .cand-q{ grid-column:1 / -1; }
+  .cand-filters input, .cand-filters select{ margin:0; }
+  .cand-check{ display:flex; align-items:center; gap:6px; font-size:.9rem; white-space:nowrap; }
+  .cand-check input{ width:auto; }
+  .cand-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px; }
+  .cand-list{ display:flex; flex-direction:column; gap:10px; }
+  .cand-card{ display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:14px; align-items:start; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; color:inherit; text-decoration:none; transition:border-color .15s, box-shadow .15s; }
+  .cand-card:hover{ border-color:var(--accent); box-shadow:var(--shadow-sm); }
+  .cand-avatar{ width:44px; height:44px; border-radius:50%; background:var(--accent-soft); color:var(--accent-strong); font-weight:700; display:inline-flex; align-items:center; justify-content:center; font-size:1.1rem; }
+  .cand-main{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .cand-main strong{ font-size:1.02rem; }
+  .cand-sub{ color:var(--body); font-size:.92rem; }
+  .cand-meta{ display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.82rem; color:var(--muted); }
+  .cand-chips{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .chip{ font-weight:500; font-size:.75rem; padding:2px 9px; border-radius:999px; background:var(--surface-soft); border:1px solid var(--line); color:var(--body); }
+  .chip-tag{ background:#FEF3C7; border-color:#FCD34D; color:#78350F; font-weight:600; }
+  .cand-side{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; font-size:.85rem; color:var(--muted); text-align:left; white-space:nowrap; }
+  .cand-email{ font-size:.78rem; max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+  .cand-stats{ display:flex; gap:6px; margin-top:2px; }
+  .cand-stats b{ font-weight:600; font-size:.75rem; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); }
+  @media (max-width:720px){
+    .cand-card{ grid-template-columns:40px minmax(0,1fr); }
+    .cand-side{ grid-column:2; align-items:flex-start; text-align:right; white-space:normal; flex-direction:row; flex-wrap:wrap; gap:4px 12px; border-top:1px solid var(--line-soft); padding-top:8px; margin-top:4px; }
+  }
+</style>
 </Admin>

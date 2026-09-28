@@ -92,3 +92,15 @@ describe('sanitizeHtml', () => {
     expect(hasContent('<p><img src="x.png"></p>')).toBe(true);
   });
 });
+
+import { completeness, waLink } from '../candidates';
+describe('candidates', () => {
+  it('completeness counts filled fields', () => {
+    expect(completeness({}).pct).toBe(0);
+    expect(completeness({ full_name: 'a', phone: '1', headline: 'x', city: 'c', years_experience: 2, education: 'e', skills: ['a','b','c'], availability: 'immediate', cv_path: 'p', bio: 'b' }).pct).toBe(100);
+  });
+  it('waLink normalises Egyptian numbers', () => {
+    expect(waLink('01012345678')).toBe('https://wa.me/201012345678');
+    expect(waLink('')).toBeNull();
+  });
+});

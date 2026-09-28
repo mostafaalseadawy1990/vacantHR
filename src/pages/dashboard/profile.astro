@@ -1,14 +1,20 @@
 ---
 import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
+import { readCandidateFields, completeness, AVAILABILITY_AR } from '../../lib/candidates';
+import CandidateFields from '../../components/CandidateFields.astro';
 
 const user = Astro.locals.user!;
 const profile = Astro.locals.profile;
 const supabase = serverClient(Astro);
 const role = profile?.role ?? 'candidate';
 
-// current skills
-const { data: meRow } = await supabase.from('profiles').select('skills').eq('id', user.id).maybeSingle();
+// full profile row (skills + enrichment fields)
+const { data: meRow } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+let extra: Record<string, any> = { ...(meRow ?? {}) };
+let cvMsg = '';
+const MAX_CV = 5 * 1024 * 1024;
+const OK_CV = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
 let msg = '';
 let values = {
@@ -29,16 +35,30 @@ if (Astro.request.method === 'POST') {
   if (!values.full_name) {
     msg = 'الاسم مطلوب.';
   } else {
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: values.full_name,
-        phone: values.phone || null,
-        company_name: role === 'client' ? (values.company_name || null) : profile?.company_name ?? null,
-        skills: role === 'client' ? (meRow?.skills ?? []) : values.skills.split(',').map((s) => s.trim()).filter(Boolean),
-      })
-      .eq('id', user.id);
+    const patch: Record<string, unknown> = {
+      full_name: values.full_name,
+      phone: values.phone || null,
+      company_name: role === 'client' ? (values.company_name || null) : profile?.company_name ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    if (role !== 'client') {
+      Object.assign(patch, readCandidateFields(form));
+      // Optional CV on the profile (separate from per-application CVs).
+      const cv = form.get('cv');
+      if (cv instanceof File && cv.size > 0) {
+        if (cv.size > MAX_CV) cvMsg = 'حجم السيرة الذاتية أكبر من 5 ميجابايت.';
+        else if (!OK_CV.includes(cv.type)) cvMsg = 'صيغة السيرة الذاتية غير مدعومة (PDF / DOC / DOCX).';
+        else {
+          const ext = (cv.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const path = `${user.id}/profile-${Date.now()}.${ext}`;
+          const up = await supabase.storage.from('cvs').upload(path, cv, { contentType: cv.type });
+          if (up.error) cvMsg = 'تعذّر رفع السيرة الذاتية.'; else patch.cv_path = path;
+        }
+      }
+    }
+    const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);
     msg = error ? 'تعذّر الحفظ.' : 'اتحفظت التعديلات ✓';
+    if (!error) extra = { ...extra, ...patch };
   }
 }
 ---
@@ -48,7 +68,19 @@ if (Astro.request.method === 'POST') {
 
     {msg && <p class={`notice ${msg.includes('✓') ? 'notice-ok' : 'notice-error'}`} style="margin-bottom:20px;">{msg}</p>}
 
-    <form class="form-box" method="POST" style="max-width:560px;">
+    {role !== 'client' && (() => { const c = completeness({ ...extra, full_name: values.full_name, phone: values.phone }); return (
+      <div class="form-box" style="max-width:760px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;">
+          <strong>اكتمال ملفك: {c.pct}%</strong>
+          <small style="color:var(--muted);">الملف المكتمل بيخلّي فريقنا يرشّحك لوظائف أنسب وأسرع.</small>
+        </div>
+        <div class="meter"><span style={`width:${c.pct}%`}></span></div>
+        {c.missing.length > 0 && <p style="margin:8px 0 0;font-size:.85rem;color:var(--muted);">ناقص: {c.missing.join('، ')}</p>}
+      </div>
+    ); })()}
+    {cvMsg && <p class="notice notice-error" style="margin-bottom:20px;">{cvMsg}</p>}
+
+    <form class="form-box" method="POST" enctype="multipart/form-data" style="max-width:760px;">
       <div class="form-row">
         <label for="email">البريد الإلكتروني</label>
         <input type="email" id="email" value={user.email} disabled />
@@ -68,12 +100,21 @@ if (Astro.request.method === 'POST') {
         </div>
       )}
       {role !== 'client' && (
-        <div class="form-row">
-          <label for="skills">مهاراتك (مفصولة بفواصل — تساعدنا نرشّحك لوظائف مناسبة)</label>
-          <input type="text" id="skills" name="skills" value={values.skills} placeholder="Node.js, تسويق رقمي, Excel" />
-        </div>
+        <>
+          <h3 style="margin:18px 0 10px;">بياناتك المهنية</h3>
+          <CandidateFields v={extra} />
+          <div class="form-row">
+            <label for="cv">السيرة الذاتية (PDF / Word — حتى 5 ميجابايت)</label>
+            <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx" />
+            {extra.cv_path && <small style="color:var(--muted);">عندك سيرة ذاتية مرفوعة — ارفع ملف جديد لاستبدالها.</small>}
+          </div>
+        </>
       )}
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
     </form>
 </div>
+<style is:global>
+  .meter{ height:8px; background:var(--surface-soft); border-radius:999px; overflow:hidden; margin-top:8px; }
+  .meter span{ display:block; height:100%; background:var(--accent); border-radius:999px; transition:width .3s; }
+</style>
 </Portal>

@@ -147,4 +147,14 @@ const id = Astro.props.id ?? `re-${name}-${Math.random().toString(36).slice(2, 8
   .re .ql-snow .ql-tooltip{ direction:ltr; z-index:20; }
   .re-status{ margin:0; padding:6px 12px; font-size:.85rem; color:var(--muted); min-height:1.6em; }
   @media (max-width:960px){ .re .ql-toolbar.ql-snow{ top:56px; } }
+  @media (max-width:640px){
+    /* Phone: pickers on their own full-width row, buttons wrap evenly, nothing overflows. */
+    .re .ql-toolbar.ql-snow{ gap:6px; padding:8px; }
+    .re .ql-toolbar.ql-snow .ql-formats:first-child{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; width:100%; }
+    .re .ql-snow .ql-picker.ql-font, .re .ql-snow .ql-picker.ql-header, .re .ql-snow .ql-picker.ql-size{ width:100%; }
+    .re .ql-snow .ql-picker-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .re .ql-toolbar.ql-snow .ql-formats{ padding:2px 4px; border-radius:8px; background:rgba(15,23,42,.04); }
+    .re .ql-snow.ql-toolbar button{ width:30px; height:28px; }
+    .re .ql-editor{ min-height:min(var(--re-min), 60vh); }
+  }
 </style>

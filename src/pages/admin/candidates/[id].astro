@@ -3,6 +3,8 @@ import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { logAction } from '../../../lib/audit';
+import { readCandidateFields, completeness, AVAILABILITY_AR, SOURCE_AR, waLink } from '../../../lib/candidates';
+import CandidateFields from '../../../components/CandidateFields.astro';
 
 const STATUS_MSG: Record<string, string> = {
   shortlisted: 'وصل طلبك للقائمة المختصرة — خطوة كويسة! هنتواصل معاك للخطوة الجاية.',
@@ -99,6 +101,25 @@ if (Astro.request.method === 'POST') {
       }
     }
   }
+  if (action === 'edit_profile') {
+    const patch = {
+      full_name: String(form.get('full_name') || '').trim() || null,
+      phone: String(form.get('phone') || '').trim() || null,
+      ...readCandidateFields(form),
+      source: SOURCE_AR[String(form.get('source') || '')] ? String(form.get('source')) : null,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('profiles').update(patch).eq('id', id);
+    if (error) flash = `تعذّر الحفظ: ${error.message}`;
+    else { await logAction(Astro, supabase, 'تعديل بيانات مرشح', patch.full_name ?? id); return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303); }
+  }
+  if (action === 'set_tags') {
+    const tags = String(form.get('tags') || '').split(/[,،]/).map((t) => t.trim()).filter(Boolean);
+    const admin_notes = String(form.get('admin_notes') || '').trim().slice(0, 4000) || null;
+    const { error } = await supabase.from('profiles').update({ tags, admin_notes, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) flash = `تعذّر الحفظ: ${error.message}`;
+    else { await logAction(Astro, supabase, 'تحديث وسوم/ملاحظات مرشح', id); return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303); }
+  }
   if (action === 'cancel_interview') {
     const ivId = String(form.get('interview_id') || '');
     if (ivId) {
@@ -112,10 +133,14 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: profile } = await supabase
   .from('profiles')
-  .select('id, full_name, email, phone, company_name, role, created_at')
+  .select('*')
   .eq('id', id)
   .maybeSingle();
 if (!profile) return Astro.redirect('/admin/candidates', 302);
+const comp = completeness(profile);
+const wa = waLink(profile.phone);
+const editing = new URL(Astro.request.url).searchParams.get('edit') === '1';
+const age = profile.birth_year ? new Date().getFullYear() - profile.birth_year : null;
 
 const { data: apps } = await supabase
   .from('applications')
@@ -138,13 +163,81 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'm
     <p style="margin-bottom:18px;"><a href="/admin/candidates">→ رجوع للقائمة</a></p>
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
 
-    <div class="form-box" style="max-width:640px;margin-bottom:32px;">
-      <h3 style="margin-bottom:12px;">{profile.full_name || '—'}</h3>
-      <p style="margin:0;color:var(--muted);line-height:2;">
-        <span dir="ltr">{profile.email || '—'}</span><br />
-        <span dir="ltr">{profile.phone || '—'}</span><br />
-        مسجّل من {fmt(profile.created_at)}
-      </p>
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div class="cprof">
+      <div class="cprof-head">
+        <span class="cprof-avatar">{(profile.full_name || '?').trim().slice(0, 1)}</span>
+        <div style="flex:1;min-width:0;">
+          <h2 style="margin:0;">{profile.full_name || '—'}</h2>
+          <p style="margin:2px 0 0;color:var(--body);">{profile.headline || <em style="color:var(--muted);">بدون مسمى مهني</em>}{profile.current_company && <> · {profile.current_company}</>}</p>
+          <p class="cprof-meta">
+            {profile.city && <span>📍 {profile.city}</span>}
+            {profile.years_experience != null && <span>{profile.years_experience} سنة خبرة</span>}
+            {age && <span>{age} سنة</span>}
+            {profile.availability && <span class="status-pill status-shortlisted">{AVAILABILITY_AR[profile.availability]}</span>}
+            {profile.expected_salary && <span>يتوقع {profile.expected_salary.toLocaleString('ar-EG')} ج/شهر</span>}
+          </p>
+        </div>
+        <div class="cprof-actions">
+          {profile.phone && <a href={`tel:${profile.phone}`} class="btn" dir="ltr">📞 {profile.phone}</a>}
+          {wa && <a href={wa} target="_blank" rel="noopener" class="btn">واتساب</a>}
+          {profile.email && <a href={`mailto:${profile.email}`} class="btn">✉ إيميل</a>}
+          <a href={`/admin/inbox/new?candidate=${id}`} class="btn">رسالة داخلية</a>
+          {profile.cv_path && <a href={`/admin/candidates/${id}/cv`} target="_blank" rel="noopener" class="btn solid">فتح الـCV ↗</a>}
+          <a href={editing ? `/admin/candidates/${id}` : `/admin/candidates/${id}?edit=1`} class="btn">{editing ? 'إلغاء التعديل' : '✎ تعديل البيانات'}</a>
+        </div>
+      </div>
+
+      <div class="cprof-grid">
+        <div class="cprof-box">
+          <h4>البيانات</h4>
+          <dl>
+            <dt>الإيميل</dt><dd dir="ltr">{profile.email || '—'}</dd>
+            <dt>المؤهل</dt><dd>{profile.education || '—'}</dd>
+            <dt>LinkedIn</dt><dd dir="ltr">{profile.linkedin_url ? <a href={profile.linkedin_url} target="_blank" rel="noopener">{profile.linkedin_url.replace(/^https?:\/\/(www\.)?/, '')}</a> : '—'}</dd>
+            <dt>Portfolio</dt><dd dir="ltr">{profile.portfolio_url ? <a href={profile.portfolio_url} target="_blank" rel="noopener">{profile.portfolio_url.replace(/^https?:\/\/(www\.)?/, '')}</a> : '—'}</dd>
+            <dt>المصدر</dt><dd>{SOURCE_AR[profile.source] ?? profile.source ?? '—'}</dd>
+            <dt>مسجّل من</dt><dd>{fmt(profile.created_at)}</dd>
+          </dl>
+          <div style="margin-top:10px;">
+            <small style="color:var(--muted);">اكتمال الملف {comp.pct}%{comp.missing.length ? ` — ناقص: ${comp.missing.join('، ')}` : ''}</small>
+            <div class="meter"><span style={`width:${comp.pct}%`}></span></div>
+          </div>
+        </div>
+        <div class="cprof-box">
+          <h4>المهارات</h4>
+          {(profile.skills?.length) ? <div class="cand-chips">{profile.skills.map((x: string) => <b class="chip">{x}</b>)}</div> : <p style="color:var(--muted);margin:0;">—</p>}
+          {profile.bio && <><h4 style="margin-top:14px;">نبذة</h4><p style="margin:0;white-space:pre-wrap;font-size:.92rem;">{profile.bio}</p></>}
+        </div>
+        <form method="POST" class="cprof-box">
+          <input type="hidden" name="_action" value="set_tags" />
+          <h4>وسوم وملاحظات الفريق <small style="color:var(--muted);font-weight:400;">(داخلية)</small></h4>
+          <div class="form-row"><label>وسوم (مفصولة بفواصل — مثال: مميز, للاستشارات, ينفع Senior)</label><input name="tags" value={(profile.tags ?? []).join(', ')} /></div>
+          <div class="form-row"><label>ملاحظات عامة عن المرشح</label><textarea name="admin_notes" style="min-height:80px;">{profile.admin_notes ?? ''}</textarea></div>
+          <button class="btn solid" style="border:none;cursor:pointer;padding:8px 18px;font-size:.88rem;">حفظ</button>
+        </form>
+      </div>
+
+      {editing && (
+        <form method="POST" class="form-box" style="max-width:none;margin-top:18px;">
+          <input type="hidden" name="_action" value="edit_profile" />
+          <h3 style="margin-bottom:12px;">تعديل بيانات المرشح</h3>
+          <div class="form-grid-2">
+            <div class="form-row"><label for="full_name">الاسم</label><input id="full_name" name="full_name" value={profile.full_name ?? ''} required /></div>
+            <div class="form-row"><label for="phone">الهاتف</label><input id="phone" name="phone" value={profile.phone ?? ''} dir="ltr" /></div>
+          </div>
+          <CandidateFields v={profile} />
+          <div class="form-row" style="max-width:320px;">
+            <label for="source">المصدر</label>
+            <select id="source" name="source">
+              <option value="">— غير محدد —</option>
+              {Object.entries(SOURCE_AR).map(([k, l]) => <option value={k} selected={profile.source === k ? true : undefined}>{l}</option>)}
+            </select>
+          </div>
+          <button class="btn solid" style="border:none;cursor:pointer;">حفظ التعديلات</button>
+        </form>
+      )}
     </div>
 
     <h2 style="margin-bottom:16px;">الطلبات ({apps?.length ?? 0})</h2>
@@ -232,4 +325,22 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'm
       </div>
     )}
 </div>
+<style is:global>
+  .cprof{ margin-bottom:32px; }
+  .cprof-head{ display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; }
+  .cprof-avatar{ width:56px; height:56px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:1.4rem; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .cprof-meta{ display:flex; flex-wrap:wrap; gap:6px 14px; margin:8px 0 0; font-size:.86rem; color:var(--muted); align-items:center; }
+  .cprof-actions{ display:flex; flex-wrap:wrap; gap:8px; width:100%; }
+  .cprof-actions .btn{ padding:7px 14px; font-size:.85rem; }
+  .cprof-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:12px; }
+  .cprof-box{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
+  .cprof-box h4{ margin:0 0 10px; font-size:.95rem; }
+  .cprof-box dl{ display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:0; font-size:.9rem; }
+  .cprof-box dt{ color:var(--muted); }
+  .cprof-box dd{ margin:0; overflow-wrap:anywhere; }
+  .cand-chips{ display:flex; flex-wrap:wrap; gap:4px; }
+  .chip{ font-weight:500; font-size:.75rem; padding:2px 9px; border-radius:999px; background:var(--surface-soft); border:1px solid var(--line); color:var(--body); }
+  .meter{ height:6px; background:var(--surface-soft); border-radius:999px; overflow:hidden; margin-top:6px; }
+  .meter span{ display:block; height:100%; background:var(--accent); border-radius:999px; }
+</style>
 </Admin>

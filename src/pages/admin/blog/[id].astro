@@ -70,16 +70,24 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
       <div class="form-row"><label for="excerpt">المقتطف (يظهر في القائمة وفي جوجل)</label><textarea id="excerpt" name="excerpt" style="min-height:60px;">{post.excerpt}</textarea></div>
       <div class="form-grid-2">
         <div class="form-row"><label for="tags">وسوم (مفصولة بفواصل)</label><input id="tags" name="tags" value={(post.tags ?? []).join(', ')} /></div>
-        <div class="form-row">
-          <label for="cover_path">صورة الغلاف</label>
-          <select id="cover_path" name="cover_path">
-            <option value="">— بدون —</option>
-            {(media ?? []).map((m: any) => <option value={m.path} selected={post.cover_path === m.path}>{m.alt || m.path}</option>)}
-          </select>
-          <small style="color:var(--muted);">ارفع الصور من <a href="/admin/media">الوسائط</a></small>
+      </div>
+      <div class="form-row">
+        <label>صورة الغلاف</label>
+        <div class="cover-pick" id="coverPick">
+          <img src={post.cover_path ? mediaUrl(post.cover_path) : ''} alt="" id="coverPreview" hidden={!post.cover_path} />
+          <div class="cover-actions">
+            <button type="button" class="btn" id="coverUpload">⬆ رفع صورة</button>
+            <button type="button" class="btn" id="coverChoose">اختيار من الوسائط</button>
+            <button type="button" class="btn" id="coverClear" hidden={!post.cover_path} style="color:#9A3B1C;">إزالة</button>
+          </div>
+          <input type="hidden" name="cover_path" id="coverPath" value={post.cover_path ?? ''} />
+          <input type="file" id="coverFile" accept="image/*" hidden />
+          <small id="coverStatus" style="color:var(--muted);"></small>
+        </div>
+        <div class="media-grid" id="mediaGrid" hidden>
+          {(media ?? []).map((m: any) => <button type="button" class="media-thumb" data-path={m.path} title={m.alt || m.path}><img src={mediaUrl(m.path)} alt={m.alt || ''} loading="lazy" /></button>)}
         </div>
       </div>
-      {post.cover_path && <img src={mediaUrl(post.cover_path)} alt="" style="max-width:280px;border-radius:8px;border:1px solid var(--line);margin-bottom:14px;" />}
       <div class="form-row">
         <label>المحتوى</label>
         <RichEditor name="body_html" value={post.body_html || renderMarkdown(post.body_md || '')} />

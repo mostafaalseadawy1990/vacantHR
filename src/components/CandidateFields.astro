@@ -1,0 +1,36 @@
+---
+// Candidate profile fields shared by the portal ("بياناتي") and the admin edit form.
+import { AVAILABILITY_AR } from '../lib/candidates';
+interface Props { v: Record<string, any> }
+const { v } = Astro.props;
+const sel = (a: any, b: any) => (String(a ?? '') === String(b) ? true : undefined);
+---
+<div class="form-grid-2">
+  <div class="form-row"><label for="headline">المسمى المهني الحالي</label><input id="headline" name="headline" value={v.headline ?? ''} placeholder="محاسب أول / مطوّر Backend" /></div>
+  <div class="form-row"><label for="current_company">الشركة الحالية / آخر شركة</label><input id="current_company" name="current_company" value={v.current_company ?? ''} /></div>
+  <div class="form-row"><label for="city">المدينة</label><input id="city" name="city" value={v.city ?? ''} placeholder="القاهرة" list="cities-dl" /></div>
+  <div class="form-row"><label for="years_experience">سنوات الخبرة</label><input type="number" min="0" max="50" id="years_experience" name="years_experience" value={v.years_experience ?? ''} /></div>
+  <div class="form-row"><label for="education">أعلى مؤهل</label><input id="education" name="education" value={v.education ?? ''} placeholder="بكالوريوس تجارة — جامعة القاهرة" /></div>
+  <div class="form-row">
+    <label for="availability">الجاهزية للعمل</label>
+    <select id="availability" name="availability">
+      <option value="">— اختر —</option>
+      {Object.entries(AVAILABILITY_AR).map(([k, l]) => <option value={k} selected={sel(v.availability, k)}>{l}</option>)}
+    </select>
+  </div>
+  <div class="form-row"><label for="expected_salary">الراتب المتوقع (جنيه/شهر)</label><input type="number" min="0" step="500" id="expected_salary" name="expected_salary" value={v.expected_salary ?? ''} /></div>
+  <div class="form-row"><label for="birth_year">سنة الميلاد</label><input type="number" min="1950" max="2010" id="birth_year" name="birth_year" value={v.birth_year ?? ''} /></div>
+  <div class="form-row"><label for="linkedin_url">LinkedIn</label><input id="linkedin_url" name="linkedin_url" value={v.linkedin_url ?? ''} dir="ltr" placeholder="linkedin.com/in/..." /></div>
+  <div class="form-row"><label for="portfolio_url">موقع / Portfolio</label><input id="portfolio_url" name="portfolio_url" value={v.portfolio_url ?? ''} dir="ltr" /></div>
+</div>
+<div class="form-row">
+  <label for="skills">المهارات (مفصولة بفواصل)</label>
+  <input id="skills" name="skills" value={Array.isArray(v.skills) ? v.skills.join(', ') : (v.skills ?? '')} placeholder="Node.js, تسويق رقمي, Excel" />
+</div>
+<div class="form-row">
+  <label for="bio">نبذة قصيرة</label>
+  <textarea id="bio" name="bio" style="min-height:90px;" maxlength="1500">{v.bio ?? ''}</textarea>
+</div>
+<datalist id="cities-dl">
+  {['القاهرة','الجيزة','الإسكندرية','المنصورة','طنطا','الزقازيق','أسيوط','المنيا','بورسعيد','الإسماعيلية','السويس','دمياط','الفيوم','بني سويف','سوهاج','قنا','الأقصر','أسوان','الرياض','جدة','دبي'].map((c) => <option value={c} />)}
+</datalist>
