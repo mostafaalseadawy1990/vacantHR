@@ -5,6 +5,7 @@ import ImagePicker from '../../../components/ImagePicker.astro';
 import { serverClient } from '../../../lib/supabase';
 import { logAction } from '../../../lib/audit';
 import { DEFAULT_SETTINGS, clearSettingsCache } from '../../../lib/settings';
+import { notifyAdmins, notifyEnv } from '../../../lib/notify';
 
 const supabase = serverClient(Astro);
 
@@ -33,8 +34,13 @@ const TABS: Array<{ key: string; label: string; fields: Field[] }> = [
 const ALL_FIELDS = TABS.flatMap((t) => t.fields);
 
 let flash = '';
+let testMsg = '';
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  if (form.get('_action') === 'test_notify') {
+    await notifyAdmins(Astro, { title: 'إشعار تجريبي من Vacant HR', lines: ['لو وصلك ده، الإشعارات شغالة ✓', `الوقت: ${new Date().toLocaleString('ar-EG')}`], url: 'https://vacanthr.com/admin' });
+    return Astro.redirect('/admin/content/settings?tab=seo&test=1', 303);
+  }
   const rows: Array<{ key: string; value: unknown; updated_at: string }> = [];
   const now = new Date().toISOString();
   for (const f of ALL_FIELDS) rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
@@ -56,6 +62,8 @@ if (Astro.request.method === 'POST') {
 const url = new URL(Astro.request.url);
 const ok = url.searchParams.get('ok') === '1';
 const initialTab = url.searchParams.get('tab') || 'identity';
+const tested = url.searchParams.get('test') === '1';
+const nenv = notifyEnv(Astro);
 
 const { data } = await supabase.from('site_settings').select('key, value');
 const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
@@ -117,12 +125,34 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
         </section>
       ))}
 
+      <section class="spanel" data-panel="seo" hidden={initialTab !== 'seo'} style="margin-top:8px;">
+        <h3 style="margin:8px 0 10px;font-size:1rem;">الإشعارات</h3>
+        <small class="shelp" style="display:block;margin:0 0 12px;">بيوصلك إشعار مع كل رسالة من الموقع، أو تقديم على وظيفة، أو طلب توظيف من شركة — على القنوات المفعّلة:</small>
+        <div class="ntf-grid">
+          <div class:list={['ntf-card', { on: nenv.resend }]}><strong>البريد الإلكتروني</strong><span>{nenv.resend ? `مفعّل — بيتبعت إلى ${cur.contact_email}` : 'غير مفعّل'}</span><small>محتاج مفتاح Resend في إعدادات Cloudflare (RESEND_API_KEY + EMAIL_FROM).</small></div>
+          <div class:list={['ntf-card', { on: !!(nenv.tgToken && nenv.tgChat) }]}><strong>تيليجرام (إشعار فوري على الموبايل)</strong><span>{nenv.tgToken && nenv.tgChat ? 'مفعّل' : 'غير مفعّل'}</span><small>محتاج TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في إعدادات Cloudflare.</small></div>
+        </div>
+        {tested && <p class="notice notice-ok" style="margin:12px 0 0;">اتبعت إشعار تجريبي على القنوات المفعّلة — اتأكد إنه وصلك.</p>}
+      </section>
+
       <div class="ssticky">
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الإعدادات</button>
         <small style="color:var(--muted);">الحفظ بيحفظ كل التبويبات مرة واحدة.</small>
       </div>
     </form>
+    <form method="POST" id="testNotify" style="max-width:860px;margin-top:10px;" hidden={initialTab !== 'seo'}>
+      <input type="hidden" name="_action" value="test_notify" />
+      <button class="btn" style="cursor:pointer;">إرسال إشعار تجريبي الآن</button>
+    </form>
 </div>
+<style is:global>
+  .ntf-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+  .ntf-card{ border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
+  .ntf-card.on{ border-color:#A7D9B3; background:#F0FBF4; }
+  .ntf-card span{ font-size:.85rem; color:#9A3B1C; font-weight:600; }
+  .ntf-card.on span{ color:#276749; }
+  .ntf-card small{ font-size:.78rem; color:var(--muted); }
+</style>
 
 <script is:inline>
   (function () {
@@ -132,6 +162,7 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
         btns.forEach(function (x) { x.classList.toggle('active', x === b); });
         panels.forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
         field.value = b.dataset.tab;
+        var tn = document.getElementById('testNotify'); if (tn) tn.hidden = b.dataset.tab !== 'seo';
         try { history.replaceState(null, '', '?tab=' + b.dataset.tab); } catch (e) {}
       });
     });

@@ -2,6 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import { serverClient } from '../../../lib/supabase';
 import { getSettings } from '../../../lib/settings';
+import { notifyAdmins } from '../../../lib/notify';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import type { Job } from '../../../lib/jobs';
 
@@ -80,13 +81,10 @@ if (Astro.request.method === 'POST') {
             `<p>شكرًا ${name}. استلمنا طلبك على وظيفة <strong>${job.title}</strong> وهنراجعه ونرجعلك.</p>`,
             { text: 'متابعة طلباتي', url: 'https://vacanthr.com/dashboard' }),
         });
-        await sendEmail(Astro, {
-          to: s.contact_email,
-          subject: `متقدّم جديد على ${job.title}`,
-          html: emailLayout('متقدّم جديد',
-            `<p><strong>${name}</strong> قدّم على وظيفة <strong>${job.title}</strong>.</p><p>الإيميل: ${user.email}</p>`,
-            { text: 'فتح لوحة الإدارة', url: `https://vacanthr.com/admin/jobs/${job.slug}` }),
-          replyTo: user.email!,
+        await notifyAdmins(Astro, {
+          title: `متقدّم جديد على ${job.title}`,
+          lines: [`${name}`, `${user.email}${profile?.phone ? ` · ${profile.phone}` : ''}`, cover ? `ملاحظة: ${cover.slice(0, 300)}` : ''].filter(Boolean),
+          url: `https://vacanthr.com/admin/candidates/${user.id}`, replyTo: user.email!,
         });
         return Astro.redirect('/dashboard?applied=1', 303);
       }

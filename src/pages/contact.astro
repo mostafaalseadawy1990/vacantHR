@@ -4,7 +4,7 @@ import SiteSections from '../components/SiteSections.astro';
 import { getSettings } from '../lib/settings';
 import { getSections } from '../lib/sections';
 import { anonClient } from '../lib/supabase';
-import { sendEmail, emailLayout } from '../lib/email';
+import { notifyAdmins } from '../lib/notify';
 
 const [s, sections] = await Promise.all([getSettings(), getSections('contact')]);
 const hero = sections.find((x) => x.kind === 'hero');
@@ -28,13 +28,10 @@ if (Astro.request.method === 'POST') {
     if (error) {
       errorMsg = 'تعذّر الإرسال حاليًا. راسلنا مباشرة على واتساب أو البريد الإلكتروني.';
     } else {
-      await sendEmail(Astro, {
-        to: s.contact_email,
-        subject: `رسالة جديدة من الموقع: ${v.service} — ${v.name}`,
-        html: emailLayout('رسالة جديدة من نموذج التواصل',
-          `<p><strong>${v.name}</strong>${v.company ? ` — ${v.company}` : ''}</p><p>${v.email}${v.phone ? ` · ${v.phone}` : ''}</p><p><strong>${v.service}</strong></p><p style="white-space:pre-wrap">${v.message.replace(/</g, '&lt;')}</p>`,
-          { text: 'فتح رسائل الموقع', url: 'https://vacanthr.com/admin/contact' }),
-        replyTo: v.email,
+      await notifyAdmins(Astro, {
+        title: `رسالة جديدة من الموقع: ${v.service} — ${v.name}`,
+        lines: [`${v.name}${v.company ? ` — ${v.company}` : ''}`, `${v.email}${v.phone ? ` · ${v.phone}` : ''}`, `الخدمة: ${v.service}`, v.message],
+        url: 'https://vacanthr.com/admin/contact', replyTo: v.email,
       });
       return Astro.redirect('/thanks', 303);
     }

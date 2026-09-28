@@ -2,8 +2,7 @@
 import { REQ_STATUS_AR } from '../../lib/labels';
 import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
-import { getSettings } from '../../lib/settings';
-import { sendEmail, emailLayout } from '../../lib/email';
+import { notifyAdmins } from '../../lib/notify';
 
 const user = Astro.locals.user!;
 const profile = Astro.locals.profile;
@@ -35,14 +34,10 @@ if (Astro.request.method === 'POST') {
       });
       if (error) formMsg = 'تعذّر إرسال الطلب.';
       else {
-        const s = await getSettings();
-        await sendEmail(Astro, {
-          to: s.contact_email,
-          subject: `طلب توظيف جديد من عميل: ${roleTitle}`,
-          html: emailLayout('طلب توظيف جديد',
-            `<p><strong>${profile?.company_name || profile?.full_name || user.email}</strong> طلب توظيف لـ <strong>${roleTitle}</strong> (${headcount}).</p>${details ? `<p>${details}</p>` : ''}`,
-            { text: 'فتح الطلب', url: 'https://vacanthr.com/admin/requests' }),
-          replyTo: user.email!,
+        await notifyAdmins(Astro, {
+          title: `طلب توظيف جديد من عميل: ${roleTitle}`,
+          lines: [`${profile?.company_name || profile?.full_name || user.email}`, `العدد: ${headcount}`, details ? details.slice(0, 400) : ''].filter(Boolean),
+          url: 'https://vacanthr.com/admin/requests', replyTo: user.email!,
         });
         return Astro.redirect('/dashboard/requests?sent=1', 303);
       }
