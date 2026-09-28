@@ -1,0 +1,71 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { serverClient } from '../../../lib/supabase';
+import { RESERVED_SLUGS } from '../../../lib/pages';
+
+const supabase = serverClient(Astro);
+const me = Astro.locals.user!;
+let flash = '';
+
+function slugify(s: string) {
+  const base = s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  return base || `page-${Date.now().toString(36)}`;
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = String(form.get('title') || '').trim();
+  const slug = (String(form.get('slug') || '').trim() || slugify(title)).replace(/[^a-z0-9-]/g, '');
+  if (!title) {
+    flash = 'اكتب عنوان الصفحة.';
+  } else if (RESERVED_SLUGS.has(slug)) {
+    flash = 'الـ slug ده محجوز لصفحة أساسية في الموقع — اختار غيره.';
+  } else {
+    const { data, error } = await supabase.from('pages')
+      .insert({ title, slug, created_by: me.id, status: 'draft' })
+      .select('id').single();
+    if (error) flash = error.code === '23505' ? 'الـ slug مستخدم قبل كده.' : `تعذّر الإنشاء: ${error.message}`;
+    else return Astro.redirect(`/admin/pages/${data.id}`, 303);
+  }
+}
+
+const { data: pages } = await supabase
+  .from('pages')
+  .select('id, slug, title, status, updated_at')
+  .order('created_at', { ascending: false });
+const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+---
+<Admin title="الصفحات | لوحة الإدارة" path="/admin/pages" active="pages">
+<Fragment slot="heading">الصفحات</Fragment>
+<div class="admin-body">
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <form method="POST" class="form-box" style="max-width:560px;margin-bottom:30px;">
+      <h3 style="margin-bottom:12px;">صفحة جديدة</h3>
+      <div class="form-row"><label for="title">العنوان</label><input id="title" name="title" required /></div>
+      <div class="form-row"><label for="slug">الرابط (إنجليزي — اختياري) — الصفحة هتظهر على vacanthr.com/<b>slug</b></label><input id="slug" name="slug" pattern="[a-z0-9-]*" dir="ltr" /></div>
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إنشاء ومتابعة التحرير</button>
+    </form>
+
+    {(!pages || pages.length === 0) ? (
+      <p style="color:var(--muted);">مفيش صفحات لسه. الصفحات دي مناسبة لمحتوى زي "خدماتنا"، "شركاؤنا"، "الشروط والأحكام"…</p>
+    ) : (
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>العنوان</th><th>الرابط</th><th>الحالة</th><th>آخر تعديل</th><th></th></tr></thead>
+          <tbody>
+            {pages.map((p: any) => (
+              <tr>
+                <td><a href={`/admin/pages/${p.id}`}>{p.title}</a></td>
+                <td dir="ltr" style="text-align:right;color:var(--muted);">/{p.slug}</td>
+                <td><span class={`status-pill status-${p.status === 'published' ? 'shortlisted' : 'submitted'}`}>{p.status === 'published' ? 'منشورة' : 'مسودة'}</span></td>
+                <td>{fmt(p.updated_at)}</td>
+                <td>{p.status === 'published' && <a href={`/${p.slug}`} target="_blank" rel="noopener">معاينة ↗</a>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+</div>
+</Admin>

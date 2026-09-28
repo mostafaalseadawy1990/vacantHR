@@ -1,0 +1,133 @@
+---
+// Rich-text (WYSIWYG) editor for posts and pages, built on Quill 2.
+// Renders a hidden <input name={name}> that carries the HTML on form submit.
+// Images are uploaded to /admin/media/upload and inserted as URLs.
+interface Props { name: string; value?: string; minHeight?: number }
+const { name, value = '', minHeight = 420 } = Astro.props;
+const id = `re-${name}`;
+---
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.2/quill.snow.min.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Almarai:wght@400;700&family=Amiri:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&display=swap" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.2/quill.min.js" is:inline></script>
+
+<div class="re" id={`${id}-wrap`} style={`--re-min:${minHeight}px`}>
+  <div class="re-toolbar" id={`${id}-tb`}>
+    <span class="ql-formats">
+      <select class="ql-header" title="العنوان">
+        <option value="1">عنوان 1</option><option value="2">عنوان 2</option><option value="3">عنوان 3</option><option value="">نص عادي</option>
+      </select>
+      <select class="ql-font" title="الخط">
+        <option value="">Cairo (الافتراضي)</option><option value="tajawal">Tajawal</option><option value="almarai">Almarai</option>
+        <option value="amiri">Amiri</option><option value="kufi">Noto Kufi</option><option value="arial">Arial</option><option value="serif">Serif</option><option value="mono">Monospace</option>
+      </select>
+      <select class="ql-size" title="حجم الخط">
+        <option value="small">صغير</option><option value="">عادي</option><option value="large">كبير</option><option value="huge">ضخم</option>
+      </select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-bold" title="غامق"></button><button class="ql-italic" title="مائل"></button>
+      <button class="ql-underline" title="تسطير"></button><button class="ql-strike" title="يتوسطه خط"></button>
+    </span>
+    <span class="ql-formats">
+      <select class="ql-color" title="لون النص"></select><select class="ql-background" title="لون الخلفية"></select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-align" value="" title="محاذاة يمين"></button><button class="ql-align" value="center" title="توسيط"></button>
+      <button class="ql-align" value="left" title="محاذاة يسار"></button><button class="ql-align" value="justify" title="ضبط"></button>
+      <button class="ql-direction" value="rtl" title="اتجاه النص"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-list" value="ordered" title="قائمة مرقّمة"></button><button class="ql-list" value="bullet" title="قائمة نقطية"></button>
+      <button class="ql-indent" value="-1" title="تقليل المسافة"></button><button class="ql-indent" value="+1" title="زيادة المسافة"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-blockquote" title="اقتباس"></button><button class="ql-code-block" title="كود"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-link" title="رابط"></button><button class="ql-image" title="صورة"></button><button class="ql-video" title="فيديو (YouTube)"></button>
+    </span>
+    <span class="ql-formats"><button class="ql-clean" title="مسح التنسيق"></button></span>
+  </div>
+  <div class="re-editor" id={`${id}-ed`}></div>
+  <input type="hidden" name={name} id={id} value={value} />
+  <p class="re-status" id={`${id}-st`} aria-live="polite"></p>
+</div>
+
+<script is:inline define:vars={{ id }}>
+  (function () {
+    if (!window.Quill) return;
+    var Q = window.Quill;
+    var Font = Q.import('formats/font');
+    Font.whitelist = ['tajawal', 'almarai', 'amiri', 'kufi', 'arial', 'serif', 'mono'];
+    Q.register(Font, true);
+
+    var hidden = document.getElementById(id);
+    var status = document.getElementById(id + '-st');
+    var quill = new Q('#' + id + '-ed', {
+      theme: 'snow',
+      modules: { toolbar: { container: '#' + id + '-tb', handlers: { image: pickImage } } },
+    });
+    quill.root.setAttribute('dir', 'rtl');
+    if (hidden.value) quill.clipboard.dangerouslyPasteHTML(hidden.value);
+    quill.on('text-change', function () { hidden.value = quill.getSemanticHTML(); });
+    var form = hidden.closest('form');
+    if (form) form.addEventListener('submit', function () { hidden.value = quill.getSemanticHTML(); });
+
+    function pickImage() {
+      var input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = function () { if (input.files[0]) upload(input.files[0]); };
+      input.click();
+    }
+    function upload(file) {
+      status.textContent = 'جارٍ رفع الصورة…';
+      var fd = new FormData(); fd.append('file', file);
+      fetch('/admin/media/upload', { method: 'POST', body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.url) throw new Error(j.error || 'failed');
+          var range = quill.getSelection(true);
+          quill.insertEmbed(range.index, 'image', j.url, 'user');
+          quill.setSelection(range.index + 1);
+          status.textContent = '';
+        })
+        .catch(function (e) { status.textContent = 'تعذّر رفع الصورة: ' + (e.message || ''); });
+    }
+    // Drag & drop / paste images straight into the editor.
+    quill.root.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f && f.type.indexOf('image/') === 0) { e.preventDefault(); upload(f); }
+    });
+    quill.root.addEventListener('paste', function (e) {
+      var items = (e.clipboardData || {}).items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') === 0) { e.preventDefault(); upload(items[i].getAsFile()); return; }
+      }
+    });
+  })();
+</script>
+
+<style is:global>
+  /* No overflow:hidden here — it would turn .re into the sticky container and push the toolbar down. */
+  .re{ border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; }
+  .re .ql-toolbar.ql-snow{ border-radius:var(--radius-sm) var(--radius-sm) 0 0; }
+  /* Quill's toolbar is float-based and breaks under dir=rtl → lay it out LTR with flex. */
+  .re .ql-toolbar.ql-snow{ border:0; border-bottom:1px solid var(--line); background:var(--surface-soft); position:sticky; top:64px; z-index:5; direction:ltr; font-family:inherit; display:flex; flex-wrap:wrap; gap:6px 10px; padding:8px 10px; }
+  .re .ql-toolbar.ql-snow .ql-formats{ display:inline-flex; align-items:center; gap:2px; margin:0; }
+  .re .ql-snow .ql-picker-label{ direction:rtl; padding-right:22px; padding-left:8px; }
+  .re .ql-snow .ql-picker-options{ direction:rtl; text-align:right; }
+  .re .ql-container.ql-snow{ border:0; font-family:'Cairo',sans-serif; font-size:1rem; }
+  .re .ql-editor{ min-height:var(--re-min); direction:rtl; text-align:right; line-height:1.8; }
+  .re .ql-editor.ql-blank::before{ right:15px; left:auto; font-style:normal; color:var(--muted); content:'ابدأ الكتابة هنا…'; }
+  .re .ql-snow .ql-picker{ font-family:inherit; }
+  .re .ql-snow .ql-picker.ql-font{ width:150px; }
+  .re .ql-snow .ql-picker.ql-header{ width:120px; }
+  .re .ql-snow .ql-picker.ql-size{ width:90px; }
+  /* Show the real names in the pickers instead of Quill's English defaults */
+  .re .ql-picker.ql-header .ql-picker-label::before, .re .ql-picker.ql-header .ql-picker-item::before,
+  .re .ql-picker.ql-font .ql-picker-label::before, .re .ql-picker.ql-font .ql-picker-item::before,
+  .re .ql-picker.ql-size .ql-picker-label::before, .re .ql-picker.ql-size .ql-picker-item::before{ content:attr(data-label); }
+  .re .ql-snow .ql-tooltip{ direction:ltr; z-index:20; }
+  .re-status{ margin:0; padding:6px 12px; font-size:.85rem; color:var(--muted); min-height:1.6em; }
+  @media (max-width:960px){ .re .ql-toolbar.ql-snow{ top:56px; } }
+</style>

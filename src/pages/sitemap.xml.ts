@@ -25,11 +25,13 @@ export const GET: APIRoute = async () => {
   // Never let a DB hiccup turn the sitemap into a 5xx — fall back to the static URLs.
   let jobs: Array<{ slug: string; updated_at: string | null }> | null = null;
   let posts: Array<{ slug: string; updated_at: string | null }> | null = null;
+  let pages: Array<{ slug: string; updated_at: string | null }> | null = null;
   try {
     const sb = anonClient();
-    [{ data: jobs }, { data: posts }] = await Promise.all([
+    [{ data: jobs }, { data: posts }, { data: pages }] = await Promise.all([
       sb.from('jobs').select('slug, updated_at').eq('status', 'open'),
       sb.from('posts').select('slug, updated_at').eq('status', 'published'),
+      sb.from('pages').select('slug, updated_at').eq('status', 'published'),
     ]);
   } catch { /* static URLs only */ }
 
@@ -42,6 +44,10 @@ export const GET: APIRoute = async () => {
   }
   for (const p of posts ?? []) {
     urls.push(`<url><loc>${SITE}/blog/${p.slug}</loc>${lastmod(p.updated_at)}<changefreq>monthly</changefreq></url>`);
+  }
+
+  for (const p of pages ?? []) {
+    urls.push(`<url><loc>${SITE}/${p.slug}</loc>${lastmod(p.updated_at)}<changefreq>monthly</changefreq></url>`);
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;

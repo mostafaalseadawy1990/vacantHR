@@ -2,6 +2,9 @@
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { mediaUrl } from '../../../lib/settings';
+import { renderMarkdown } from '../../../lib/jobs';
+import { sanitizeHtml } from '../../../lib/html';
+import RichEditor from '../../../components/RichEditor.astro';
 
 const { id } = Astro.params;
 const supabase = serverClient(Astro);
@@ -22,7 +25,7 @@ if (Astro.request.method === 'POST') {
     slug: String(form.get('slug') || '').trim().replace(/[^a-z0-9-]/g, ''),
     excerpt: String(form.get('excerpt') || '').trim(),
     cover_path: String(form.get('cover_path') || '').trim() || null,
-    body_md: String(form.get('body_md') || ''),
+    body_html: sanitizeHtml(String(form.get('body_html') || '')),
     tags: String(form.get('tags') || '').split(',').map((s) => s.trim()).filter(Boolean),
     status,
     updated_at: new Date().toISOString(),
@@ -76,8 +79,8 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
       </div>
       {post.cover_path && <img src={mediaUrl(post.cover_path)} alt="" style="max-width:280px;border-radius:8px;border:1px solid var(--line);margin-bottom:14px;" />}
       <div class="form-row">
-        <label for="body_md">المحتوى (Markdown: ## عنوان، - نقطة، **غامق**، [نص](رابط)، ![وصف](رابط-صورة))</label>
-        <textarea id="body_md" name="body_md" style="min-height:340px;font-family:ui-monospace,monospace;">{post.body_md}</textarea>
+        <label>المحتوى</label>
+        <RichEditor name="body_html" value={post.body_html || renderMarkdown(post.body_md || '')} />
       </div>
       <div class="form-row">
         <label for="status">الحالة</label>
@@ -93,24 +96,4 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
     </form>
 </div>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.js" is:inline></script>
-<script is:inline>
-  (function () {
-    var el = document.getElementById('body_md');
-    if (!el || !window.EasyMDE) return;
-    new EasyMDE({
-      element: el, spellChecker: false, direction: 'rtl',
-      status: ['lines', 'words'],
-      toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|',
-        'link', 'image', '|', 'preview', 'side-by-side', 'guide'],
-      previewRender: function (plain) { return this.parent.markdown(plain); },
-    });
-  })();
-</script>
-<style is:global>
-  .EasyMDEContainer .CodeMirror{border-radius:var(--radius-sm);border-color:var(--line);font-family:ui-monospace,monospace;}
-  .editor-toolbar{border-radius:var(--radius-sm) var(--radius-sm) 0 0;border-color:var(--line);}
-  .editor-preview,.editor-preview-side{direction:rtl;background:var(--surface-soft);}
-</style>
 </Admin>

@@ -76,3 +76,19 @@ describe('normalizeApplyUrl', () => {
     expect(normalizeApplyUrl('javascript:alert(1)')).toBeNull();
   });
 });
+
+import { sanitizeHtml, hasContent } from '../html';
+describe('sanitizeHtml', () => {
+  it('strips scripts, event handlers and javascript: urls', () => {
+    const out = sanitizeHtml('<p onclick="x()">hi<script>alert(1)</script></p><a href="javascript:alert(1)">x</a>');
+    expect(out).toBe('<p>hi</p><a>x</a>');
+  });
+  it('keeps youtube iframes and drops others', () => {
+    expect(sanitizeHtml('<iframe src="https://www.youtube.com/embed/abc"></iframe>')).toContain('youtube.com/embed/abc');
+    expect(sanitizeHtml('<iframe src="https://evil.com/x"></iframe>')).toBe('');
+  });
+  it('hasContent ignores empty paragraphs', () => {
+    expect(hasContent('<p><br></p>')).toBe(false);
+    expect(hasContent('<p><img src="x.png"></p>')).toBe(true);
+  });
+});

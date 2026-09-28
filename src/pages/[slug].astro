@@ -1,0 +1,42 @@
+---
+// CMS pages written in the admin editor (/admin/pages) — served at /<slug>.
+// Built-in routes win over this catch-all; anything unknown is a real 404.
+import Base from '../layouts/Base.astro';
+import { getPublishedPage, RESERVED_SLUGS } from '../lib/pages';
+
+const { slug } = Astro.params;
+if (!slug || RESERVED_SLUGS.has(slug) || !/^[a-z0-9-]+$/.test(slug)) return Astro.rewrite('/404');
+const page = await getPublishedPage(slug);
+if (!page) return Astro.rewrite('/404');
+
+const jsonld = [{
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: page.title,
+  description: page.description || undefined,
+  url: `https://vacanthr.com/${page.slug}`,
+  dateModified: page.updated_at,
+  inLanguage: 'ar',
+}];
+---
+<Base title={`${page.title} | Vacant HR`} description={page.description || page.title} path={`/${page.slug}`} jsonld={jsonld}>
+<main id="main">
+
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>{page.title}</nav>
+</div>
+
+<section class="hero" style="padding:40px 0 20px;">
+  <div class="wrap" style="max-width:860px;">
+    <h1>{page.title}</h1>
+  </div>
+</section>
+
+<section style="padding:10px 0 70px;">
+  <div class="wrap prose rich" style="max-width:860px;">
+    <Fragment set:html={page.body_html} />
+  </div>
+</section>
+
+</main>
+</Base>

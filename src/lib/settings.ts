@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export type Post = {
   id: string; slug: string; title: string; excerpt: string; cover_path: string | null;
-  body_md: string; tags: string[]; status: 'draft' | 'published';
+  body_html?: string; body_md: string; tags: string[]; status: 'draft' | 'published';
   published_at: string | null; created_at: string; updated_at: string;
 };
 

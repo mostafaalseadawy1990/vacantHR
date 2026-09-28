@@ -24,7 +24,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   if (path.startsWith('/admin')) {
     // Admin-only sections vs. sections recruiters may also use.
-    const ADMIN_ONLY = /^\/admin\/(content|media|analytics|blog|staff)/;
+    const ADMIN_ONLY = /^\/admin\/(content|media|analytics|blog|pages|staff)/;
     if (ADMIN_ONLY.test(path) && role !== 'admin') return context.redirect('/admin', 302);
     if (!ADMIN_ONLY.test(path) && role !== 'admin' && role !== 'recruiter') {
       return context.redirect('/dashboard', 302);

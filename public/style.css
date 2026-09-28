@@ -723,3 +723,35 @@ input[type=checkbox]{width:auto;}
 @media(max-width:880px){
   .nav-account{margin:6px 8px 2px;text-align:center;}
 }
+
+/* ── Rich-text content (from the admin editor: posts + pages) ── */
+.rich{max-width:none;}
+.rich h1{font-size:2rem;margin:36px 0 14px;}
+.rich h2{font-size:1.55rem;margin:36px 0 12px;}
+.rich h3{font-size:1.25rem;margin:26px 0 10px;}
+.rich p{margin:0 0 14px;color:var(--body);line-height:1.85;}
+.rich ul,.rich ol{padding-right:26px;margin:0 0 16px;color:var(--body);}
+.rich li{margin:4px 0;}
+.rich img{max-width:100%;height:auto;border-radius:var(--radius-sm);margin:8px 0;}
+.rich blockquote{border-right:4px solid var(--accent);background:var(--surface-tint);padding:12px 18px;margin:18px 0;border-radius:var(--radius-sm);}
+.rich pre,.rich .ql-code-block-container{background:#0F172A;color:#E2E8F0;padding:14px 16px;border-radius:var(--radius-sm);direction:ltr;text-align:left;overflow:auto;font-family:ui-monospace,monospace;font-size:.9rem;}
+.rich a{color:var(--accent);text-decoration:underline;}
+.rich iframe.ql-video{width:100%;aspect-ratio:16/9;border:0;border-radius:var(--radius-sm);margin:12px 0;}
+.rich .ql-align-center{text-align:center;}
+.rich .ql-align-left{text-align:left;}
+.rich .ql-align-right{text-align:right;}
+.rich .ql-align-justify{text-align:justify;}
+.rich .ql-direction-rtl{direction:rtl;}
+.rich .ql-direction-ltr{direction:ltr;}
+.rich .ql-size-small{font-size:.85em;}
+.rich .ql-size-large{font-size:1.4em;}
+.rich .ql-size-huge{font-size:2em;}
+.rich .ql-indent-1{padding-right:3em;} .rich .ql-indent-2{padding-right:6em;} .rich .ql-indent-3{padding-right:9em;} .rich .ql-indent-4{padding-right:12em;}
+/* Font families (also used by the editor pickers) */
+.ql-font-tajawal{font-family:'Tajawal',sans-serif;}
+.ql-font-almarai{font-family:'Almarai',sans-serif;}
+.ql-font-amiri{font-family:'Amiri',serif;}
+.ql-font-kufi{font-family:'Noto Kufi Arabic',sans-serif;}
+.ql-font-arial{font-family:Arial,Helvetica,sans-serif;}
+.ql-font-serif{font-family:Georgia,'Times New Roman',serif;}
+.ql-font-mono{font-family:ui-monospace,Menlo,monospace;}

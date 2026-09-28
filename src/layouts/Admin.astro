@@ -48,6 +48,7 @@ const I = {
   external: 'M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   menu: 'M4 6h16M4 12h16M4 18h16',
+  file: 'M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
 };
 
 const groups: Group[] = [
@@ -63,6 +64,7 @@ const groups: Group[] = [
   ] },
   { label: 'الموقع', items: [
     { href: '/admin/blog', label: 'المدوّنة', key: 'blog', icon: I.pen, adminOnly: true },
+    { href: '/admin/pages', label: 'الصفحات', key: 'pages', icon: I.file, adminOnly: true },
     { href: '/admin/content', label: 'المحتوى', key: 'content', icon: I.layers, adminOnly: true },
     { href: '/admin/media', label: 'الوسائط', key: 'media', icon: I.image, adminOnly: true },
     { href: '/admin/analytics', label: 'التحليلات', key: 'analytics', icon: I.chart, adminOnly: true },

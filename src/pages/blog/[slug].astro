@@ -57,8 +57,8 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
   )}
 
   <section style="padding-top:24px;">
-    <div class="wrap prose article-body" style="max-width:760px;">
-      <Fragment set:html={renderMarkdown(post.body_md)} />
+    <div class="wrap prose rich article-body" style="max-width:760px;">
+      <Fragment set:html={post.body_html || renderMarkdown(post.body_md)} />
     </div>
   </section>
 
