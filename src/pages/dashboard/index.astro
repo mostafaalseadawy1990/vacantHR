@@ -1,4 +1,5 @@
 ---
+import { APP_STATUS_PUBLIC_AR, REQ_STATUS_AR, MODE_AR } from '../../lib/labels';
 import Portal from '../../layouts/Portal.astro';
 import Track from '../../components/Track.astro';
 import { serverClient } from '../../lib/supabase';
@@ -12,14 +13,8 @@ const justApplied = url.searchParams.get('applied') === '1';
 const justRegistered = url.searchParams.get('registered') === '1';
 const role = profile?.role ?? 'candidate';
 const isClient = role === 'client';
-
-const STATUS_AR: Record<string, string> = {
-  submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة', rejected: 'غير مناسب حاليًا', hired: 'تم التعيين',
-  new: 'جديد', in_progress: 'شغّالين عليه', candidates_sent: 'أرسلنا مرشحين', closed: 'مغلق',
-};
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
-const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
 
 // ---------- data
 let apps: any[] = [], interviews: any[] = [], saved = 0, suggested: any[] = [], comp = { pct: 0, missing: [] as string[] };
@@ -55,6 +50,7 @@ if (isClient) {
   }
 }
 const { count: appsTotal } = isClient ? { count: 0 } : await supabase.from('applications').select('id', { count: 'exact', head: true });
+const STATUS_AR = { ...APP_STATUS_PUBLIC_AR, ...REQ_STATUS_AR };
 ---
 <Portal title="لوحتي | Vacant HR" path="/dashboard" active="home">
 <Fragment slot="heading">أهلاً، {profile?.full_name || user.email}</Fragment>

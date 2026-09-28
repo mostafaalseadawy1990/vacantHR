@@ -1,4 +1,5 @@
 ---
+import { APP_STATUS_AR, MODE_AR } from '../../lib/labels';
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
@@ -38,15 +39,9 @@ const attention = [
   { n: draftJobs ?? 0, l: 'وظيفة مسودة لسه ما اتنشرتش', href: '/admin/jobs?status=draft' },
 ].filter((a) => a.n > 0);
 const hello = new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير';
-
-
-const STATUS_AR: Record<string, string> = {
-  submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة',
-  rejected: 'مرفوض', hired: 'تم التعيين',
-};
-const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+const STATUS_AR = APP_STATUS_AR;
 ---
 <Admin title="لوحة الإدارة | Vacant HR" path="/admin" active="home">
 <Fragment slot="heading">{hello}، {Astro.locals.profile?.full_name?.split(' ')[0] ?? ''}</Fragment>

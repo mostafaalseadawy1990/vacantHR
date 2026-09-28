@@ -1,4 +1,5 @@
 ---
+import { DECISION_AR } from '../../../lib/labels';
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
@@ -116,7 +117,7 @@ const { data: pool } = await supabase.from('profiles')
 const candidates = (pool ?? []).filter((p: any) => !onList.has(p.id));
 const byId = new Map((pool ?? []).map((p: any) => [p.id, p]));
 
-const DEC: Record<string, string> = { pending: 'بانتظار العميل', approved: 'وافق العميل', rejected: 'رفض العميل' };
+const DEC = DECISION_AR;
 ---
 <Admin title={`${req.role_title} | طلبات الشركات`} path={`/admin/requests/${id}`} active="requests">
 <Fragment slot="heading">{req.role_title}</Fragment>

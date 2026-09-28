@@ -1,4 +1,5 @@
 ---
+import { MODE_AR } from '../../../lib/labels';
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
@@ -85,7 +86,6 @@ if (Astro.request.method === 'POST') {
         .select('profiles(full_name, email), jobs(title)').eq('id', appId).maybeSingle();
       const email = (a as any)?.profiles?.email;
       if (email) {
-        const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
         const dt = new Date(when).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
         await sendEmail(Astro, {
           to: email,
@@ -152,7 +152,6 @@ const STATUS: Array<[string, string]> = [
   ['submitted', 'تحت المراجعة'], ['reviewing', 'قيد الفحص'], ['shortlisted', 'قائمة مختصرة'],
   ['rejected', 'مرفوض'], ['hired', 'تم التعيين'],
 ];
-const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
 const sel = (a: string, b: string) => (a === b ? true : undefined);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
@@ -338,9 +337,5 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'm
   .cprof-box dl{ display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:0; font-size:.9rem; }
   .cprof-box dt{ color:var(--muted); }
   .cprof-box dd{ margin:0; overflow-wrap:anywhere; }
-  .cand-chips{ display:flex; flex-wrap:wrap; gap:4px; }
-  .chip{ font-weight:500; font-size:.75rem; padding:2px 9px; border-radius:999px; background:var(--surface-soft); border:1px solid var(--line); color:var(--body); }
-  .meter{ height:6px; background:var(--surface-soft); border-radius:999px; overflow:hidden; margin-top:6px; }
-  .meter span{ display:block; height:100%; background:var(--accent); border-radius:999px; }
 </style>
 </Admin>

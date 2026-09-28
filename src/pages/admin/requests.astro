@@ -1,4 +1,5 @@
 ---
+import { REQ_STATUSES } from '../../lib/labels';
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 import { logAction } from '../../lib/audit';
@@ -28,9 +29,7 @@ const reqs = (reqsAll ?? []).filter((r: any) => !fStatus || r.status === fStatus
 const counts: Record<string, number> = { all: (reqsAll ?? []).length };
 for (const r of reqsAll ?? []) counts[r.status] = (counts[r.status] || 0) + 1;
 
-const ST: Array<[string, string]> = [
-  ['new', 'جديد'], ['in_progress', 'شغّالين عليه'], ['candidates_sent', 'أرسلنا مرشحين'], ['closed', 'مغلق'],
-];
+const ST = REQ_STATUSES;
 const sel = (c: string, v: string) => (c === v ? true : undefined);
 const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
@@ -91,6 +90,5 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
   .req-stats .warn{ background:#FEF3C7; border-color:#FCD34D; color:#78350F; }
   .req-stats .good{ background:#E4F3E7; border-color:#A7D9B3; color:#276749; }
   .req-acts{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:auto; padding-top:6px; }
-  .mini-select{ font-family:inherit; font-size:.82rem; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
 </style>
 </Admin>

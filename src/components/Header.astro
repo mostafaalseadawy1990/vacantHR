@@ -1,4 +1,5 @@
 ---
+import { isStaff } from '../lib/roles';
 import { DEFAULT_SETTINGS, mediaUrl, type Settings } from '../lib/settings';
 interface Props { active?: string; settings?: Settings }
 const { active = '' } = Astro.props;
@@ -7,16 +8,19 @@ const s = Astro.props.settings ?? DEFAULT_SETTINGS;
 const user = Astro.locals?.user ?? null;
 const profile = Astro.locals?.profile ?? null;
 
+const services = [
+  { href: '/recruitment', label: 'التوظيف', key: 'recruitment', desc: 'دائم، مؤقت، وتنفيذي' },
+  { href: '/hrm-saas', label: 'برنامج HRM', key: 'hrm', desc: 'حضور، رواتب، إجازات، أداء' },
+  { href: '/consulting', label: 'الاستشارات', key: 'consulting', desc: 'هيكلة، سياسات، مسارات نمو' },
+  { href: '/jd-templates', label: 'نماذج الوصف الوظيفي', key: 'jd', desc: 'جاهزة بصيغة Word' },
+  { href: '/hrm-guide', label: 'دليل استخدام HRM', key: 'guide', desc: 'شروحات وفيديوهات' },
+];
 const links = [
-  { href: '/', label: 'الرئيسية', key: 'home' },
-  { href: '/recruitment', label: 'التوظيف', key: 'recruitment' },
-  { href: '/hrm-saas', label: 'برنامج HRM', key: 'hrm' },
-  { href: '/consulting', label: 'الاستشارات', key: 'consulting' },
-  { href: '/jd-templates', label: 'نماذج وظيفية', key: 'jd' },
   { href: '/careers', label: 'الوظائف', key: 'careers' },
   { href: '/blog', label: 'المدوّنة', key: 'blog' },
   { href: '/about', label: 'من نحن', key: 'about' },
 ];
+const inServices = services.some((x) => x.key === active);
 ---
 <header class="site">
   <div class="wrap nav">
@@ -26,10 +30,21 @@ const links = [
         : <>Vacant HR <span>VACANT HR</span></>}
     </a>
     <nav class="nav-links" id="nav" aria-label="التنقل الرئيسي">
+      <a href="/" class={active === 'home' ? 'active' : undefined} aria-current={active === 'home' ? 'page' : undefined}>الرئيسية</a>
+      <div class:list={['nav-dd', { active: inServices }]}>
+        <button type="button" class:list={['nav-dd-btn', { active: inServices }]} aria-haspopup="true" aria-expanded="false">الخدمات <span aria-hidden="true">▾</span></button>
+        <div class="nav-dd-menu" role="menu">
+          {services.map((l) => (
+            <a href={l.href} role="menuitem" class={active === l.key ? 'active' : undefined} aria-current={active === l.key ? 'page' : undefined}>
+              <strong>{l.label}</strong><small>{l.desc}</small>
+            </a>
+          ))}
+        </div>
+      </div>
       {links.map((l) => (
         <a href={l.href} class={active === l.key ? 'active' : undefined} aria-current={active === l.key ? 'page' : undefined}>{l.label}</a>
       ))}
-      {['admin','recruiter','editor','support','viewer'].includes(profile?.role ?? '') && <a href="/admin" class={active === 'admin' ? 'active' : undefined}>الإدارة</a>}
+      {isStaff(profile?.role) && <a href="/admin" class={active === 'admin' ? 'active' : undefined}>الإدارة</a>}
       <a href={user ? '/dashboard' : '/login'} data-auth-link class:list={['nav-account', { active: active === 'dashboard' }]} aria-current={active === 'dashboard' ? 'page' : undefined}>{user ? 'لوحتي' : 'دخول'}</a>
       <a href="/contact" class:list={['nav-cta', { active: active === 'contact' }]} aria-current={active === 'contact' ? 'page' : undefined}>تواصل معنا</a>
     </nav>
@@ -38,6 +53,15 @@ const links = [
 </header>
 
 <script is:inline>
+  // Services dropdown: click toggles (touch), hover handled by CSS; closes on outside click / Escape.
+  (function () {
+    var dd = document.querySelector('.nav-dd'); if (!dd) return;
+    var btn = dd.querySelector('.nav-dd-btn');
+    function set(o) { dd.classList.toggle('open', o); btn.setAttribute('aria-expanded', String(o)); }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); set(!dd.classList.contains('open')); });
+    document.addEventListener('click', function (e) { if (!dd.contains(e.target)) set(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+  })();
   // Prerendered pages can't know the session server-side; fix the auth link from the cookie.
   (function () {
     try {

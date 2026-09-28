@@ -1,4 +1,5 @@
 ---
+import { INTERVIEW_STATUS_AR, MODE_AR } from '../../lib/labels';
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 import { logAction } from '../../lib/audit';
@@ -31,13 +32,11 @@ const bucket = (s: string) => { const d = new Date(s); return d < tomorrow ? 'ا
 const groups: Record<string, any[]> = {};
 for (const v of upcoming ?? []) (groups[bucket(v.scheduled_at)] ??= []).push(v);
 const ORDER = ['النهارده', 'بكرة', 'الأسبوع ده', 'لاحقًا'];
-
-const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
-const STATUS_AR: Record<string, string> = { proposed: 'مقترحة', confirmed: 'مؤكدة', completed: 'تمت', cancelled: 'ملغاة' };
 const fmtT = (s: string) => new Date(s).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
 const fmtD = (s: string) => new Date(s).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
 const fmtShort = (s: string) => new Date(s).toLocaleDateString('ar-EG', { dateStyle: 'medium' });
 const isLink = (l?: string | null) => !!l && /^https?:\/\//.test(l);
+const STATUS_AR = INTERVIEW_STATUS_AR;
 ---
 <Admin title="المقابلات | لوحة الإدارة" path="/admin/interviews" active="interviews">
 <Fragment slot="heading">المقابلات</Fragment>
@@ -94,8 +93,6 @@ const isLink = (l?: string | null) => !!l && /^https?:\/\//.test(l);
   .iv-time small{ color:var(--muted); font-size:.75rem; }
   .iv-acts{ display:flex; gap:6px; }
   .iv-acts form{ margin:0; }
-  .mini-link{ display:inline-flex; width:30px; height:30px; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:#fff; cursor:pointer; font-size:.9rem; font-family:inherit; }
-  .mini-link:hover{ color:var(--accent); border-color:var(--accent); }
   @media (max-width:600px){ .iv-row{ grid-template-columns:1fr; gap:6px; } }
 </style>
 </Admin>

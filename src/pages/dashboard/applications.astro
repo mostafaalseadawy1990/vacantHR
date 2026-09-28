@@ -1,4 +1,5 @@
 ---
+import { APP_STATUS_PUBLIC_AR } from '../../lib/labels';
 import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
 
@@ -10,8 +11,8 @@ const { data: apps } = await supabase
   .order('created_at', { ascending: false });
 
 const STEPS = ['submitted', 'reviewing', 'shortlisted', 'hired'];
-const STATUS_AR: Record<string, string> = { submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة', rejected: 'غير مناسب حاليًا', hired: 'تم التعيين' };
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+const STATUS_AR = APP_STATUS_PUBLIC_AR;
 ---
 <Portal title="طلباتي | Vacant HR" path="/dashboard/applications" active="applications">
 <Fragment slot="heading">طلبات التقديم</Fragment>

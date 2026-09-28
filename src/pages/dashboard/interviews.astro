@@ -1,4 +1,5 @@
 ---
+import { MODE_AR } from '../../lib/labels';
 import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
 
@@ -12,7 +13,6 @@ const { data: all } = await supabase
 const now = Date.now();
 const upcoming = (all ?? []).filter((v) => new Date(v.scheduled_at).getTime() >= now).reverse();
 const past = (all ?? []).filter((v) => new Date(v.scheduled_at).getTime() < now);
-const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
 const ics = (v: any) => {
   const t = new Date(v.scheduled_at); const end = new Date(t.getTime() + 60 * 60 * 1000);

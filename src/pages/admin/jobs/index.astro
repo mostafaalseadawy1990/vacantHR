@@ -1,4 +1,5 @@
 ---
+import { JOB_STATUS_AR } from '../../../lib/labels';
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
 import { logAction } from '../../../lib/audit';
@@ -32,14 +33,13 @@ const since = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
 const { data: vrows } = await supabase.from('job_views').select('job_id, count').gte('day', since);
 const viewsByJob: Record<string, number> = {};
 for (const v of vrows ?? []) viewsByJob[v.job_id] = (viewsByJob[v.job_id] ?? 0) + (v.count ?? 0);
-
-const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتوحة', closed: 'مغلقة' };
 const urlQ = new URL(Astro.request.url);
 const fStatus = urlQ.searchParams.get('status') || '';
 const q = (urlQ.searchParams.get('q') || '').trim().toLowerCase();
 const shown = (jobs ?? []).filter((j: any) => (!fStatus || j.status === fStatus) && (!q || (j.title + ' ' + (j.department ?? '')).toLowerCase().includes(q)));
 const counts = { all: (jobs ?? []).length, open: (jobs ?? []).filter((j: any) => j.status === 'open').length, draft: (jobs ?? []).filter((j: any) => j.status === 'draft').length, closed: (jobs ?? []).filter((j: any) => j.status === 'closed').length };
 const fmtD = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '—';
+const STATUS_AR = JOB_STATUS_AR;
 ---
 <Admin title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="jobs">
 <Fragment slot="heading">الوظائف</Fragment>
@@ -102,10 +102,6 @@ const fmtD = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', {
   )}
 </div>
 <style is:global>
-  .seg small{ opacity:.7; font-weight:500; margin-inline-start:3px; }
-  .mini-select{ font-family:inherit; font-size:.82rem; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
-  .mini-link{ display:inline-flex; width:30px; height:30px; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:.95rem; }
-  .mini-link:hover{ color:var(--accent); border-color:var(--accent); }
   .jobs-table td{ vertical-align:middle; }
 </style>
 </Admin>
