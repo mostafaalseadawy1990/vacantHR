@@ -525,8 +525,6 @@ input[type=checkbox]{width:auto;}
 .mini-btn{background:var(--accent);color:#fff;cursor:pointer;border-color:var(--accent);font-weight:600;}
 .mini-btn:hover{background:var(--accent-strong);}
 
-/* Admin stat cards */
-@media(max-width:720px){
 .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;}
 @media(max-width:620px){.form-grid-2{grid-template-columns:1fr;}}
 
@@ -541,10 +539,6 @@ input[type=checkbox]{width:auto;}
 .wa-float svg{width:28px;height:28px;fill:#fff;}
 @media(max-width:600px){.wa-float{width:50px;height:50px;bottom:16px;left:16px;}}
 
-/* ===== Media library (admin) ===== */
-.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;}
-  border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface);
-}
 
 /* =========================================================
    Mobile refinements
