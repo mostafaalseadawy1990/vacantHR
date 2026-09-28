@@ -12,15 +12,17 @@ const profile = Astro.locals?.profile;
 const role = profile?.role ?? '';
 
 // Live counters for the sidebar badges (cheap HEAD queries; failures just hide the badge).
-let newApps = 0, newReqs = 0;
+let newApps = 0, newReqs = 0, newMsgs = 0;
 try {
   const sb = serverClient(Astro);
-  const [a, r] = await Promise.all([
+  const [a, r, c] = await Promise.all([
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
     sb.from('client_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+    sb.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new'),
   ]);
   newApps = a.count ?? 0;
   newReqs = r.count ?? 0;
+  newMsgs = c.count ?? 0;
 } catch { /* badges are optional */ }
 
 const all: ShellGroup[] = [
@@ -33,6 +35,7 @@ const all: ShellGroup[] = [
   { label: 'العملاء', items: [
     { href: '/admin/requests', label: 'طلبات الشركات', key: 'requests', icon: I.building, badge: newReqs },
     { href: '/admin/inbox', label: 'الرسائل', key: 'inbox', icon: I.mail },
+    { href: '/admin/contact', label: 'رسائل الموقع', key: 'contact', icon: I.mail, badge: newMsgs },
   ] },
   { label: 'الموقع', items: [
     { href: '/admin/blog', label: 'المدوّنة', key: 'blog', icon: I.pen },

@@ -3,12 +3,15 @@ import Base from '../layouts/Base.astro';
 import { getSettings, getTestimonials, getFaqs, mediaUrl, getPosts } from '../lib/settings';
 import { anonClient } from '../lib/supabase';
 import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, timeAgo } from '../lib/jobs';
+import SiteSections from '../components/SiteSections.astro';
+import { getSections } from '../lib/sections';
 
 const [s, testimonials, faqs, posts, { data: latestJobs }] = await Promise.all([
   getSettings(), getTestimonials(), getFaqs(), getPosts(),
   anonClient().from('jobs').select('slug, title, department, location, employment_type, workplace, published_at, created_at').eq('status', 'open').order('published_at', { ascending: false, nullsFirst: false }).limit(3),
 ]);
 const jobs = latestJobs ?? [];
+const sections = await getSections('home');
 
 const jsonld = [
   {
@@ -51,6 +54,8 @@ function statAttrs(value: string) {
   jsonld={jsonld}
 >
 <main id="main">
+{sections.length > 0 ? <SiteSections sections={sections} big={true} /> : (
+<>
 
 <section class="hero">
   <div class="wrap hero-grid">
@@ -240,5 +245,7 @@ function statAttrs(value: string) {
   </div>
 </section>
 
+</>
+)}
 </main>
 </Base>

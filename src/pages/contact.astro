@@ -1,152 +1,108 @@
 ---
 import Base from '../layouts/Base.astro';
+import SiteSections from '../components/SiteSections.astro';
 import { getSettings } from '../lib/settings';
+import { getSections } from '../lib/sections';
+import { anonClient } from '../lib/supabase';
+import { sendEmail, emailLayout } from '../lib/email';
 
-const s = await getSettings();
-const WEB3FORMS_KEY = 'YOUR_WEB3FORMS_ACCESS_KEY';
+const [s, sections] = await Promise.all([getSettings(), getSections('contact')]);
+const hero = sections.find((x) => x.kind === 'hero');
+const rest = sections.filter((x) => x.kind !== 'hero');
+
+const SERVICES = ['التوظيف', 'برنامج HRM SaaS', 'الاستشارات', 'نماذج الوصف الوظيفي', 'أخرى'];
+let errorMsg = '';
+let v = { name: '', company: '', email: '', phone: '', service: SERVICES[0], message: '' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const g = (k: string) => String(form.get(k) ?? '').trim();
+  v = { name: g('name'), company: g('company'), email: g('email'), phone: g('phone'), service: SERVICES.includes(g('service')) ? g('service') : 'أخرى', message: g('message') };
+  if (g('website')) return Astro.redirect('/thanks', 303); // honeypot: bots fill it, humans don't see it
+  if (!v.name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email) || v.message.length < 10) {
+    errorMsg = 'اكتب اسمك وبريد إلكتروني صحيح وتفاصيل الطلب (10 حروف على الأقل).';
+  } else {
+    const { error } = await anonClient().rpc('submit_contact', {
+      p_name: v.name, p_email: v.email, p_message: v.message, p_company: v.company || null, p_phone: v.phone || null, p_service: v.service, p_source: '/contact',
+    });
+    if (error) {
+      errorMsg = 'تعذّر الإرسال حاليًا. راسلنا مباشرة على واتساب أو البريد الإلكتروني.';
+    } else {
+      await sendEmail(Astro, {
+        to: s.contact_email,
+        subject: `رسالة جديدة من الموقع: ${v.service} — ${v.name}`,
+        html: emailLayout('رسالة جديدة من نموذج التواصل',
+          `<p><strong>${v.name}</strong>${v.company ? ` — ${v.company}` : ''}</p><p>${v.email}${v.phone ? ` · ${v.phone}` : ''}</p><p><strong>${v.service}</strong></p><p style="white-space:pre-wrap">${v.message.replace(/</g, '&lt;')}</p>`,
+          { text: 'فتح رسائل الموقع', url: 'https://vacanthr.com/admin/contact' }),
+        replyTo: v.email,
+      });
+      return Astro.redirect('/thanks', 303);
+    }
+  }
+}
 
 const jsonld = [{
-  '@context': 'https://schema.org',
-  '@type': 'ContactPage',
-  url: 'https://vacanthr.com/contact',
-  mainEntity: {
-    '@type': 'Organization',
-    name: 'Vacant HR',
-    email: 'info@vacanthr.com',
-    telephone: '+201000000000',
-    address: { '@type': 'PostalAddress', addressLocality: 'القاهرة', addressCountry: 'EG' },
-  },
+  '@context': 'https://schema.org', '@type': 'ContactPage', url: 'https://vacanthr.com/contact',
+  mainEntity: { '@type': 'Organization', name: 'Vacant HR', email: s.contact_email, telephone: s.contact_phone, address: { '@type': 'PostalAddress', addressLocality: 'القاهرة', addressCountry: 'EG' } },
 }];
 ---
 <Base
   title="تواصل معنا | Vacant HR"
   description="تواصل مع فريق Vacant HR — استفسارات التوظيف، برنامج HRM، الاستشارات، ونماذج الوصف الوظيفي. نرد خلال يوم عمل واحد."
-  active="contact"
-  path="/contact"
-  waText="مرحبًا، عندي استفسار"
-  jsonld={jsonld}
+  active="contact" path="/contact" waText="مرحبًا، عندي استفسار" jsonld={jsonld}
 >
 <main id="main">
 
-<div class="wrap">
-  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>تواصل معنا</nav>
-</div>
+{hero ? <SiteSections sections={[hero]} crumb="تواصل معنا" /> : (
+  <>
+    <div class="wrap"><nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>تواصل معنا</nav></div>
+    <section class="hero" style="padding:40px 0 40px;">
+      <div class="wrap"><div class="eyebrow-line">تواصل معنا</div><h1 style="max-width:16ch;">خليك تحكي لنا، هنرد خلال يوم عمل</h1></div>
+    </section>
+  </>
+)}
 
-<section class="hero" style="padding:40px 0 40px;">
-  <div class="wrap">
-    <div class="eyebrow-line">تواصل معنا</div>
-    <h1 style="max-width:16ch;">خليك تحكي لنا، هنرد خلال يوم عمل</h1>
-  </div>
-</section>
-
-<section style="padding-top:0;">
-  <div class="wrap split-2">
+<section style="padding-top:0;" id="form">
+  <div class="wrap contact-layout">
     <div>
-      <form class="form-box" name="contact" method="POST" action="https://api.web3forms.com/submit">
-        <input type="hidden" name="access_key" value={WEB3FORMS_KEY} />
-        <input type="hidden" name="subject" value="طلب جديد من موقع Vacant HR" />
-        <input type="hidden" name="from_name" value="موقع Vacant HR" />
-        <input type="hidden" name="redirect" value="https://vacanthr.com/thanks" />
-        <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true" />
-        <p hidden><label>لا تملأ هذا الحقل إن كنت إنسانًا: <input name="bot-field" tabindex="-1" autocomplete="off" /></label></p>
-        <div class="form-row">
-          <label for="name">الاسم*</label>
-          <input type="text" id="name" name="name" autocomplete="name" required />
-        </div>
-        <div class="form-row">
-          <label for="company">اسم الشركة</label>
-          <input type="text" id="company" name="company" autocomplete="organization" />
-        </div>
-        <div class="form-row">
-          <label for="email">البريد الإلكتروني*</label>
-          <input type="email" id="email" name="email" autocomplete="email" required />
-        </div>
-        <div class="form-row">
-          <label for="phone">رقم الهاتف</label>
-          <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" />
+      {errorMsg && <p class="notice notice-error" style="margin-bottom:16px;">{errorMsg}</p>}
+      <form class="form-box" method="POST" action="/contact#form" style="max-width:none;">
+        <p hidden aria-hidden="true"><label>الموقع الإلكتروني <input name="website" tabindex="-1" autocomplete="off" /></label></p>
+        <div class="form-grid-2">
+          <div class="form-row"><label for="name">الاسم *</label><input type="text" id="name" name="name" value={v.name} autocomplete="name" required /></div>
+          <div class="form-row"><label for="company">اسم الشركة</label><input type="text" id="company" name="company" value={v.company} autocomplete="organization" /></div>
+          <div class="form-row"><label for="email">البريد الإلكتروني *</label><input type="email" id="email" name="email" value={v.email} autocomplete="email" required dir="ltr" /></div>
+          <div class="form-row"><label for="phone">رقم الهاتف</label><input type="tel" id="phone" name="phone" value={v.phone} autocomplete="tel" inputmode="tel" dir="ltr" /></div>
         </div>
         <div class="form-row">
           <label for="service">الخدمة المطلوبة</label>
-          <select id="service" name="service">
-            <option>التوظيف</option>
-            <option>برنامج HRM SaaS</option>
-            <option>الاستشارات</option>
-            <option>نماذج الوصف الوظيفي</option>
-            <option>أخرى</option>
-          </select>
+          <select id="service" name="service">{SERVICES.map((x) => <option value={x} selected={v.service === x ? true : undefined}>{x}</option>)}</select>
         </div>
-        <div class="form-row">
-          <label for="message">تفاصيل الطلب*</label>
-          <textarea id="message" name="message" required></textarea>
-        </div>
+        <div class="form-row"><label for="message">تفاصيل الطلب *</label><textarea id="message" name="message" required minlength="10" style="min-height:140px;">{v.message}</textarea></div>
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إرسال الطلب</button>
-        <p class="form-status" role="status" aria-live="polite" style="margin-top:16px;font-weight:600;"></p>
+        <p class="form-note">بنرد خلال يوم عمل واحد. بياناتك بتتستخدم للرد عليك فقط — <a href="/privacy">سياسة الخصوصية</a>.</p>
       </form>
     </div>
-    <div>
-      <h3 style="margin-bottom:20px;">بيانات التواصل</h3>
-      <ul class="contact-methods">
-        <li>
-          <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 6l8 6 8-6"/></svg></span>
-          <span><strong>البريد الإلكتروني</strong><br><a href={`mailto:${s.contact_email}`}>{s.contact_email}</a></span>
-        </li>
-        <li>
-          <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span>
-          <span><strong>الهاتف</strong><br><a href={`tel:${s.contact_phone}`}>{s.contact_phone}</a></span>
-        </li>
-        <li>
-          <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20l1.5-4A8 8 0 1 1 9 19.5z"/><path d="M9 10c0 3 2 5 5 5"/></svg></span>
-          <span><strong>واتساب</strong><br><a href={`https://wa.me/${s.whatsapp_number}`} rel="noopener" target="_blank">ابدأ محادثة</a></span>
-        </li>
-        <li>
-          <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
-          <span><strong>العنوان</strong><br>{s.address}</span>
-        </li>
-        <li>
-          <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-          <span><strong>ساعات العمل</strong><br>{s.working_hours}</span>
-        </li>
-      </ul>
-      <div class="hero-figure" aria-hidden="true" style="margin-top:30px;aspect-ratio:4/3;">
-        <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><path d="M200 70a45 45 0 0 1 45 45c0 30-45 90-45 90s-45-60-45-90a45 45 0 0 1 45-45z" fill="#1F3B36"/><circle cx="200" cy="115" r="16" fill="#B07A2E"/><line x1="60" y1="250" x2="340" y2="250" stroke="#B07A2E" stroke-width="2"/></svg>
+    <aside class="contact-side">
+      <div class="contact-wa">
+        <div><strong>أسرع طريقة: واتساب</strong><span>رد مباشر في ساعات العمل</span></div>
+        <a href={`https://wa.me/${s.whatsapp_number}?text=${encodeURIComponent('مرحبًا، عندي استفسار')}`} rel="noopener" target="_blank" class="btn solid">ابدأ محادثة</a>
       </div>
-    </div>
+      <div class="contact-card">
+        <h3>بيانات التواصل</h3>
+        <ul class="contact-methods">
+          <li><span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 6l8 6 8-6"/></svg></span><span><strong>البريد الإلكتروني</strong><br><a href={`mailto:${s.contact_email}`} dir="ltr">{s.contact_email}</a></span></li>
+          <li><span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span><span><strong>الهاتف</strong><br><a href={`tel:${s.contact_phone}`} dir="ltr">{s.contact_phone}</a></span></li>
+          <li><span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span><strong>العنوان</strong><br>{s.address}</span></li>
+          <li><span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><strong>ساعات العمل</strong><br>{s.working_hours}</span></li>
+        </ul>
+      </div>
+      {s.linkedin_url && <a href={s.linkedin_url} target="_blank" rel="noopener" class="btn" style="align-self:flex-start;">تابعنا على LinkedIn ↗</a>}
+    </aside>
   </div>
 </section>
 
-</main>
+{rest.length > 0 && <SiteSections sections={rest} />}
 
-<script is:inline>
-(function () {
-  var form = document.querySelector('form[name="contact"]');
-  if (!form) return;
-  var status = form.querySelector('.form-status');
-  form.addEventListener('submit', function (e) {
-    if (location.protocol === 'file:') return;
-    e.preventDefault();
-    var btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    status.style.color = 'var(--teal-2)';
-    status.textContent = 'جارٍ الإرسال…';
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body: new FormData(form)
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (json) {
-        if (!json.success) throw new Error(json.message || 'failed');
-        form.reset();
-        if (window.vhTrack) window.vhTrack('Lead', { content_name: 'contact' });
-        status.style.color = 'var(--brass)';
-        status.textContent = 'تم استلام رسالتك، هنتواصل معاك خلال يوم عمل.';
-      })
-      .catch(function () {
-        status.style.color = 'var(--brass)';
-        status.textContent = 'تعذّر الإرسال الآن. راسلنا على info@vacanthr.com أو عبر واتساب.';
-        btn.disabled = false;
-      });
-  });
-})();
-</script>
+</main>
 </Base>

@@ -919,3 +919,16 @@ input[type=checkbox]{width:auto;}
 .seg a{padding:6px 14px;border-radius:999px;font-size:.86rem;font-weight:600;color:var(--body);}
 .seg a.active{background:var(--accent);color:#fff;}
 .seg small{opacity:.7;font-weight:500;margin-inline-start:3px;}
+
+.sec-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;max-width:none;flex-wrap:wrap;}
+.service-item .ico .ico-n{font-weight:800;font-size:.95rem;letter-spacing:.04em;}
+.contact-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:40px;align-items:start;}
+@media(max-width:860px){.contact-layout{grid-template-columns:1fr;}}
+.contact-side{display:flex;flex-direction:column;gap:16px;}
+.contact-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;}
+.contact-card h3{margin:0 0 12px;font-size:1.05rem;}
+.contact-wa{display:flex;gap:12px;align-items:center;background:#E7F7EE;border:1px solid #BFE3D8;border-radius:var(--radius);padding:16px 18px;}
+.contact-wa strong{display:block;}
+.contact-wa span{font-size:.88rem;color:var(--body);}
+.contact-wa .btn{margin-inline-start:auto;white-space:nowrap;}
+.form-note{font-size:.85rem;color:var(--muted);margin-top:12px;}

@@ -1,24 +1,28 @@
 // Editable page sections for the service pages (recruitment / hrm-saas / consulting / about).
 import { anonClient } from './supabase';
 
-export type SectionKind = 'hero' | 'feature' | 'steps' | 'rich' | 'cta' | 'stats' | 'pricing';
+export type SectionKind = 'hero' | 'feature' | 'steps' | 'rich' | 'cta' | 'stats' | 'pricing' | 'cards' | 'testimonials' | 'faqs' | 'jobs' | 'posts';
 export type Section = {
   id: string; page: string; kind: SectionKind; eyebrow: string | null; title: string | null; body_html: string;
   image_path: string | null; reverse: boolean; cta_label: string | null; cta_href: string | null;
-  cta2_label: string | null; cta2_href: string | null; items: Array<{ title: string; body: string }>;
+  cta2_label: string | null; cta2_href: string | null; items: Array<{ title: string; body: string; href?: string }>;
   position: number; published: boolean;
 };
 
 export const SITE_PAGES: Array<{ key: string; label: string; href: string }> = [
+  { key: 'home', label: 'الصفحة الرئيسية', href: '/' },
   { key: 'recruitment', label: 'التوظيف', href: '/recruitment' },
   { key: 'hrm-saas', label: 'برنامج HRM', href: '/hrm-saas' },
   { key: 'consulting', label: 'الاستشارات', href: '/consulting' },
   { key: 'about', label: 'من نحن', href: '/about' },
+  { key: 'contact', label: 'تواصل معنا', href: '/contact' },
 ];
 
 export const KIND_AR: Record<SectionKind, string> = {
   hero: 'هيرو (عنوان الصفحة)', feature: 'ميزة (نص + صورة)', steps: 'خطوات مرقّمة', rich: 'نص حر',
   cta: 'دعوة لاتخاذ إجراء (شريط داكن)', stats: 'أرقام الإحصائيات (من الإعدادات)', pricing: 'باقات الأسعار (من المحتوى)',
+  cards: 'بطاقات (عناصر بعنوان ووصف ورابط)', testimonials: 'آراء العملاء (من المحتوى)', faqs: 'الأسئلة الشائعة (من المحتوى)',
+  jobs: 'أحدث الوظائف (تلقائي)', posts: 'أحدث المقالات (تلقائي)',
 };
 
 export async function getSections(page: string): Promise<Section[]> {
@@ -34,6 +38,34 @@ type Seed = Partial<Section> & { kind: SectionKind };
 
 /** The current static content of each page, used to seed the editor the first time. */
 export const DEFAULT_SECTIONS: Record<string, Seed[]> = {
+  home: [
+    { kind: 'hero', eyebrow: 'شريكك في إدارة رأس المال البشري', title: 'نبني أنظمة التوظيف والموارد البشرية التي تكبر مع شركتك', body_html: p('من إيجاد الكفاءة المناسبة، إلى إدارة بيانات موظفيك يوميًا، وصولًا لهيكلة سياسات عملك — Vacant HR تجمع الخدمة البشرية والتقنية في مكان واحد.'), cta_label: 'احجز استشارة مجانية', cta_href: '/contact', cta2_label: 'شاهد برنامج HRM', cta2_href: '/hrm-saas' },
+    { kind: 'cards', eyebrow: 'خدماتنا', title: 'أربعة أعمدة لبناء منظومة موارد بشرية متكاملة', items: [
+      { title: 'التوظيف', body: 'نبحث عن الكفاءات المناسبة لشركتك عبر شبكة مرشحين مدروسة، من الفرز الأولي وحتى التعيين النهائي.', href: '/recruitment' },
+      { title: 'برنامج HRM SaaS', body: 'نظام سحابي لإدارة الحضور والرواتب والإجازات وتقييم الأداء، بواجهة عربية بسيطة لفريقك.', href: '/hrm-saas' },
+      { title: 'الاستشارات', body: 'نساعدك في هيكلة الأقسام، بناء السياسات الداخلية، وتصميم مسارات النمو الوظيفي.', href: '/consulting' },
+      { title: 'نماذج الوصف الوظيفي', body: 'مكتبة جاهزة من نماذج الوصف الوظيفي بصيغة Word، مصنّفة حسب القطاع والمسمى.', href: '/jd-templates' },
+    ] },
+    { kind: 'steps', eyebrow: 'كيف نشتغل', title: 'ثلاث خطوات من أول مكالمة لحد التعيين', items: [
+      { title: 'نفهم احتياجك', body: 'مكالمة قصيرة نحدد فيها الدور، المهارات، الميزانية، وثقافة الفريق.' },
+      { title: 'نفرز ونرشّح', body: 'نبحث في قاعدة مرشحينا وشبكتنا، نعمل مقابلات أولية، ونبعتلك قائمة مختصرة خلال أيام.' },
+      { title: 'نكمّل معاك للتعيين', body: 'ننسّق المقابلات، نساعدك في العرض والتفاوض، ونتابع معاك بعد الانضمام.' },
+    ] },
+    { kind: 'jobs', eyebrow: 'أحدث الوظائف', title: 'فرص مفتوحة دلوقتي' },
+    { kind: 'stats' },
+    { kind: 'testimonials', eyebrow: 'آراء عملائنا', title: 'شركات وصلت لفريقها الصح معانا' },
+    { kind: 'posts', eyebrow: 'من المدوّنة', title: 'أفكار عملية في التوظيف والموارد البشرية' },
+    { kind: 'faqs', eyebrow: 'أسئلة شائعة', title: 'الأسئلة اللي بتوصلنا كتير' },
+    { kind: 'cta', title: 'محتاج تبدأ من فين؟', body_html: p('خليك تحكي لنا عن تحدي التوظيف أو إدارة الموارد البشرية عندك، وهنرشحلك الحل المناسب خلال يوم عمل.'), cta_label: 'تواصل معانا الآن', cta_href: '/contact' },
+  ],
+  contact: [
+    { kind: 'hero', eyebrow: 'تواصل معنا', title: 'خليك تحكي لنا، هنرد خلال يوم عمل', body_html: p('سواء عندك دور شاغر، عايز تجرب برنامج HRM، أو محتاج استشارة — ابعتلنا التفاصيل وفريقنا هيتواصل معاك.') },
+    { kind: 'cards', eyebrow: 'إزاي نقدر نساعدك', title: 'اختار اللي يناسبك', items: [
+      { title: 'أنا شركة ومحتاج أوظّف', body: 'اعمل حساب شركة واطلب توظيف لدور محدد، وهتوصلك قائمة مرشحين مختصرة.', href: '/signup?role=client' },
+      { title: 'أنا مرشح ودوّر على شغل', body: 'تصفّح الوظائف المفتوحة، أو اعمل حساب وارفع سيرتك الذاتية وهنرشّحك.', href: '/careers' },
+      { title: 'عايز أجرب برنامج HRM', body: 'احجز عرض تجريبي مباشر لمدة 20 دقيقة من غير أي التزام.', href: '/hrm-saas' },
+    ] },
+  ],
   recruitment: [
     { kind: 'hero', eyebrow: 'خدمة التوظيف', title: 'نوصلك للكفاءة الصح، مش أي كفاءة', body_html: p('فريقنا بيدور على المرشح المناسب لثقافة شركتك ومتطلبات الدور، مش بس اللي بيوافق على السيرة الذاتية.'), cta_label: 'اطلب مرشح', cta_href: '/contact' },
     { kind: 'feature', eyebrow: 'أنواع التوظيف', title: 'التوظيف الدائم', body_html: p('نتولى دورة التوظيف كاملة: كتابة الإعلان، الفرز، المقابلات الأولية، وتنسيق المقابلة النهائية مع فريقك، لحد ما تختار الشخص المناسب.') },

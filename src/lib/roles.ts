@@ -30,6 +30,7 @@ const SECTIONS: Record<string, readonly string[]> = {
   interviews: ['admin', 'recruiter', 'viewer'],
   requests:   ['admin', 'recruiter', 'support', 'viewer'],
   inbox:      ['admin', 'recruiter', 'support'],
+  contact:    ['admin', 'recruiter', 'support'],
   blog:       ['admin', 'editor'],
   pages:      ['admin', 'editor'],
   content:    ['admin', 'editor'],

@@ -1,12 +1,24 @@
 ---
 // Renders the editable sections of a service page (see lib/sections.ts).
-import { mediaUrl, getSettings, getPricingPlans } from '../lib/settings';
+import { mediaUrl, getSettings, getPricingPlans, getTestimonials, getFaqs, getPosts } from '../lib/settings';
+import { anonClient } from '../lib/supabase';
+import { EMPLOYMENT_TYPE_AR, WORKPLACE_AR, timeAgo } from '../lib/jobs';
 import type { Section } from '../lib/sections';
-interface Props { sections: Section[]; crumb: string }
-const { sections, crumb } = Astro.props;
-const needSettings = sections.some((s) => s.kind === 'stats');
-const needPlans = sections.some((s) => s.kind === 'pricing');
-const [settings, plans] = await Promise.all([needSettings ? getSettings() : null, needPlans ? getPricingPlans() : []]);
+interface Props { sections: Section[]; crumb?: string; big?: boolean }
+const { sections, crumb, big = false } = Astro.props;
+const has = (k: string) => sections.some((s) => s.kind === k);
+const [settings, plans, testimonials, faqs, posts, jobsRes] = await Promise.all([
+  has('stats') ? getSettings() : null,
+  has('pricing') ? getPricingPlans() : [],
+  has('testimonials') ? getTestimonials() : [],
+  has('faqs') ? getFaqs() : [],
+  has('posts') ? getPosts() : [],
+  has('jobs') ? anonClient().from('jobs').select('slug, title, department, location, employment_type, workplace, published_at, created_at').eq('status', 'open').order('published_at', { ascending: false, nullsFirst: false }).limit(3) : Promise.resolve({ data: [] as any[] }),
+]);
+const jobs = (jobsRes as any).data ?? [];
+// Home hero falls back to the hero image chosen in settings.
+const settingsHero = big ? (settings ?? await getSettings()).home_hero_image || null : null;
+const head = (s: Section, extra?: string) => (s.eyebrow || s.title) ? `<div class="section-head"${extra ? ` style="${extra}"` : ''}>${s.eyebrow ? `<div class="eyebrow-line">${s.eyebrow}</div>` : ''}${s.title ? `<h2 style="margin:0;">${s.title}</h2>` : ''}</div>` : '';
 const hero = sections.find((s) => s.kind === 'hero');
 const rest = sections.filter((s) => s.kind !== 'hero');
 // Alternate backgrounds for a rhythm, and group consecutive features into one section.
@@ -18,13 +30,15 @@ for (const s of rest) {
 }
 let n = 0;
 ---
-<div class="wrap">
-  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>{crumb}</nav>
-</div>
+{crumb && (
+  <div class="wrap">
+    <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>{crumb}</nav>
+  </div>
+)}
 
 {hero && (
-  <section class="hero" style="padding:40px 0 50px;">
-    <div class:list={['wrap', { 'hero-grid': !!hero.image_path }]}>
+  <section class="hero" style={big ? undefined : 'padding:40px 0 50px;'}>
+    <div class:list={['wrap', { 'hero-grid': !!(hero.image_path || (big && settingsHero)) }]}>
       <div>
         {hero.eyebrow && <div class="eyebrow-line">{hero.eyebrow}</div>}
         <h1 style="max-width:20ch;">{hero.title}</h1>
@@ -37,6 +51,7 @@ let n = 0;
         )}
       </div>
       {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path)} alt="" style="width:100%;height:100%;object-fit:cover;" /></div>}
+      {!hero.image_path && big && settingsHero && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(settingsHero)} alt="" style="width:100%;height:100%;object-fit:cover;" /></div>}
     </div>
   </section>
 )}
@@ -99,6 +114,81 @@ let n = 0;
     <section class="alt"><div class="wrap"><div class="stats">
       {settings.home_stats.map((st) => <div class="stat"><div class="num">{st.value}</div><div class="lbl">{st.label}</div></div>)}
     </div></div></section>
+  );
+  if (g.kind === 'cards') return (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        <Fragment set:html={head(s)} />
+        <div class="services-list">
+          {(s.items ?? []).map((it, i) => (
+            <div class="service-item">
+              <div class="ico" aria-hidden="true"><span class="ico-n">{String(i + 1).padStart(2, '0')}</span></div>
+              <div>
+                <h3>{it.title}</h3>
+                <p>{it.body}</p>
+                {it.href && <a href={it.href} class="more">اعرف أكتر ←</a>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+  if (g.kind === 'testimonials') return testimonials.length === 0 ? null : (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        <Fragment set:html={head(s)} />
+        <div class="quotes">
+          {testimonials.map((t) => <div class="quote"><p>«{t.quote}»</p><div class="who">{t.name}{t.title && <span>{t.title}</span>}</div></div>)}
+        </div>
+      </div>
+    </section>
+  );
+  if (g.kind === 'faqs') return faqs.length === 0 ? null : (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        <Fragment set:html={head(s)} />
+        <div class="faq">{faqs.map((f) => <details><summary>{f.question}</summary><div class="rich" set:html={f.answer} /></details>)}</div>
+      </div>
+    </section>
+  );
+  if (g.kind === 'jobs') return jobs.length === 0 ? null : (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        <div class="section-head sec-row">
+          <div>{s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}{s.title && <h2 style="margin:0;">{s.title}</h2>}</div>
+          <a href="/careers" class="btn">كل الوظائف ←</a>
+        </div>
+        <div class="home-jobs">
+          {jobs.map((j: any) => (
+            <a href={`/careers/${j.slug}`} class="home-job">
+              <span class="home-job-dept">{j.department ?? 'وظيفة'}</span>
+              <strong>{j.title}</strong>
+              <span class="job-meta">{j.location && <span>{j.location}</span>}<span>{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR]}</span><span>{WORKPLACE_AR[j.workplace as keyof typeof WORKPLACE_AR]}</span></span>
+              <small>{timeAgo(j.published_at ?? j.created_at)}</small>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+  if (g.kind === 'posts') return posts.length === 0 ? null : (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        <div class="section-head sec-row">
+          <div>{s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}{s.title && <h2 style="margin:0;">{s.title}</h2>}</div>
+          <a href="/blog" class="btn">كل المقالات ←</a>
+        </div>
+        <div class="post-grid card-shadow" style="--cols:3;--ratio:16/9;">
+          {posts.slice(0, 3).map((p) => (
+            <a href={`/blog/${p.slug}`} class="post-card">
+              {p.cover_path ? <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" /> : <span class="post-noimg" aria-hidden="true">{p.title.slice(0, 1)}</span>}
+              <div class="post-card-body">{p.category && <span class="post-meta"><b class="post-cat">{p.category}</b></span>}<h2>{p.title}</h2>{p.excerpt && <p>{p.excerpt}</p>}</div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
   );
   if (g.kind === 'pricing') return (
     <section class="alt" id="pricing">
