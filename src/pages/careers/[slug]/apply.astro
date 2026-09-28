@@ -3,6 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import { serverClient } from '../../../lib/supabase';
 import { getSettings } from '../../../lib/settings';
 import { notifyAdmins } from '../../../lib/notify';
+import { sendCapiEvent, newEventId } from '../../../lib/capi';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import type { Job } from '../../../lib/jobs';
 
@@ -86,7 +87,9 @@ if (Astro.request.method === 'POST') {
           lines: [`${name}`, `${user.email}${profile?.phone ? ` · ${profile.phone}` : ''}`, cover ? `ملاحظة: ${cover.slice(0, 300)}` : ''].filter(Boolean),
           url: `https://vacanthr.com/admin/candidates/${user.id}`, replyTo: user.email!,
         });
-        return Astro.redirect('/dashboard?applied=1', 303);
+        const eid = newEventId();
+        await sendCapiEvent(Astro, { name: 'SubmitApplication', eventId: eid, user: { email: user.email, phone: profile?.phone, fullName: profile?.full_name, externalId: user.id }, params: { content_name: job.title }, sourceUrl: `https://vacanthr.com/careers/${job.slug}/apply` });
+        return Astro.redirect(`/dashboard?applied=1&eid=${eid}`, 303);
       }
     }
   }

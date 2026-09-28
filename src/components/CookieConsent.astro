@@ -22,11 +22,11 @@ const { analytics = '' } = Astro.props;
     var KEY = 'vh-consent';
     // window.vhTrack('Lead', {...}) — forwards a conversion event to Meta Pixel / GA once
     // the (consent-gated) analytics snippet has loaded. Retries for ~10s, then gives up.
-    window.vhTrack = function (name, params) {
+    window.vhTrack = function (name, params, eventId) {
       var tries = 0;
       (function attempt() {
         var fb = typeof window.fbq === 'function', ga = typeof window.gtag === 'function';
-        if (fb) window.fbq('track', name, params || {});
+        if (fb) window.fbq('track', name, params || {}, eventId ? { eventID: eventId } : undefined);
         if (ga) window.gtag('event', name, params || {});
         if (!fb && !ga && tries++ < 20) setTimeout(attempt, 500);
       })();

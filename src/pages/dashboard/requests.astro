@@ -3,6 +3,8 @@ import { REQ_STATUS_AR } from '../../lib/labels';
 import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
 import { notifyAdmins } from '../../lib/notify';
+import { sendCapiEvent, newEventId } from '../../lib/capi';
+import Track from '../../components/Track.astro';
 
 const user = Astro.locals.user!;
 const profile = Astro.locals.profile;
@@ -39,13 +41,16 @@ if (Astro.request.method === 'POST') {
           lines: [`${profile?.company_name || profile?.full_name || user.email}`, `العدد: ${headcount}`, details ? details.slice(0, 400) : ''].filter(Boolean),
           url: 'https://vacanthr.com/admin/requests', replyTo: user.email!,
         });
-        return Astro.redirect('/dashboard/requests?sent=1', 303);
+        const eid = newEventId();
+        await sendCapiEvent(Astro, { name: 'Lead', eventId: eid, user: { email: user.email, phone: profile?.phone, fullName: profile?.full_name, externalId: user.id }, params: { content_name: 'client_request' }, sourceUrl: 'https://vacanthr.com/dashboard/requests' });
+        return Astro.redirect(`/dashboard/requests?sent=1&eid=${eid}`, 303);
       }
     }
   }
 }
 const url = new URL(Astro.request.url);
 const justSent = url.searchParams.get('sent') === '1';
+const eid = url.searchParams.get('eid');
 const justDecided = url.searchParams.get('decided') === '1';
 const DEC_AR: Record<string, string> = { pending: 'بانتظار قرارك', approved: 'وافقت', rejected: 'رفضت' };
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -123,4 +128,5 @@ const STATUS_AR = REQ_STATUS_AR;
     </div>
   )}
 </div>
+{justSent && <Track event="Lead" params={{ content_name: 'client_request' }} eventId={eid} />}
 </Portal>

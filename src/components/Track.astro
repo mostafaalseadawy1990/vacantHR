@@ -1,11 +1,12 @@
 ---
 // Fires a conversion event (Meta Pixel `fbq` / GA `gtag`) on page load via window.vhTrack.
 // Deferred to DOMContentLoaded because vhTrack is defined by CookieConsent, which renders later in <body>.
-interface Props { event: string; params?: Record<string, unknown> }
-const { event, params = {} } = Astro.props;
+// `eventId` (when the server already sent the same event through the Conversions API) lets Meta deduplicate.
+interface Props { event: string; params?: Record<string, unknown>; eventId?: string | null }
+const { event, params = {}, eventId = null } = Astro.props;
 ---
-<script is:inline define:vars={{ event, params }}>
+<script is:inline define:vars={{ event, params, eventId }}>
   document.addEventListener('DOMContentLoaded', function () {
-    if (window.vhTrack) window.vhTrack(event, params);
+    if (window.vhTrack) window.vhTrack(event, params, eventId || undefined);
   });
 </script>

@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Track from '../components/Track.astro';
+const eid = new URL(Astro.request.url).searchParams.get('eid');
 ---
 <Base title="تم استلام طلبك | Vacant HR" path="/thanks" noindex={true}>
 <main id="main">
@@ -18,5 +19,5 @@ import Track from '../components/Track.astro';
   </div>
 </section>
 </main>
-<Track event="Lead" params={{ content_name: 'contact' }} />
+<Track event="Lead" params={{ content_name: 'contact' }} eventId={eid} />
 </Base>

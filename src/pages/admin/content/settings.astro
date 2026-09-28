@@ -6,6 +6,7 @@ import { serverClient } from '../../../lib/supabase';
 import { logAction } from '../../../lib/audit';
 import { DEFAULT_SETTINGS, clearSettingsCache } from '../../../lib/settings';
 import { notifyAdmins, notifyEnv } from '../../../lib/notify';
+import { capiEnv } from '../../../lib/capi';
 
 const supabase = serverClient(Astro);
 
@@ -64,6 +65,7 @@ const ok = url.searchParams.get('ok') === '1';
 const initialTab = url.searchParams.get('tab') || 'identity';
 const tested = url.searchParams.get('test') === '1';
 const nenv = notifyEnv(Astro);
+const cenv = capiEnv(Astro);
 
 const { data } = await supabase.from('site_settings').select('key, value');
 const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
@@ -133,6 +135,11 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
           <div class:list={['ntf-card', { on: !!(nenv.tgToken && nenv.tgChat) }]}><strong>تيليجرام (إشعار فوري على الموبايل)</strong><span>{nenv.tgToken && nenv.tgChat ? 'مفعّل' : 'غير مفعّل'}</span><small>محتاج TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في إعدادات Cloudflare.</small></div>
         </div>
         {tested && <p class="notice notice-ok" style="margin:12px 0 0;">اتبعت إشعار تجريبي على القنوات المفعّلة — اتأكد إنه وصلك.</p>}
+        <h3 style="margin:18px 0 10px;font-size:1rem;">Meta Conversions API (تتبع من السيرفر)</h3>
+        <small class="shelp" style="display:block;margin:0 0 12px;">بيبعت أحداث Lead / SubmitApplication / CompleteRegistration من السيرفر مباشرة لـ Meta حتى لو البكسل اتحجب، مع منع التكرار مع البكسل.</small>
+        <div class="ntf-grid">
+          <div class:list={['ntf-card', { on: !!(cenv.pixelId && cenv.token) }]}><strong>Conversions API</strong><span>{cenv.pixelId && cenv.token ? `مفعّل — Pixel ${cenv.pixelId}${cenv.testCode ? ' (وضع الاختبار)' : ''}` : 'غير مفعّل'}</span><small>محتاج META_PIXEL_ID و META_CAPI_TOKEN في إعدادات Cloudflare. أضف META_TEST_EVENT_CODE مؤقتًا لمشاهدة الأحداث في "اختبار الأحداث".</small></div>
+        </div>
       </section>
 
       <div class="ssticky">

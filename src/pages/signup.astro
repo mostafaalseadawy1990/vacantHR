@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Track from '../components/Track.astro';
 import { serverClient } from '../lib/supabase';
+import { sendCapiEvent, newEventId } from '../lib/capi';
 
 const url = new URL(Astro.request.url);
 let next = url.searchParams.get('next') || '/dashboard';
@@ -45,7 +46,9 @@ if (Astro.request.method === 'POST') {
         : 'تعذّر إنشاء الحساب. جرّب تاني أو تواصل معنا.';
     } else if (data.session) {
       // registered=1 lets the landing page fire the CompleteRegistration pixel event.
-      return Astro.redirect(dest + (dest.includes('?') ? '&' : '?') + 'registered=1', 303);
+      const eid = newEventId();
+      await sendCapiEvent(Astro, { name: 'CompleteRegistration', eventId: eid, user: { email, phone, fullName, externalId: data.session.user?.id }, params: { content_name: formRole }, sourceUrl: 'https://vacanthr.com/signup' });
+      return Astro.redirect(dest + (dest.includes('?') ? '&' : '?') + 'registered=1&eid=' + eid, 303);
     } else {
       checkEmail = true;
     }

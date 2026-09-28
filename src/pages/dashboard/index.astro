@@ -11,6 +11,7 @@ const supabase = serverClient(Astro);
 const url = new URL(Astro.request.url);
 const justApplied = url.searchParams.get('applied') === '1';
 const justRegistered = url.searchParams.get('registered') === '1';
+const eid = url.searchParams.get('eid');
 const role = profile?.role ?? 'candidate';
 const isClient = role === 'client';
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -139,6 +140,6 @@ const STATUS_AR = { ...APP_STATUS_PUBLIC_AR, ...REQ_STATUS_AR };
     </>
   )}
 </div>
-{justApplied && <Track event="SubmitApplication" />}
-{justRegistered && <Track event="CompleteRegistration" params={{ content_name: role }} />}
+{justApplied && <Track event="SubmitApplication" eventId={eid} />}
+{justRegistered && <Track event="CompleteRegistration" params={{ content_name: role }} eventId={eid} />}
 </Portal>

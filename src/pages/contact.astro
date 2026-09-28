@@ -5,6 +5,7 @@ import { getSettings } from '../lib/settings';
 import { getSections } from '../lib/sections';
 import { anonClient } from '../lib/supabase';
 import { notifyAdmins } from '../lib/notify';
+import { sendCapiEvent, newEventId } from '../lib/capi';
 
 const [s, sections] = await Promise.all([getSettings(), getSections('contact')]);
 const hero = sections.find((x) => x.kind === 'hero');
@@ -33,7 +34,9 @@ if (Astro.request.method === 'POST') {
         lines: [`${v.name}${v.company ? ` — ${v.company}` : ''}`, `${v.email}${v.phone ? ` · ${v.phone}` : ''}`, `الخدمة: ${v.service}`, v.message],
         url: 'https://vacanthr.com/admin/contact', replyTo: v.email,
       });
-      return Astro.redirect('/thanks', 303);
+      const eid = newEventId();
+      await sendCapiEvent(Astro, { name: 'Lead', eventId: eid, user: { email: v.email, phone: v.phone, fullName: v.name }, params: { content_name: 'contact' }, sourceUrl: 'https://vacanthr.com/contact' });
+      return Astro.redirect(`/thanks?eid=${eid}`, 303);
     }
   }
 }
