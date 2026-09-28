@@ -1,0 +1,11 @@
+---
+import Admin from '../layouts/Admin.astro';
+import ContentNav from '../components/ContentNav.astro';
+import CItem from '../components/CItem.astro';
+Astro.locals.profile = { id: 'x', role: 'admin', full_name: 'مصطفى', phone: null, company_name: null, skills: null } as any;
+---
+<Admin title="p" path="/zz" active="content"><Fragment slot="heading">آراء العملاء</Fragment>
+<div class="admin-body"><ContentNav active="testimonials" preview="/" />
+<details class="cadd"><summary>+ إضافة رأي جديد</summary></details>
+<div class="citems">{[1,2].map((i) => (<CItem id={String(i)} title="أحمد سمير" subtitle="مدير الموارد البشرية — شركة نور للتجارة والتوزيع" published={i===1} index={i-1} total={2} open={i===1}><form><div class="form-grid-2"><div class="form-row"><label>الاسم *</label><input value="أحمد سمير" /></div><div class="form-row"><label>الصفة</label><input /></div></div><div class="citem-actions"><button type="button" class="btn solid">حفظ</button><button type="button" class="btn">حذف</button></div></form></CItem>))}</div>
+</div></Admin>

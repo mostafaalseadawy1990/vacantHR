@@ -62,12 +62,23 @@ const initials = (userName || 'V').trim().slice(0, 1);
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
       </button>
       <h1 class="adm-title"><slot name="heading">Vacant HR</slot></h1>
-      <div class="adm-user" title={userName}>
-        <span class="adm-avatar">{initials}</span>
-        <span class="adm-user-meta">
-          <strong>{userName}</strong>
-          <small>{userRole}</small>
-        </span>
+      <div class="adm-user" id="admUser">
+        <button type="button" class="adm-user-btn" id="admUserBtn" aria-haspopup="true" aria-expanded="false" aria-label="قائمة الحساب">
+          <span class="adm-avatar">{initials}</span>
+          <span class="adm-user-meta">
+            <strong>{userName}</strong>
+            <small>{userRole}</small>
+          </span>
+          <span class="adm-user-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="adm-user-menu" role="menu">
+          <div class="adm-user-head"><strong>{userName}</strong><small>{userRole}</small></div>
+          {foot.map((i) => (
+            <a href={i.href} role="menuitem" target={i.external ? '_blank' : undefined} rel={i.external ? 'noopener' : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d={i.icon} /></svg>{i.label}
+            </a>
+          ))}
+        </div>
       </div>
     </header>
     <main id="main" class="adm-content">
@@ -85,7 +96,12 @@ const initials = (userName || 'V').trim().slice(0, 1);
     }
     btn.addEventListener('click', function () { set(!side.classList.contains('open')); });
     bd.addEventListener('click', function () { set(false); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { set(false); userSet(false); } });
+    // Account menu (avatar in the top bar)
+    var um = document.getElementById('admUser'), ub = document.getElementById('admUserBtn');
+    function userSet(o) { um.classList.toggle('open', o); ub.setAttribute('aria-expanded', String(o)); }
+    ub.addEventListener('click', function (e) { e.stopPropagation(); userSet(!um.classList.contains('open')); });
+    document.addEventListener('click', function (e) { if (!um.contains(e.target)) userSet(false); });
   })();
 </script>
 
@@ -130,7 +146,17 @@ const initials = (userName || 'V').trim().slice(0, 1);
   .adm-burger{ display:none; background:none; border:0; padding:6px; cursor:pointer; color:var(--ink); border-radius:8px; }
   .adm-burger svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
   .adm-title{ flex:1; margin:0; font-size:1.3rem; font-weight:700; letter-spacing:-.01em; line-height:1.3; }
-  .adm-user{ display:flex; align-items:center; gap:10px; }
+  .adm-user{ position:relative; }
+  .adm-user-btn{ display:flex; align-items:center; gap:10px; background:none; border:0; padding:4px 6px; border-radius:999px; cursor:pointer; font-family:inherit; color:inherit; }
+  .adm-user-btn:hover, .adm-user.open .adm-user-btn{ background:var(--surface-soft); }
+  .adm-user-chev{ font-size:.7rem; color:var(--muted); }
+  .adm-user-menu{ display:none; position:absolute; top:calc(100% + 6px); inset-inline-start:0; min-width:220px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow-lg); padding:6px; z-index:40; }
+  .adm-user.open .adm-user-menu{ display:block; }
+  .adm-user-head{ display:flex; flex-direction:column; padding:8px 12px 10px; border-bottom:1px solid var(--line-soft); margin-bottom:4px; }
+  .adm-user-head strong{ font-size:.92rem; } .adm-user-head small{ color:var(--muted); font-size:.78rem; }
+  .adm-user-menu a{ display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; color:var(--body); font-size:.9rem; }
+  .adm-user-menu a:hover{ background:var(--surface-soft); color:var(--ink); }
+  .adm-user-menu svg{ width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .adm-avatar{ width:36px; height:36px; border-radius:50%; background:var(--accent); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
   .adm-user-meta{ display:flex; flex-direction:column; line-height:1.2; }
   .adm-user-meta strong{ font-size:.9rem; }
@@ -151,6 +177,8 @@ const initials = (userName || 'V').trim().slice(0, 1);
     .adm-top{ padding:10px 16px; }
     .adm-title{ font-size:1.1rem; }
     .adm-user-meta{ display:none; }
+    .adm-user-chev{ display:none; }
+    .adm-user-head{ display:flex; }
     .adm-content{ padding:18px 16px 40px; }
     body.adm-locked{ overflow:hidden; }
   }

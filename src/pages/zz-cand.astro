@@ -1,0 +1,8 @@
+---
+import Admin from '../layouts/Admin.astro';
+Astro.locals.profile = { id: 'x', role: 'admin', full_name: 'مصطفى منيب', phone: null, company_name: null, skills: null } as any;
+---
+<Admin title="p" path="/zz" active="candidates"><Fragment slot="heading">قاعدة المرشحين</Fragment>
+<div class="admin-body">
+<div class="cand-list"><a class="cand-card"><span class="cand-avatar">أ</span><span class="cand-main"><strong>أحمد محمد علي</strong><span class="cand-sub">محاسب أول</span><span class="cand-meta"><span>📍 القاهرة</span><span>5 سنة خبرة</span></span><span class="cand-chips"><b class="chip chip-tag">مميز</b><b class="chip">Excel</b><b class="chip">SAP</b><b class="chip">ضرائب</b><b class="chip">Odoo</b><b class="chip">IFRS</b><b class="chip">تحليل مالي</b></span></span><span class="cand-side"><span dir="ltr">01012345678</span><span dir="ltr" class="cand-email">ahmed.mohamed.ali@example.com</span><span class="cand-stats"><b>3 طلب</b><b>CV ✓</b></span><small>مسجّل ١ سبتمبر</small></span></a></div>
+</div></Admin>

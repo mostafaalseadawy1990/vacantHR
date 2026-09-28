@@ -135,7 +135,7 @@ const csvQs = url.search;
   .cand-list{ display:flex; flex-direction:column; gap:10px; }
   .cand-card{ display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:14px; align-items:start; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; color:inherit; text-decoration:none; transition:border-color .15s, box-shadow .15s; }
   .cand-card:hover{ border-color:var(--accent); box-shadow:var(--shadow-sm); }
-  .cand-main{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .cand-main{ display:flex; flex-direction:column; gap:4px; min-width:0; overflow-wrap:anywhere; }
   .cand-main strong{ font-size:1.02rem; }
   .cand-sub{ color:var(--body); font-size:.92rem; }
   .cand-meta{ display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.82rem; color:var(--muted); }
@@ -145,7 +145,9 @@ const csvQs = url.search;
   .cand-stats b{ font-weight:600; font-size:.75rem; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); }
   @media (max-width:720px){
     .cand-card{ grid-template-columns:40px minmax(0,1fr); }
-    .cand-side{ grid-column:2; align-items:flex-start; text-align:right; white-space:normal; flex-direction:row; flex-wrap:wrap; gap:4px 12px; border-top:1px solid var(--line-soft); padding-top:8px; margin-top:4px; }
+    .cand-side{ grid-column:1 / -1; align-items:flex-start; text-align:right; white-space:normal; flex-direction:row; flex-wrap:wrap; gap:4px 12px; border-top:1px solid var(--line-soft); padding-top:8px; margin-top:4px; min-width:0; }
+    .cand-email{ max-width:100%; overflow-wrap:anywhere; }
+    .cand-card{ overflow:hidden; }
   }
 </style>
 </Admin>
