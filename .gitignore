@@ -7,3 +7,4 @@ dist/
 .wrangler/
 npm-debug.log*
 .DS_Store
+zz-*
