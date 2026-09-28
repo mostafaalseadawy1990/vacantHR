@@ -19,6 +19,7 @@ export type Settings = {
   theme_color: string;
   home_hero_image: string;
   blog_layout: unknown;   // see lib/blog.ts (parseBlogLayout)
+  telegram_chat_id: string; // set from admin settings (or TELEGRAM_CHAT_ID env)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme_color: '#0E7C66',
   home_hero_image: '',
   blog_layout: {},
+  telegram_chat_id: '',
 };
 
 export type Post = {

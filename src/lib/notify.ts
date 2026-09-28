@@ -20,8 +20,35 @@ export function notifyEnv(ctx?: Ctx) {
 
 const escTg = (s: string) => s.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
 
+/** Chat id from the env var, or the one saved from the admin settings page. */
+export async function telegramChatId(ctx?: Ctx): Promise<string> {
+  const { tgChat } = notifyEnv(ctx);
+  if (tgChat) return String(tgChat);
+  const s = await getSettings().catch(() => null);
+  return String(s?.telegram_chat_id ?? '').trim();
+}
+
+/** Lists the chats that messaged the bot recently (so the admin can pick one without touching the API). */
+export async function discoverTelegramChats(ctx?: Ctx): Promise<Array<{ id: string; name: string }>> {
+  const { tgToken } = notifyEnv(ctx);
+  if (!tgToken) return [];
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?limit=100`);
+    const j: any = await res.json();
+    const out = new Map<string, string>();
+    for (const u of j?.result ?? []) {
+      const chat = u.message?.chat ?? u.channel_post?.chat ?? u.my_chat_member?.chat;
+      if (!chat) continue;
+      const name = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ') || chat.username || String(chat.id);
+      out.set(String(chat.id), name);
+    }
+    return [...out].map(([id, name]) => ({ id, name }));
+  } catch { return []; }
+}
+
 export async function sendTelegram(ctx: Ctx | undefined, text: string, url?: string): Promise<boolean> {
-  const { tgToken, tgChat } = notifyEnv(ctx);
+  const { tgToken } = notifyEnv(ctx);
+  const tgChat = tgToken ? await telegramChatId(ctx) : '';
   if (!tgToken || !tgChat) return false;
   try {
     const res = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {

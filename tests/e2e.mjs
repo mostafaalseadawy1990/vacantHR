@@ -287,6 +287,9 @@ S('admin: content lists (add / toggle / reorder / delete) + settings', async ({ 
   r = await post(req, '/admin/content/pricing', { _action: 'save', name: 'احترافي', price: '220', features: 'أ\nب\nج', featured: 'on', published: 'on', position: '2' }); eq((await mockDb()).pricing_plans.find((p) => p.name === 'احترافي').features.length, 3, 'features parsed');
   r = await post(req, '/admin/content/settings', { _tab: 'contact', contact_email: 'team@test.com', contact_phone: '+2010', whatsapp_number: '2010', theme_color: '#123456', stat_value_0: '+200', stat_label_0: 'شركة' });
   eq(r.status, 303, 'settings saved'); const st = (await mockDb()).site_settings; eq(st.find((s) => s.key === 'contact_email').value, 'team@test.com', 'setting upserted'); eq(st.find((s) => s.key === 'home_stats').value[0].value, '+200', 'stats upserted');
+  r = await post(req, '/admin/content/settings', { _action: 'tg_discover' }); eq(r.status, 303, 'tg discover redirects'); includes(r.location, 'tg=notoken', 'tg discover reports missing token');
+  r = await post(req, '/admin/content/settings', { _action: 'test_notify' }); eq(r.status, 303, 'test notify redirects'); includes(r.location, 'test=1', 'test notify ok');
+  r = await get(req, '/admin/content/settings?tab=seo'); includes(r.text, 'اكتشاف محادثة تيليجرام', 'tg discover button'); includes(r.text, 'Conversions API', 'capi card');
   r = await post(req, '/admin/content/blog-layout', { layout: 'magazine', columns: '2', card: 'overlay', ratio: '4/3', per_page: '6', featured: 'on', show_excerpt: 'on', title: 'مدوّنتنا' });
   eq(r.status, 303, 'blog layout saved'); eq(st.length >= 3, true, 'x'); eq((await mockDb()).site_settings.find((s) => s.key === 'blog_layout').value.layout, 'magazine', 'layout stored');
   const pub = await get(req, '/blog'); includes(pub.text, 'layout-magazine', 'public blog uses layout'); includes(pub.text, 'مدوّنتنا', 'public blog title');

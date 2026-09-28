@@ -5,7 +5,7 @@ import ImagePicker from '../../../components/ImagePicker.astro';
 import { serverClient } from '../../../lib/supabase';
 import { logAction } from '../../../lib/audit';
 import { DEFAULT_SETTINGS, clearSettingsCache } from '../../../lib/settings';
-import { notifyAdmins, notifyEnv } from '../../../lib/notify';
+import { notifyAdmins, notifyEnv, discoverTelegramChats, telegramChatId } from '../../../lib/notify';
 import { capiEnv } from '../../../lib/capi';
 
 const supabase = serverClient(Astro);
@@ -30,6 +30,7 @@ const TABS: Array<{ key: string; label: string; fields: Field[] }> = [
   { key: 'seo', label: 'SEO والتحليلات', fields: [
     { key: 'google_site_verification', label: 'رمز التحقق من Google Search Console', help: 'محتوى وسم google-site-verification فقط (بدون HTML).', dir: 'ltr' },
     { key: 'analytics_snippet', label: 'كود التحليلات / البكسل', textarea: true, help: 'الصق الكود كامل بوسم <script> (Meta Pixel / GA / Cloudflare). بيتحمّل بعد موافقة الزائر على الكوكيز.' },
+    { key: 'telegram_chat_id', label: 'Telegram Chat ID (لإشعارات تيليجرام)', dir: 'ltr', help: 'اضغط "اكتشاف المحادثة" تحت بعد ما تبعت رسالة للبوت، أو اكتب الرقم يدويًا. لو TELEGRAM_CHAT_ID موجود في Cloudflare فهو الأولوية.' },
   ] },
 ];
 const ALL_FIELDS = TABS.flatMap((t) => t.fields);
@@ -41,6 +42,16 @@ if (Astro.request.method === 'POST') {
   if (form.get('_action') === 'test_notify') {
     await notifyAdmins(Astro, { title: 'إشعار تجريبي من Vacant HR', lines: ['لو وصلك ده، الإشعارات شغالة ✓', `الوقت: ${new Date().toLocaleString('ar-EG')}`], url: 'https://vacanthr.com/admin' });
     return Astro.redirect('/admin/content/settings?tab=seo&test=1', 303);
+  }
+  if (form.get('_action') === 'tg_discover') {
+    const chats = await discoverTelegramChats(Astro);
+    if (!notifyEnv(Astro).tgToken) return Astro.redirect('/admin/content/settings?tab=seo&tg=notoken', 303);
+    if (!chats.length) return Astro.redirect('/admin/content/settings?tab=seo&tg=none', 303);
+    const pick = String(form.get('chat_id') || chats[0].id);
+    await supabase.from('site_settings').upsert({ key: 'telegram_chat_id', value: pick, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    clearSettingsCache();
+    await logAction(Astro, supabase, 'ربط إشعارات تيليجرام', chats.find((c) => c.id === pick)?.name ?? pick);
+    return Astro.redirect('/admin/content/settings?tab=seo&tg=ok', 303);
   }
   const rows: Array<{ key: string; value: unknown; updated_at: string }> = [];
   const now = new Date().toISOString();
@@ -66,6 +77,9 @@ const initialTab = url.searchParams.get('tab') || 'identity';
 const tested = url.searchParams.get('test') === '1';
 const nenv = notifyEnv(Astro);
 const cenv = capiEnv(Astro);
+const tgStatus = url.searchParams.get('tg');
+const tgChat = nenv.tgToken ? await telegramChatId(Astro) : '';
+const tgOn = !!(nenv.tgToken && tgChat);
 
 const { data } = await supabase.from('site_settings').select('key, value');
 const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
@@ -132,8 +146,11 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
         <small class="shelp" style="display:block;margin:0 0 12px;">بيوصلك إشعار مع كل رسالة من الموقع، أو تقديم على وظيفة، أو طلب توظيف من شركة — على القنوات المفعّلة:</small>
         <div class="ntf-grid">
           <div class:list={['ntf-card', { on: nenv.resend }]}><strong>البريد الإلكتروني</strong><span>{nenv.resend ? `مفعّل — بيتبعت إلى ${cur.contact_email}` : 'غير مفعّل'}</span><small>محتاج مفتاح Resend في إعدادات Cloudflare (RESEND_API_KEY + EMAIL_FROM).</small></div>
-          <div class:list={['ntf-card', { on: !!(nenv.tgToken && nenv.tgChat) }]}><strong>تيليجرام (إشعار فوري على الموبايل)</strong><span>{nenv.tgToken && nenv.tgChat ? 'مفعّل' : 'غير مفعّل'}</span><small>محتاج TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في إعدادات Cloudflare.</small></div>
+          <div class:list={['ntf-card', { on: tgOn }]}><strong>تيليجرام (إشعار فوري على الموبايل)</strong><span>{tgOn ? `مفعّل — المحادثة ${tgChat}` : nenv.tgToken ? 'البوت متصل — ناقص اختيار المحادثة' : 'غير مفعّل'}</span><small>{nenv.tgToken ? 'ابعت أي رسالة للبوت من تيليجرام ثم اضغط "اكتشاف المحادثة".' : 'محتاج TELEGRAM_BOT_TOKEN (من @BotFather) في إعدادات Cloudflare.'}</small></div>
         </div>
+        {tgStatus === 'ok' && <p class="notice notice-ok" style="margin:12px 0 0;">تم ربط محادثة تيليجرام ✓ — جرّب زر الإشعار التجريبي.</p>}
+        {tgStatus === 'none' && <p class="notice notice-error" style="margin:12px 0 0;">البوت ما استلمش أي رسالة لسه. افتح البوت في تيليجرام، اضغط Start وابعت أي كلمة، ثم اضغط اكتشاف تاني.</p>}
+        {tgStatus === 'notoken' && <p class="notice notice-error" style="margin:12px 0 0;">TELEGRAM_BOT_TOKEN مش موجود في إعدادات Cloudflare.</p>}
         {tested && <p class="notice notice-ok" style="margin:12px 0 0;">اتبعت إشعار تجريبي على القنوات المفعّلة — اتأكد إنه وصلك.</p>}
         <h3 style="margin:18px 0 10px;font-size:1rem;">Meta Conversions API (تتبع من السيرفر)</h3>
         <small class="shelp" style="display:block;margin:0 0 12px;">بيبعت أحداث Lead / SubmitApplication / CompleteRegistration من السيرفر مباشرة لـ Meta حتى لو البكسل اتحجب، مع منع التكرار مع البكسل.</small>
@@ -147,10 +164,10 @@ while (stats.length < 4) stats.push({ value: '', label: '' });
         <small style="color:var(--muted);">الحفظ بيحفظ كل التبويبات مرة واحدة.</small>
       </div>
     </form>
-    <form method="POST" id="testNotify" style="max-width:860px;margin-top:10px;" hidden={initialTab !== 'seo'}>
-      <input type="hidden" name="_action" value="test_notify" />
-      <button class="btn" style="cursor:pointer;">إرسال إشعار تجريبي الآن</button>
-    </form>
+    <div id="testNotify" style="max-width:860px;margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;" hidden={initialTab !== 'seo'}>
+      <form method="POST"><input type="hidden" name="_action" value="tg_discover" /><button class="btn" style="cursor:pointer;" disabled={!nenv.tgToken}>اكتشاف محادثة تيليجرام</button></form>
+      <form method="POST"><input type="hidden" name="_action" value="test_notify" /><button class="btn" style="cursor:pointer;">إرسال إشعار تجريبي الآن</button></form>
+    </div>
 </div>
 <style is:global>
   .ntf-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
