@@ -1,4 +1,5 @@
 ---
+import { normalizeApplyUrl } from '../../../lib/jobs';
 import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
@@ -22,12 +23,14 @@ if (Astro.request.method === 'POST') {
     employment_type: get('employment_type'), workplace: get('workplace'), experience_level: get('experience_level'),
     salary_min: get('salary_min'), salary_max: get('salary_max'),
     description_md: get('description_md'), requirements_md: get('requirements_md'), status: get('status'),
-    skills: get('skills'),
+    skills: get('skills'), apply_url: get('apply_url'),
   });
   const salaryVisible = form.get('salary_visible') === 'on';
 
   if (!v.title || !v.description_md) {
     errorMsg = 'المسمى والوصف مطلوبين.';
+  } else if (v.apply_url && !normalizeApplyUrl(v.apply_url)) {
+    errorMsg = 'رابط التقديم الخارجي مش صحيح — لازم يبدأ بـ https://';
   } else {
     const slug = (v.slug || slugify(v.title)).replace(/[^a-z0-9-]/g, '');
     const status = ['draft', 'open', 'closed'].includes(v.status) ? v.status : 'draft';
@@ -46,6 +49,7 @@ if (Astro.request.method === 'POST') {
       requirements_md: v.requirements_md || '',
       skills: (v.skills || '').split(',').map((x: string) => x.trim()).filter(Boolean),
       status,
+      apply_url: normalizeApplyUrl(v.apply_url || ''),
       created_by: user.id,
       published_at: status === 'open' ? new Date().toISOString() : null,
     };
@@ -129,6 +133,10 @@ if (Astro.request.method === 'POST') {
         </label>
       </div>
 
+      <div class="form-row">
+        <label for="apply_url">رابط تقديم خارجي (اختياري — لو اتكتب، زر التقديم بيفتحه بدل نموذج الموقع)</label>
+        <input type="url" id="apply_url" name="apply_url" value={v.apply_url} placeholder="https://forms.gle/..." dir="ltr" />
+      </div>
       <div class="form-row">
         <label for="description_md">الوصف الوظيفي * (Markdown: ## عنوان، - نقطة، **غامق**)</label>
         <textarea id="description_md" name="description_md" style="min-height:180px;" required>{v.description_md}</textarea>

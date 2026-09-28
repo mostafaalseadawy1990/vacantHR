@@ -19,6 +19,7 @@ const { data: job } = await supabase
   .maybeSingle<Pick<Job, 'id' | 'slug' | 'title' | 'status'>>();
 
 if (!job) return Astro.redirect('/careers', 302);
+if (job.apply_url) return Astro.redirect(job.apply_url, 302);
 
 // Already applied?
 const { data: existing } = await supabase

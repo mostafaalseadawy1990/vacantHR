@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderMarkdown, salaryLabel, EMPLOYMENT_TYPE_AR, type Job } from '../jobs';
+import { renderMarkdown, salaryLabel, normalizeApplyUrl, EMPLOYMENT_TYPE_AR, type Job } from '../jobs';
 import { ytEmbed } from '../settings';
 import { toCsv } from '../csv';
 
@@ -63,5 +63,16 @@ describe('toCsv', () => {
     expect(csv).toContain('"x,y"');
     expect(csv).toContain('"he said ""hi"""');
     expect(csv.trim().split('\r\n').length).toBe(3);
+  });
+});
+
+describe('normalizeApplyUrl', () => {
+  it('accepts http(s) and adds a missing scheme', () => {
+    expect(normalizeApplyUrl('https://forms.gle/abc')).toBe('https://forms.gle/abc');
+    expect(normalizeApplyUrl('forms.gle/abc')).toBe('https://forms.gle/abc');
+  });
+  it('rejects empty and non-http values', () => {
+    expect(normalizeApplyUrl('')).toBeNull();
+    expect(normalizeApplyUrl('javascript:alert(1)')).toBeNull();
   });
 });

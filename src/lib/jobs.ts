@@ -14,6 +14,7 @@ export type Job = {
   description_md: string;
   requirements_md: string;
   status: 'draft' | 'open' | 'closed';
+  apply_url: string | null;      // external application link — replaces the on-site apply form when set
   published_at: string | null;
   created_at: string;
 };
@@ -84,4 +85,14 @@ export function renderMarkdown(md: string): string {
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code>$1</code>');
   }
+}
+
+/** Admin-entered external apply link → normalised http(s) URL, or null when empty/invalid. */
+export function normalizeApplyUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+  } catch { return null; }
 }

@@ -64,9 +64,14 @@ const jsonld = [{
     : {}),
 }];
 
-const applyHref = user
-  ? `/careers/${job.slug}/apply`
-  : `/login?next=${encodeURIComponent(`/careers/${job.slug}/apply`)}`;
+// External apply link (e.g. a Google Form) replaces the on-site application flow.
+const external = !!job.apply_url;
+const applyHref = external
+  ? job.apply_url!
+  : user
+    ? `/careers/${job.slug}/apply`
+    : `/login?next=${encodeURIComponent(`/careers/${job.slug}/apply`)}`;
+const applyAttrs = external ? { target: '_blank', rel: 'noopener' } : {};
 
 const jobSkills = ((job.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()).filter(Boolean);
 const mySkills = new Set(((profile?.skills ?? []) as string[]).map((s) => s.toLowerCase().trim()));
@@ -102,9 +107,9 @@ const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && 
       {salaryLabel(job) && <span class="job-salary">{salaryLabel(job)}</span>}
     </div>
     <div class="btn-row" style="align-items:center;">
-      {alreadyApplied
+      {alreadyApplied && !external
         ? <span class="btn" aria-disabled="true" style="opacity:.7;">تم التقديم على هذه الوظيفة ✓</span>
-        : <a href={applyHref} class="btn solid">قدّم على الوظيفة</a>}
+        : <a href={applyHref} class="btn solid" {...applyAttrs}>قدّم على الوظيفة{external && ' ↗'}</a>}
       {user && (
         <button type="button" class="save-btn" id="saveBtn" data-slug={job.slug} data-saved={isSaved ? '1' : '0'} title="حفظ الوظيفة">{isSaved ? '★' : '☆'}</button>
       )}
@@ -128,7 +133,14 @@ const showMatch = user && profile?.role !== 'client' && jobSkills.length > 0 && 
     <Fragment set:html={renderMarkdown(job.requirements_md)} />
 
     <div class="job-apply-cta">
-      {alreadyApplied
+      {external
+        ? (
+          <>
+            <p>جاهز تقدّم؟ التقديم على الوظيفة دي بيتم من خلال رابط خارجي.</p>
+            <a href={applyHref} class="btn solid" target="_blank" rel="noopener">قدّم على الوظيفة ↗</a>
+          </>
+        )
+        : alreadyApplied
         ? <p>قدّمت على الوظيفة دي بالفعل. تقدر تتابع حالة طلبك من <a href="/dashboard">لوحتك</a>.</p>
         : (
           <>

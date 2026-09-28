@@ -3,7 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import AdminNav from '../../../components/AdminNav.astro';
 import { serverClient } from '../../../lib/supabase';
 import { sendEmail, emailLayout } from '../../../lib/email';
-import type { Job } from '../../../lib/jobs';
+import { normalizeApplyUrl, type Job } from '../../../lib/jobs';
 
 const STATUS_MSG: Record<string, string> = {
   shortlisted: 'وصل طلبك للقائمة المختصرة — خطوة كويسة! هنتواصل معاك للخطوة الجاية.',
@@ -37,12 +37,17 @@ if (Astro.request.method === 'POST') {
       requirements_md: get('requirements_md') || '',
       skills: get('skills').split(',').map((x) => x.trim()).filter(Boolean),
       status,
+      apply_url: normalizeApplyUrl(get('apply_url')),
       updated_at: new Date().toISOString(),
     };
     if (status === 'open') patch.published_at = new Date().toISOString();
-    const { error } = await supabase.from('jobs').update(patch).eq('slug', slug);
-    if (!error) return Astro.redirect(`/admin/jobs/${slug}?ok=1`, 303);
-    flash = `تعذّر الحفظ: ${error.message}`;
+    if (get('apply_url') && !patch.apply_url) {
+      flash = 'رابط التقديم الخارجي مش صحيح — لازم يبدأ بـ https://';
+    } else {
+      const { error } = await supabase.from('jobs').update(patch).eq('slug', slug);
+      if (!error) return Astro.redirect(`/admin/jobs/${slug}?ok=1`, 303);
+      flash = `تعذّر الحفظ: ${error.message}`;
+    }
   }
 
   if (action === 'set_app_status') {
@@ -152,6 +157,10 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
         <label style="display:flex;gap:10px;align-items:center;font-weight:400;">
           <input type="checkbox" name="salary_visible" style="width:auto;" checked={job.salary_visible} /> إظهار الراتب في الإعلان
         </label>
+      </div>
+      <div class="form-row">
+        <label for="apply_url">رابط تقديم خارجي (اختياري — لو اتكتب، زر التقديم بيفتحه بدل نموذج الموقع)</label>
+        <input type="url" id="apply_url" name="apply_url" value={job.apply_url ?? ''} placeholder="https://forms.gle/..." dir="ltr" />
       </div>
       <div class="form-row"><label for="description_md">الوصف (Markdown) *</label><textarea id="description_md" name="description_md" style="min-height:180px;" required>{job.description_md}</textarea></div>
       <div class="form-row"><label for="requirements_md">المتطلبات (Markdown)</label><textarea id="requirements_md" name="requirements_md" style="min-height:140px;">{job.requirements_md}</textarea></div>
