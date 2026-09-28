@@ -102,8 +102,32 @@ function project(table, row, nodes) {
   return out;
 }
 
-function applyQuery(table, rows, q) {
-  let list = rows.filter((row) => {
+const STAFF = ['admin', 'recruiter', 'editor', 'support', 'viewer'];
+/** Row-level security emulation for non-staff users (mirrors docs/migration-*.sql policies). */
+function rls(table, rows, user) {
+  const prof = user ? db.profiles.find((p) => p.id === user.id) : null;
+  const role = prof?.role ?? null;
+  if (role && STAFF.includes(role)) return rows;
+  const uid = user?.id ?? null;
+  switch (table) {
+    case 'applications': return rows.filter((r) => r.candidate_id === uid);
+    case 'saved_jobs': return rows.filter((r) => r.candidate_id === uid);
+    case 'application_notes': return [];
+    case 'interviews': return rows.filter((r) => db.applications.find((a) => a.id === r.application_id)?.candidate_id === uid);
+    case 'client_requests': return rows.filter((r) => r.client_id === uid);
+    case 'client_shortlist': return rows.filter((r) => r.admin_status === 'sent' && db.client_requests.find((q) => q.id === r.request_id)?.client_id === uid);
+    case 'conversations': return rows.filter((r) => r.participant_id === uid);
+    case 'messages': return rows.filter((r) => db.conversations.find((c) => c.id === r.conversation_id)?.participant_id === uid);
+    case 'profiles': return rows.filter((r) => r.id === uid);
+    case 'jobs': return rows.filter((r) => r.status === 'open');
+    case 'posts': case 'pages': return rows.filter((r) => r.status === 'published');
+    case 'audit_log': case 'events': case 'contact_messages': case 'job_views': return [];
+    default: return rows;
+  }
+}
+
+function applyQuery(table, rows, q, user) {
+  let list = rls(table, rows, user).filter((row) => {
     for (const [k, v] of q.entries()) {
       if (['select', 'order', 'limit', 'offset', 'on_conflict', 'columns'].includes(k)) continue;
       if (k === 'or') { if (!matchOr(row, v)) return false; continue; }
@@ -213,7 +237,7 @@ const server = http.createServer(async (req, res) => {
       };
 
       if (req.method === 'GET' || req.method === 'HEAD') {
-        const { list, total } = applyQuery(table, db[table], q);
+        const { list, total } = applyQuery(table, db[table], q, user);
         const headers = /count=exact/.test(prefer) ? { 'content-range': `${list.length ? 0 : '*'}-${list.length ? list.length - 1 : '*'}/${total}` } : {};
         if (req.method === 'HEAD') { res.writeHead(200, headers); return res.end(); }
         const out = list.map((r) => project(table, r, selNodes));
@@ -244,14 +268,14 @@ const server = http.createServer(async (req, res) => {
       }
       if (req.method === 'PATCH') {
         const patch = JSON.parse(body.toString() || '{}');
-        const { list } = applyQuery(table, db[table], q);
+        const { list } = applyQuery(table, db[table], q, user);
         for (const r of list) Object.assign(r, patch);
         log.push({ update: table, n: list.length, patch });
         if (!wantRep) { res.writeHead(204); return res.end(); }
         return finish(list);
       }
       if (req.method === 'DELETE') {
-        const { list } = applyQuery(table, db[table], q);
+        const { list } = applyQuery(table, db[table], q, user);
         db[table] = db[table].filter((r) => !list.includes(r));
         log.push({ delete: table, n: list.length });
         if (!wantRep) { res.writeHead(204); return res.end(); }

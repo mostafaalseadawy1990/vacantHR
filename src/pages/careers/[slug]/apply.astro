@@ -14,10 +14,10 @@ const supabase = serverClient(Astro);
 
 const { data: job } = await supabase
   .from('jobs')
-  .select('id, slug, title, status')
+  .select('id, slug, title, status, apply_url')
   .eq('slug', slug)
   .eq('status', 'open')
-  .maybeSingle<Pick<Job, 'id' | 'slug' | 'title' | 'status'>>();
+  .maybeSingle<Pick<Job, 'id' | 'slug' | 'title' | 'status' | 'apply_url'>>();
 
 if (!job) return Astro.redirect('/careers', 302);
 if (job.apply_url) return Astro.redirect(job.apply_url, 302);
