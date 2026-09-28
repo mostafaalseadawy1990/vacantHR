@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { can } from '../../../lib/roles';
 import { serverClient } from '../../../lib/supabase';
 import { mediaUrl } from '../../../lib/settings';
 
@@ -10,7 +11,7 @@ const OK = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif
 /** Image upload for the rich-text editor. Returns { url } (also registers the file in the media library). */
 export const POST: APIRoute = async (context) => {
   const user = context.locals.user;
-  if (!user || context.locals.profile?.role !== 'admin') return json({ error: 'unauthorized' }, 401);
+  if (!user || !can(context.locals.profile?.role, 'media')) return json({ error: 'unauthorized' }, 401);
 
   const form = await context.request.formData();
   const file = form.get('file');

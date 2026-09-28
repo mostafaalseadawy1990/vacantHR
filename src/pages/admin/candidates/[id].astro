@@ -24,6 +24,7 @@ if (Astro.request.method === 'POST') {
     const st = String(form.get('status') || '');
     if (appId && ['submitted', 'reviewing', 'shortlisted', 'rejected', 'hired'].includes(st)) {
       await supabase.from('applications').update({ status: st }).eq('id', appId);
+      await logAction(Astro, supabase, `تغيير حالة متقدم إلى ${st}`, appId);
       if (STATUS_MSG[st]) {
         const { data: a } = await supabase
           .from('applications')
@@ -102,6 +103,7 @@ if (Astro.request.method === 'POST') {
     const ivId = String(form.get('interview_id') || '');
     if (ivId) {
       await supabase.from('interviews').update({ status: 'cancelled' }).eq('id', ivId);
+      await logAction(Astro, supabase, 'إلغاء مقابلة', ivId);
       return Astro.redirect(`/admin/candidates/${id}?ok=1`, 303);
     }
   }

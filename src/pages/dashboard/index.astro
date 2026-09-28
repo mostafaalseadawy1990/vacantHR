@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import Portal from '../../layouts/Portal.astro';
 import Track from '../../components/Track.astro';
 import { serverClient } from '../../lib/supabase';
 import { getSettings } from '../../lib/settings';
@@ -107,25 +107,9 @@ const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'f
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
-<Base title="لوحتي | Vacant HR" path="/dashboard" active="dashboard" noindex={true}>
-<main id="main">
-<section style="padding:44px 0 70px;">
-  <div class="wrap">
-    <div class="dash-head">
-      <div>
-        <div class="eyebrow-line">لوحتي</div>
-        <h1>أهلاً، {profile?.full_name || user.email}</h1>
-      </div>
-      <a href="/logout" class="btn">تسجيل الخروج</a>
-    </div>
-
-    <nav class="dash-nav">
-      <a href="/dashboard" class="active">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
-      <a href="/dashboard/messages">الرسائل</a>
-      <a href="/dashboard/profile">بياناتي</a>
-      {role !== 'client' && <a href="/careers">تصفّح الوظائف</a>}
-      {profile?.role === 'admin' && <a href="/admin">لوحة الإدارة</a>}
-    </nav>
+<Portal title="لوحتي | Vacant HR" path="/dashboard" active="home">
+<Fragment slot="heading">أهلاً، {profile?.full_name || user.email}</Fragment>
+<div class="admin-body">
 
     {justApplied && <p class="notice notice-ok" style="margin-bottom:24px;">تم إرسال طلبك بنجاح. هتلاقيه تحت.</p>}
     {justSent && <p class="notice notice-ok" style="margin-bottom:24px;">استلمنا طلبك، وهنبدأ نشتغل عليه ونرجعلك.</p>}
@@ -277,9 +261,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
         )}
       </>
     )}
-  </div>
-</section>
-</main>
+</div>
 {justApplied && <Track event="SubmitApplication" />}
 {justRegistered && <Track event="CompleteRegistration" params={{ content_name: role }} />}
-</Base>
+</Portal>

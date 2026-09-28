@@ -1,6 +1,7 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
+import { logAction } from '../../lib/audit';
 
 const supabase = serverClient(Astro);
 let flash = '';
@@ -11,7 +12,7 @@ if (Astro.request.method === 'POST') {
   const status = String(form.get('status') || '');
   if (id && ['new', 'in_progress', 'candidates_sent', 'closed'].includes(status)) {
     const { error } = await supabase.from('client_requests').update({ status }).eq('id', id);
-    if (!error) return Astro.redirect('/admin/requests?ok=1', 303);
+    if (!error) { await logAction(Astro, supabase, `تغيير حالة طلب شركة إلى ${status}`, id); return Astro.redirect('/admin/requests?ok=1', 303); }
     flash = 'تعذّر التحديث.';
   }
 }

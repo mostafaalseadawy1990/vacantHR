@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { can } from '../../../../lib/roles';
 import { serverClient } from '../../../../lib/supabase';
 import { toCsv, csvResponse } from '../../../../lib/csv';
 
@@ -10,7 +11,7 @@ const STATUS_AR: Record<string, string> = {
 };
 
 export const GET: APIRoute = async (context) => {
-  if (context.locals.profile?.role !== 'admin') return new Response('غير مصرّح', { status: 403 });
+  if (!can(context.locals.profile?.role, 'candidates')) return new Response('غير مصرّح', { status: 403 });
 
   const supabase = serverClient(context);
   const { slug } = context.params;

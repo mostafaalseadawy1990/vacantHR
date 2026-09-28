@@ -1,7 +1,11 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { ytEmbed } from '../../../lib/settings';
+import { sanitizeHtml } from '../../../lib/html';
+import { renderMarkdown } from '../../../lib/jobs';
+import RichEditor from '../../../components/RichEditor.astro';
 
 const supabase = serverClient(Astro);
 let flash = '';
@@ -25,7 +29,7 @@ if (Astro.request.method === 'POST') {
     const row = {
       title,
       slug: (String(form.get('slug') || '').trim() || slugify(title)).replace(/[^a-z0-9-]/g, ''),
-      body_md: String(form.get('body_md') || ''),
+      body_html: sanitizeHtml(String(form.get('body_html') || '')),
       video_url: String(form.get('video_url') || '').trim() || null,
       position: parseInt(String(form.get('position') || '0'), 10) || 0,
       published: form.get('published') === 'on',
@@ -37,7 +41,7 @@ if (Astro.request.method === 'POST') {
       const res = id
         ? await supabase.from('guide_sections').update(row).eq('id', id)
         : await supabase.from('guide_sections').insert(row);
-      if (!res.error) return Astro.redirect('/admin/content/guide?ok=1', 303);
+      if (!res.error) { await logAction(Astro, supabase, id ? 'تعديل قسم في دليل HRM' : 'إضافة قسم في دليل HRM', title); return Astro.redirect('/admin/content/guide?ok=1', 303); }
       flash = res.error.code === '23505' ? 'الـ slug مستخدم قبل كده.' : `تعذّر الحفظ: ${res.error.message}`;
     }
   }
@@ -68,8 +72,8 @@ const { data: items } = await supabase.from('guide_sections').select('*').order(
             {it.video_url && !ytEmbed(it.video_url) && <small style="color:#9A3B1C;">الرابط ده مش رابط يوتيوب صحيح.</small>}
           </div>
           <div class="form-row">
-            <label>المحتوى (Markdown)</label>
-            <textarea name="body_md" style="min-height:200px;font-family:ui-monospace,monospace;">{it.body_md}</textarea>
+            <label>المحتوى</label>
+            <RichEditor name="body_html" value={it.body_html || renderMarkdown(it.body_md || '')} minHeight={220} />
           </div>
           <div class="form-grid-2">
             <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={it.position} /></div>
@@ -89,7 +93,7 @@ const { data: items } = await supabase.from('guide_sections').select('*').order(
         <h3 style="margin-bottom:12px;">إضافة قسم</h3>
         <div class="form-row"><label>عنوان القسم</label><input name="title" required /></div>
         <div class="form-row"><label>رابط فيديو YouTube (اختياري)</label><input name="video_url" placeholder="https://youtu.be/..." /></div>
-        <div class="form-row"><label>المحتوى (Markdown)</label><textarea name="body_md" style="min-height:140px;font-family:ui-monospace,monospace;"></textarea></div>
+        <div class="form-row"><label>المحتوى</label><RichEditor name="body_html" minHeight={180} /></div>
         <div class="form-grid-2">
           <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
           <div class="form-row" style="display:flex;align-items:end;">
@@ -101,24 +105,4 @@ const { data: items } = await supabase.from('guide_sections').select('*').order(
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/easymde/2.18.0/easymde.min.js" is:inline></script>
-<script is:inline>
-  (function () {
-    if (!window.EasyMDE) return;
-    document.querySelectorAll('textarea[name="body_md"]').forEach(function (el) {
-      new EasyMDE({
-        element: el, spellChecker: false, direction: 'rtl', minHeight: '160px',
-        status: false,
-        toolbar: ['bold', 'italic', 'heading', '|', 'unordered-list', 'ordered-list', 'link', '|', 'preview'],
-        previewRender: function (plain) { return this.parent.markdown(plain); },
-      });
-    });
-  })();
-</script>
-<style is:global>
-  .EasyMDEContainer .CodeMirror{border-radius:var(--radius-sm);border-color:var(--line);}
-  .editor-toolbar{border-radius:var(--radius-sm) var(--radius-sm) 0 0;border-color:var(--line);}
-  .editor-preview{direction:rtl;background:var(--surface-soft);}
-</style>
 </Admin>

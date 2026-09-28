@@ -8,7 +8,7 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
-type ProfileRole = 'candidate' | 'client' | 'admin';
+type ProfileRole = 'candidate' | 'client' | 'admin' | 'recruiter' | 'editor' | 'support' | 'viewer';
 
 declare namespace App {
   interface Locals {

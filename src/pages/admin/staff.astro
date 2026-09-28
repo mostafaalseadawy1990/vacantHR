@@ -2,6 +2,7 @@
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 import { logAction } from '../../lib/audit';
+import { STAFF_ROLES, ROLE_AR, ROLE_DESC } from '../../lib/roles';
 
 const supabase = serverClient(Astro);
 const me = Astro.locals.user!;
@@ -11,7 +12,7 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const uid = String(form.get('uid') || '');
   const role = String(form.get('role') || '');
-  if (!uid || !['admin', 'recruiter', 'candidate', 'client'].includes(role)) {
+  if (!uid || ![...STAFF_ROLES, 'candidate', 'client'].includes(role)) {
     flash = 'بيانات غير صحيحة.';
   } else if (uid === me.id && role !== 'admin') {
     flash = 'لا يمكنك إزالة صلاحية المدير عن نفسك.';
@@ -20,7 +21,7 @@ if (Astro.request.method === 'POST') {
     const { error } = await supabase.from('profiles').update({ role }).eq('id', uid);
     if (error) flash = `تعذّر التحديث: ${error.message}`;
     else {
-      await logAction(Astro, supabase, `تغيير دور إلى ${role}`, target?.email ?? uid);
+      await logAction(Astro, supabase, `تغيير دور إلى ${ROLE_AR[role] ?? role}`, target?.full_name ?? target?.email ?? uid);
       return Astro.redirect('/admin/staff?ok=1', 303);
     }
   }
@@ -29,7 +30,14 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: staff } = await supabase
   .from('profiles').select('id, full_name, email, role, created_at')
-  .in('role', ['admin', 'recruiter']).order('created_at');
+  .in('role', [...STAFF_ROLES]).order('created_at');
+
+// Last activity per member (for the table + link to their log).
+const { data: lastActs } = await supabase
+  .from('audit_log').select('actor_id, action, created_at').order('created_at', { ascending: false }).limit(500);
+const lastBy = new Map<string, { action: string; created_at: string }>();
+for (const a of lastActs ?? []) if (a.actor_id && !lastBy.has(a.actor_id)) lastBy.set(a.actor_id, a);
+const fmt = (d: string) => new Date(d).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 
 const q = (new URL(Astro.request.url).searchParams.get('q') || '').trim();
 let found: any[] = [];
@@ -39,7 +47,6 @@ if (q) {
     .or(`email.ilike.%${q}%,full_name.ilike.%${q}%`).limit(20);
   found = data ?? [];
 }
-const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤول توظيف', candidate: 'مرشح', client: 'عميل' };
 ---
 <Admin title="الفريق | لوحة الإدارة" path="/admin/staff" active="staff">
 <Fragment slot="heading">فريق الإدارة</Fragment>
@@ -47,22 +54,33 @@ const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤ�
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
+    <div class="roles-grid">
+      {STAFF_ROLES.map((r) => (
+        <div class="role-card"><strong>{ROLE_AR[r]}</strong><span>{ROLE_DESC[r]}</span></div>
+      ))}
+    </div>
+
     <h2 style="margin-bottom:14px;">الأعضاء الحاليون</h2>
     <div class="table-scroll" style="margin-bottom:32px;">
       <table class="data-table">
-        <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>تغيير</th></tr></thead>
+        <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>آخر نشاط</th><th>تغيير</th></tr></thead>
         <tbody>
           {(staff ?? []).map((u: any) => (
             <tr>
               <td>{u.full_name ?? '—'}</td>
               <td dir="ltr" style="text-align:right;">{u.email ?? '—'}</td>
               <td>{ROLE_AR[u.role]}</td>
+              <td style="font-size:.88rem;">
+                {lastBy.get(u.id)
+                  ? <>{lastBy.get(u.id)!.action}<br /><small style="color:var(--muted);">{fmt(lastBy.get(u.id)!.created_at)}</small></>
+                  : <span style="color:var(--muted);">—</span>}
+                <br /><a href={`/admin/activity?actor=${u.id}`} style="font-size:.85rem;">السجل الكامل ↗</a>
+              </td>
               <td>
                 <form method="POST" style="display:flex;gap:6px;">
                   <input type="hidden" name="uid" value={u.id} />
                   <select name="role" class="mini-select">
-                    <option value="admin" selected={u.role === 'admin'}>مدير</option>
-                    <option value="recruiter" selected={u.role === 'recruiter'}>مسؤول توظيف</option>
+                    {STAFF_ROLES.map((r) => <option value={r} selected={u.role === r}>{ROLE_AR[r]}</option>)}
                     <option value="candidate">إزالة (مرشح)</option>
                   </select>
                   <button class="mini-btn">حفظ</button>
@@ -94,7 +112,7 @@ const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤ�
                   <form method="POST" style="display:flex;gap:6px;">
                     <input type="hidden" name="uid" value={u.id} />
                     <select name="role" class="mini-select">
-                      <option value="recruiter">مسؤول توظيف</option>
+                      {STAFF_ROLES.filter((r) => r !== 'admin').map((r) => <option value={r}>{ROLE_AR[r]}</option>)}
                       <option value="admin">مدير</option>
                     </select>
                     <button class="mini-btn">تعيين</button>
@@ -107,4 +125,10 @@ const ROLE_AR: Record<string, string> = { admin: 'مدير', recruiter: 'مسؤ�
       )
     )}
 </div>
+<style is:global>
+  .roles-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; margin-bottom:28px; }
+  .role-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+  .role-card strong{ color:var(--accent); }
+  .role-card span{ font-size:.85rem; color:var(--muted); line-height:1.5; }
+</style>
 </Admin>

@@ -5,6 +5,7 @@
 -- ============================================================
 
 alter table public.posts add column if not exists body_html text not null default '';
+alter table public.guide_sections add column if not exists body_html text not null default '';
 
 create table if not exists public.pages (
   id uuid primary key default gen_random_uuid(),

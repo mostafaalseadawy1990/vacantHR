@@ -1,5 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
+import Portal from '../../../layouts/Portal.astro';
 import { serverClient } from '../../../lib/supabase';
 
 const profile = Astro.locals.profile;
@@ -12,19 +12,9 @@ const { data: convs } = await supabase
   .order('last_message_at', { ascending: false });
 const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title="الرسائل | Vacant HR" path="/dashboard/messages" active="dashboard" noindex={true}>
-<main id="main">
-<section style="padding:44px 0 70px;">
-  <div class="wrap">
-    <div class="dash-head">
-      <div><div class="eyebrow-line">الرسائل</div><h1>الرسائل</h1></div>
-      <a href="/logout" class="btn">تسجيل الخروج</a>
-    </div>
-    <nav class="dash-nav">
-      <a href="/dashboard">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
-      <a href="/dashboard/messages" class="active">الرسائل</a>
-      <a href="/dashboard/profile">بياناتي</a>
-    </nav>
+<Portal title="الرسائل | Vacant HR" path="/dashboard/messages" active="messages">
+<Fragment slot="heading">الرسائل</Fragment>
+<div class="admin-body">
 
     {(!convs || convs.length === 0) ? (
       <p style="color:var(--muted);">مفيش رسائل. فريق Vacant HR هيبدأ المحادثة معاك لو احتاج.</p>
@@ -40,7 +30,5 @@ const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'med
         </table>
       </div>
     )}
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Portal>

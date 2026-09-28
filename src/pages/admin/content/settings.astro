@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { DEFAULT_SETTINGS, mediaUrl, clearSettingsCache } from '../../../lib/settings';
 
 const supabase = serverClient(Astro);
@@ -43,7 +44,7 @@ if (Astro.request.method === 'POST') {
   rows.push({ key: 'home_stats', value: stats, updated_at: now });
 
   const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
-  if (!error) { clearSettingsCache(); return Astro.redirect('/admin/content/settings?ok=1', 303); }
+  if (!error) { clearSettingsCache(); await logAction(Astro, supabase, 'تعديل إعدادات الموقع'); return Astro.redirect('/admin/content/settings?ok=1', 303); }
   flash = `تعذّر الحفظ: ${error.message}`;
 }
 const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';

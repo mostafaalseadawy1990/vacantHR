@@ -2,6 +2,7 @@
 import Admin from '../../../layouts/Admin.astro';
 import RichEditor from '../../../components/RichEditor.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { sanitizeHtml } from '../../../lib/html';
 import { RESERVED_SLUGS } from '../../../lib/pages';
 
@@ -15,6 +16,7 @@ if (Astro.request.method === 'POST') {
 
   if (action === 'delete') {
     await supabase.from('pages').delete().eq('id', id);
+    await logAction(Astro, supabase, 'حذف صفحة', id);
     return Astro.redirect('/admin/pages', 303);
   }
 
@@ -34,7 +36,7 @@ if (Astro.request.method === 'POST') {
   } else {
     const { error } = await supabase.from('pages').update(patch).eq('id', id);
     if (error) flash = error.code === '23505' ? 'الرابط مستخدم قبل كده.' : `تعذّر الحفظ: ${error.message}`;
-    else return Astro.redirect(`/admin/pages/${id}?ok=1`, 303);
+    else { await logAction(Astro, supabase, patch.status === 'published' ? 'نشر/تعديل صفحة' : 'حفظ مسودة صفحة', patch.title); return Astro.redirect(`/admin/pages/${id}?ok=1`, 303); }
   }
 }
 const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';

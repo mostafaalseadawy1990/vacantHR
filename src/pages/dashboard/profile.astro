@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import Portal from '../../layouts/Portal.astro';
 import { serverClient } from '../../lib/supabase';
 
 const user = Astro.locals.user!;
@@ -42,23 +42,9 @@ if (Astro.request.method === 'POST') {
   }
 }
 ---
-<Base title="بياناتي | Vacant HR" path="/dashboard/profile" active="dashboard" noindex={true}>
-<main id="main">
-<section style="padding:44px 0 70px;">
-  <div class="wrap">
-    <div class="dash-head">
-      <div>
-        <div class="eyebrow-line">بياناتي</div>
-        <h1>تعديل البيانات</h1>
-      </div>
-      <a href="/logout" class="btn">تسجيل الخروج</a>
-    </div>
-
-    <nav class="dash-nav">
-      <a href="/dashboard">{role === 'client' ? 'طلبات التوظيف' : 'طلباتي'}</a>
-      <a href="/dashboard/profile" class="active">بياناتي</a>
-      {profile?.role === 'admin' && <a href="/admin">لوحة الإدارة</a>}
-    </nav>
+<Portal title="بياناتي | Vacant HR" path="/dashboard/profile" active="profile">
+<Fragment slot="heading">تعديل البيانات</Fragment>
+<div class="admin-body">
 
     {msg && <p class={`notice ${msg.includes('✓') ? 'notice-ok' : 'notice-error'}`} style="margin-bottom:20px;">{msg}</p>}
 
@@ -89,7 +75,5 @@ if (Astro.request.method === 'POST') {
       )}
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
     </form>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Portal>

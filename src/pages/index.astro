@@ -24,7 +24,7 @@ const jsonld = [
         mainEntity: faqs.map((f) => ({
           '@type': 'Question',
           name: f.question,
-          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+          acceptedAnswer: { '@type': 'Answer', text: f.answer.replace(/<[^>]+>/g, '') },
         })),
       }]
     : []),
@@ -160,7 +160,7 @@ function statAttrs(value: string) {
         {faqs.map((f) => (
           <details>
             <summary>{f.question}</summary>
-            <p>{f.answer}</p>
+            <div class="rich" set:html={f.answer} />
           </details>
         ))}
       </div>

@@ -1,5 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
+import Portal from '../../../layouts/Portal.astro';
 import { serverClient } from '../../../lib/supabase';
 import { getSettings } from '../../../lib/settings';
 import { sendEmail, emailLayout } from '../../../lib/email';
@@ -33,11 +33,9 @@ const { data: msgs } = await supabase
   .from('messages').select('id, body, sender_id, created_at').eq('conversation_id', id).order('created_at');
 const fmt = (str: string) => new Date(str).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
-<Base title={`${conv.subject} | الرسائل`} path={`/dashboard/messages/${id}`} active="dashboard" noindex={true}>
-<main id="main">
-<section style="padding:44px 0 70px;">
-  <div class="wrap" style="max-width:720px;">
-    <div class="dash-head"><div><div class="eyebrow-line">محادثة</div><h1>{conv.subject}</h1></div><a href="/logout" class="btn">خروج</a></div>
+<Portal title={`${conv.subject} | الرسائل`} path={`/dashboard/messages/${id}`} active="messages">
+<Fragment slot="heading">{conv.subject}</Fragment>
+<div class="admin-body" style="max-width:720px;">
     <p style="margin-bottom:16px;"><a href="/dashboard/messages">→ كل الرسائل</a></p>
 
     <div class="chat">
@@ -53,10 +51,8 @@ const fmt = (str: string) => new Date(str).toLocaleString('ar-EG', { dateStyle: 
       <textarea name="body" placeholder="اكتب رسالتك…" style="min-height:90px;" required></textarea>
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;margin-top:8px;">إرسال</button>
     </form>
-  </div>
-</section>
-</main>
-</Base>
+</div>
+</Portal>
 
 <style is:global>
   .chat{display:flex;flex-direction:column;gap:10px;}

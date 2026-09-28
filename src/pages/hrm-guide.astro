@@ -60,7 +60,7 @@ const jsonld = sections.length ? [{
                       allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
                   </div>
                 )}
-                <div class="prose article-body"><Fragment set:html={renderMarkdown(s.body_md)} /></div>
+                <div class="prose rich article-body"><Fragment set:html={s.body_html || renderMarkdown(s.body_md)} /></div>
               </article>
             );
           })}

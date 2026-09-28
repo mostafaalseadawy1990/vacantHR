@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { mediaUrl } from '../../../lib/settings';
 import { renderMarkdown } from '../../../lib/jobs';
 import { sanitizeHtml } from '../../../lib/html';
@@ -16,6 +17,7 @@ if (Astro.request.method === 'POST') {
 
   if (action === 'delete') {
     await supabase.from('posts').delete().eq('id', id);
+    await logAction(Astro, supabase, 'حذف مقال', id);
     return Astro.redirect('/admin/blog', 303);
   }
 
@@ -39,7 +41,7 @@ if (Astro.request.method === 'POST') {
   } else {
     const { error } = await supabase.from('posts').update(patch).eq('id', id);
     if (error) flash = error.code === '23505' ? 'الـ slug مستخدم قبل كده.' : `تعذّر الحفظ: ${error.message}`;
-    else return Astro.redirect(`/admin/blog/${id}?ok=1`, 303);
+    else { await logAction(Astro, supabase, status === 'published' ? 'نشر/تعديل مقال' : 'حفظ مسودة مقال', patch.title as string); return Astro.redirect(`/admin/blog/${id}?ok=1`, 303); }
   }
 }
 const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';

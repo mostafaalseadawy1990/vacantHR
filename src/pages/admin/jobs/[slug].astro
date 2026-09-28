@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { sendEmail, emailLayout } from '../../../lib/email';
 import { normalizeApplyUrl, type Job } from '../../../lib/jobs';
 
@@ -44,7 +45,7 @@ if (Astro.request.method === 'POST') {
       flash = 'رابط التقديم الخارجي مش صحيح — لازم يبدأ بـ https://';
     } else {
       const { error } = await supabase.from('jobs').update(patch).eq('slug', slug);
-      if (!error) return Astro.redirect(`/admin/jobs/${slug}?ok=1`, 303);
+      if (!error) { await logAction(Astro, supabase, `تعديل وظيفة (${status === 'open' ? 'مفتوحة' : status === 'closed' ? 'مغلقة' : 'مسودة'})`, patch.title as string); return Astro.redirect(`/admin/jobs/${slug}?ok=1`, 303); }
       flash = `تعذّر الحفظ: ${error.message}`;
     }
   }
@@ -55,6 +56,7 @@ if (Astro.request.method === 'POST') {
     if (appId && ['submitted', 'reviewing', 'shortlisted', 'rejected', 'hired'].includes(st)) {
       const { error } = await supabase.from('applications').update({ status: st }).eq('id', appId);
       if (!error) {
+        await logAction(Astro, supabase, `تغيير حالة متقدم إلى ${st}`, `${slug}`);
         if (STATUS_MSG[st]) {
           const { data: a } = await supabase
             .from('applications').select('profiles(full_name, email)').eq('id', appId).maybeSingle();

@@ -1,6 +1,8 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { sanitizeHtml } from '../../../lib/html';
+import RichEditor from '../../../components/RichEditor.astro';
 
 const supabase = serverClient(Astro);
 let flash = '';
@@ -17,7 +19,7 @@ if (Astro.request.method === 'POST') {
   if (action === 'save') {
     const row = {
       question: String(form.get('question') || '').trim(),
-      answer: String(form.get('answer') || '').trim(),
+      answer: sanitizeHtml(String(form.get('answer') || '')),
       position: parseInt(String(form.get('position') || '0'), 10) || 0,
       published: form.get('published') === 'on',
     };
@@ -49,7 +51,7 @@ const { data: items } = await supabase.from('faqs').select('*').order('position'
           <input type="hidden" name="_action" value="save" />
           <input type="hidden" name="id" value={f.id} />
           <div class="form-row"><label>السؤال</label><input name="question" value={f.question} required /></div>
-          <div class="form-row"><label>الإجابة</label><textarea name="answer" style="min-height:90px;" required>{f.answer}</textarea></div>
+          <div class="form-row"><label>الإجابة</label><RichEditor name="answer" value={f.answer} minHeight={120} /></div>
           <div class="form-grid-2">
             <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={f.position} /></div>
             <div class="form-row" style="display:flex;align-items:end;">
@@ -67,7 +69,7 @@ const { data: items } = await supabase.from('faqs').select('*').order('position'
         <input type="hidden" name="_action" value="save" />
         <h3 style="margin-bottom:14px;">إضافة سؤال جديد</h3>
         <div class="form-row"><label>السؤال</label><input name="question" required /></div>
-        <div class="form-row"><label>الإجابة</label><textarea name="answer" style="min-height:90px;" required></textarea></div>
+        <div class="form-row"><label>الإجابة</label><RichEditor name="answer" minHeight={120} /></div>
         <div class="form-grid-2">
           <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
           <div class="form-row" style="display:flex;align-items:end;">

@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { logAction } from '../../../lib/audit';
 import { EMPLOYMENT_TYPE_AR } from '../../../lib/jobs';
 
 const supabase = serverClient(Astro);
@@ -15,7 +16,7 @@ if (Astro.request.method === 'POST') {
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
     if (status === 'open') patch.published_at = new Date().toISOString();
     const { error } = await supabase.from('jobs').update(patch).eq('id', id);
-    if (!error) return Astro.redirect('/admin/jobs?ok=1', 303);
+    if (!error) { await logAction(Astro, supabase, `تغيير حالة وظيفة إلى ${status}`, id); return Astro.redirect('/admin/jobs?ok=1', 303); }
     flash = 'تعذّر تحديث الحالة.';
   }
 }

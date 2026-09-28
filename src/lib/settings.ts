@@ -53,7 +53,7 @@ export type Post = {
 };
 
 export type GuideSection = {
-  id: string; slug: string; title: string; body_md: string;
+  id: string; slug: string; title: string; body_md: string; body_html?: string;
   video_url: string | null; position: number; published: boolean;
 };
 

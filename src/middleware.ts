@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getSessionProfile } from './lib/supabase';
+import { isStaff, can, canWrite, sectionFor } from './lib/roles';
 
 const PROTECTED = [/^\/dashboard/, /^\/admin/, /^\/careers\/[^/]+\/apply\/?$/];
 
@@ -23,11 +24,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(`/login?next=${encodeURIComponent(path)}`, 302);
   }
   if (path.startsWith('/admin')) {
-    // Admin-only sections vs. sections recruiters may also use.
-    const ADMIN_ONLY = /^\/admin\/(content|media|analytics|blog|pages|staff)/;
-    if (ADMIN_ONLY.test(path) && role !== 'admin') return context.redirect('/admin', 302);
-    if (!ADMIN_ONLY.test(path) && role !== 'admin' && role !== 'recruiter') {
-      return context.redirect('/dashboard', 302);
+    // Section-level access per staff role (see lib/roles.ts); viewer is read-only.
+    if (!isStaff(role)) return context.redirect('/dashboard', 302);
+    const section = sectionFor(path);
+    if (section !== 'home' && !can(role, section)) return context.redirect('/admin?denied=1', 302);
+    if (context.request.method !== 'GET' && context.request.method !== 'HEAD' && !canWrite(role)) {
+      return context.redirect(`${path}?denied=1`, 303);
     }
   }
 

@@ -1,6 +1,7 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
+import { logAction } from '../../lib/audit';
 import { mediaUrl } from '../../lib/settings';
 
 const supabase = serverClient(Astro);
@@ -20,6 +21,7 @@ if (Astro.request.method === 'POST') {
     if (id && path) {
       await supabase.storage.from('media').remove([path]);
       await supabase.from('media').delete().eq('id', id);
+      await logAction(Astro, supabase, 'حذف صورة', path);
       return Astro.redirect('/admin/media?ok=1', 303);
     }
   }
@@ -41,6 +43,7 @@ if (Astro.request.method === 'POST') {
         flash = `تعذّر الرفع: ${up.error.message}`;
       } else {
         await supabase.from('media').insert({ path, alt, created_by: user.id });
+        await logAction(Astro, supabase, 'رفع صورة', path);
         return Astro.redirect('/admin/media?ok=1', 303);
       }
     }

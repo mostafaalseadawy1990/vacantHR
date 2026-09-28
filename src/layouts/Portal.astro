@@ -1,0 +1,37 @@
+---
+// Candidate / client portal shell (/dashboard): same look as the admin panel, simpler menu.
+import Shell, { type ShellGroup } from './Shell.astro';
+import { ICONS as I } from '../lib/icons';
+import { isStaff, ROLE_AR } from '../lib/roles';
+
+interface Props { title: string; path: string; active?: string }
+const { title, path, active = '' } = Astro.props;
+
+const user = Astro.locals?.user;
+const profile = Astro.locals?.profile;
+const role = profile?.role ?? 'candidate';
+const isClient = role === 'client';
+
+const groups: ShellGroup[] = [
+  { label: '', items: [
+    { href: '/dashboard', label: isClient ? 'طلبات التوظيف' : 'طلباتي', key: 'home', icon: I.home },
+    { href: '/dashboard/messages', label: 'الرسائل', key: 'messages', icon: I.mail },
+    { href: '/dashboard/profile', label: 'بياناتي', key: 'profile', icon: I.user },
+  ] },
+  ...(isClient ? [] : [{ label: 'الوظائف', items: [
+    { href: '/careers', label: 'تصفّح الوظائف', key: 'careers', icon: I.jobs },
+  ] }]),
+  ...(isStaff(role) ? [{ label: 'الإدارة', items: [
+    { href: '/admin', label: 'لوحة الإدارة', key: 'admin', icon: I.settings },
+  ] }] : []),
+];
+const foot = [
+  { href: '/', label: 'الموقع الرئيسي', key: 'site', icon: I.external, external: true },
+  { href: '/logout', label: 'تسجيل الخروج', key: 'logout', icon: I.logout },
+];
+---
+<Shell title={title} path={path} active={active} groups={groups} foot={foot} brandHref="/dashboard"
+       userName={profile?.full_name ?? user?.email ?? 'مستخدم'} userRole={ROLE_AR[role] ?? role} kicker={isClient ? 'بوابة الشركات' : 'بوابة المرشحين'}>
+  <Fragment slot="heading"><slot name="heading">لوحتي</slot></Fragment>
+  <slot />
+</Shell>
