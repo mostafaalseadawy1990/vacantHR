@@ -87,8 +87,11 @@ try {
   <script is:inline>
     try {
       if (!location.pathname.startsWith('/admin')) {
+        var q = new URLSearchParams(location.search);
         fetch('/e', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind: 'pageview', path: location.pathname, ref: document.referrer || '' }) });
+          body: JSON.stringify({ kind: 'pageview', path: location.pathname, ref: document.referrer || '',
+            device: matchMedia('(max-width: 768px)').matches ? 'mobile' : 'desktop',
+            utm_source: q.get('utm_source') || '', utm_medium: q.get('utm_medium') || '', utm_campaign: q.get('utm_campaign') || '' }) });
       }
     } catch (e) {}
   </script>

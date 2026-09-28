@@ -24,7 +24,7 @@ const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
 const { data: jobs } = await supabase
   .from('jobs')
-  .select('id, slug, title, department, employment_type, status, created_at, applications(count)')
+  .select('id, slug, title, department, employment_type, status, created_at, applications(count), published_at, apply_url')
   .order('created_at', { ascending: false });
 
 // total views per job (last 90d)
@@ -34,52 +34,78 @@ const viewsByJob: Record<string, number> = {};
 for (const v of vrows ?? []) viewsByJob[v.job_id] = (viewsByJob[v.job_id] ?? 0) + (v.count ?? 0);
 
 const STATUS_AR: Record<string, string> = { draft: 'مسودة', open: 'مفتوحة', closed: 'مغلقة' };
+const urlQ = new URL(Astro.request.url);
+const fStatus = urlQ.searchParams.get('status') || '';
+const q = (urlQ.searchParams.get('q') || '').trim().toLowerCase();
+const shown = (jobs ?? []).filter((j: any) => (!fStatus || j.status === fStatus) && (!q || (j.title + ' ' + (j.department ?? '')).toLowerCase().includes(q)));
+const counts = { all: (jobs ?? []).length, open: (jobs ?? []).filter((j: any) => j.status === 'open').length, draft: (jobs ?? []).filter((j: any) => j.status === 'draft').length, closed: (jobs ?? []).filter((j: any) => j.status === 'closed').length };
+const fmtD = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '—';
 ---
 <Admin title="إدارة الوظائف | Vacant HR" path="/admin/jobs" active="jobs">
 <Fragment slot="heading">الوظائف</Fragment>
 <div class="admin-body">
+  {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+  {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
-    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+  <div class="an-bar">
+    <div class="seg">
+      <a href="/admin/jobs" class:list={{ active: !fStatus }}>الكل <small>{counts.all}</small></a>
+      <a href="/admin/jobs?status=open" class:list={{ active: fStatus === 'open' }}>مفتوحة <small>{counts.open}</small></a>
+      <a href="/admin/jobs?status=draft" class:list={{ active: fStatus === 'draft' }}>مسودات <small>{counts.draft}</small></a>
+      <a href="/admin/jobs?status=closed" class:list={{ active: fStatus === 'closed' }}>مغلقة <small>{counts.closed}</small></a>
+    </div>
+    <form method="GET" style="display:flex;gap:8px;align-items:center;">
+      {fStatus && <input type="hidden" name="status" value={fStatus} />}
+      <input type="search" name="q" value={q} placeholder="بحث بالمسمى أو القسم…" style="margin:0;min-width:220px;padding:8px 12px;" />
+      <a href="/admin/jobs/new" class="btn solid" style="white-space:nowrap;">+ وظيفة جديدة</a>
+    </form>
+  </div>
 
-    <div style="margin-bottom:20px;"><a href="/admin/jobs/new" class="btn solid">+ وظيفة جديدة</a></div>
-
-    {(!jobs || jobs.length === 0) ? (
-      <p style="color:var(--teal-2);">مفيش وظائف. <a href="/admin/jobs/new">ضيف أول وظيفة</a>.</p>
-    ) : (
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead><tr><th>المسمى</th><th>القسم</th><th>النوع</th><th>مشاهدات</th><th>المتقدمين</th><th>الحالة</th><th></th></tr></thead>
-          <tbody>
-            {jobs.map((j: any) => (
+  {shown.length === 0 ? (
+    <div class="cempty">{(jobs ?? []).length === 0 ? <>مفيش وظائف لسه. <a href="/admin/jobs/new">ضيف أول وظيفة</a>.</> : 'مفيش وظائف مطابقة.'}</div>
+  ) : (
+    <div class="table-scroll">
+      <table class="data-table jobs-table">
+        <thead><tr><th>الوظيفة</th><th>النوع</th><th>مشاهدات</th><th>متقدمين</th><th>تحويل</th><th>النشر</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+          {shown.map((j: any) => {
+            const v = viewsByJob[j.id] ?? 0, a = j.applications?.[0]?.count ?? 0;
+            return (
               <tr>
-                <td><a href={`/admin/jobs/${j.slug}`}>{j.title}</a></td>
-                <td>{j.department ?? '—'}</td>
+                <td><a href={`/admin/jobs/${j.slug}`} style="font-weight:600;">{j.title}</a><br /><small style="color:var(--muted);">{j.department ?? '—'}{j.apply_url ? ' · تقديم خارجي' : ''}</small></td>
                 <td>{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR] ?? j.employment_type}</td>
-                <td>{viewsByJob[j.id] ?? 0}</td>
-                <td>{j.applications?.[0]?.count ?? 0}</td>
+                <td>{v}</td>
+                <td>{a > 0 ? <a href={`/admin/jobs/${j.slug}#apps`}>{a}</a> : 0}</td>
+                <td style="color:var(--muted);">{v ? Math.round((a / v) * 100) : 0}%</td>
+                <td style="color:var(--muted);white-space:nowrap;">{fmtD(j.published_at)}</td>
                 <td><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{STATUS_AR[j.status]}</span></td>
                 <td>
-                  <form method="POST" style="display:flex;gap:6px;">
-                    <input type="hidden" name="id" value={j.id} />
-                    <select name="status" class="mini-select">
-                      <option value="draft" selected={j.status === 'draft'}>مسودة</option>
-                      <option value="open" selected={j.status === 'open'}>مفتوحة</option>
-                      <option value="closed" selected={j.status === 'closed'}>مغلقة</option>
-                    </select>
-                    <button type="submit" class="mini-btn">حفظ</button>
-                  </form>
+                  <div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;">
+                    <form method="POST" style="display:flex;gap:4px;">
+                      <input type="hidden" name="id" value={j.id} />
+                      <select name="status" class="mini-select" onchange="this.form.submit()">
+                        <option value="draft" selected={j.status === 'draft'}>مسودة</option>
+                        <option value="open" selected={j.status === 'open'}>مفتوحة</option>
+                        <option value="closed" selected={j.status === 'closed'}>مغلقة</option>
+                      </select>
+                    </form>
+                    {j.status === 'open' && <a href={`/careers/${j.slug}`} target="_blank" rel="noopener" class="mini-link" title="عرض على الموقع">↗</a>}
+                    <a href={`/admin/jobs/${j.slug}/board`} class="mini-link" title="لوحة المراحل">▦</a>
+                  </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
 </div>
-</Admin>
-
 <style is:global>
-  .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:#fff;}
-  .mini-btn{background:var(--teal);color:var(--paper);cursor:pointer;border-color:var(--teal);}
+  .seg small{ opacity:.7; font-weight:500; margin-inline-start:3px; }
+  .mini-select{ font-family:inherit; font-size:.82rem; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .mini-link{ display:inline-flex; width:30px; height:30px; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:.95rem; }
+  .mini-link:hover{ color:var(--accent); border-color:var(--accent); }
+  .jobs-table td{ vertical-align:middle; }
 </style>
+</Admin>

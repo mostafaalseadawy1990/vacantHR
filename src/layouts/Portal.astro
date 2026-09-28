@@ -45,29 +45,4 @@ const foot = [
   <Fragment slot="heading"><slot name="heading">لوحتي</slot></Fragment>
   <slot />
 </Shell>
-<style is:global>
-  /* Portal widgets */
-  .ptiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:22px; }
-  .ptile{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; display:flex; flex-direction:column; gap:4px; color:inherit; }
-  .ptile:hover{ border-color:var(--accent); }
-  .ptile b{ font-size:1.6rem; font-weight:800; color:var(--accent-strong); line-height:1.1; }
-  .ptile span{ font-size:.85rem; color:var(--muted); }
-  .psec{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
-  .psec-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
-  .psec-head h2{ margin:0; font-size:1.05rem; }
-  .psec-head a{ font-size:.85rem; color:var(--accent); font-weight:600; }
-  .prow{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line-soft); }
-  .prow:first-of-type{ border-top:0; padding-top:0; }
-  .prow-main{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .prow-main strong{ font-size:.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .prow-main small{ color:var(--muted); font-size:.8rem; }
-  .pempty{ color:var(--muted); font-size:.9rem; margin:0; }
-  .pnudge{ background:var(--accent-soft); border:1px solid #BFE3D8; border-radius:var(--radius); padding:14px 18px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-  .pnudge p{ margin:0; font-size:.92rem; }
-  .pgrid2{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
-  /* application status steps */
-  .steps{ display:flex; gap:4px; margin-top:6px; }
-  .steps i{ flex:1; height:4px; border-radius:2px; background:var(--line); }
-  .steps i.on{ background:var(--accent); }
-  .steps.rejected i.on{ background:#C05621; }
-</style>
+

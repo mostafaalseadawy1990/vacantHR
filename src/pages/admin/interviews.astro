@@ -1,61 +1,101 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
+import { logAction } from '../../lib/audit';
 
 const supabase = serverClient(Astro);
+let flash = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = String(form.get('id') || '');
+  const action = String(form.get('_action') || '');
+  if (id && (action === 'cancel' || action === 'complete')) {
+    await supabase.from('interviews').update({ status: action === 'cancel' ? 'cancelled' : 'completed' }).eq('id', id);
+    await logAction(Astro, supabase, action === 'cancel' ? 'إلغاء مقابلة' : 'إتمام مقابلة', id);
+    return Astro.redirect('/admin/interviews?ok=1', 303);
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 const nowIso = new Date().toISOString();
 
-const { data: upcoming } = await supabase
-  .from('interviews')
-  .select('id, scheduled_at, mode, location, status, applications(candidate_id, profiles(full_name, phone), jobs(title, slug))')
-  .neq('status', 'cancelled')
-  .gte('scheduled_at', nowIso)
-  .order('scheduled_at');
+const SEL = 'id, scheduled_at, mode, location, status, applications(id, candidate_id, profiles(full_name, phone, email), jobs(title, slug))';
+const [{ data: upcoming }, { data: past }] = await Promise.all([
+  supabase.from('interviews').select(SEL).neq('status', 'cancelled').gte('scheduled_at', nowIso).order('scheduled_at'),
+  supabase.from('interviews').select(SEL).lt('scheduled_at', nowIso).order('scheduled_at', { ascending: false }).limit(40),
+]);
 
-const { data: past } = await supabase
-  .from('interviews')
-  .select('id, scheduled_at, mode, status, applications(candidate_id, profiles(full_name), jobs(title))')
-  .lt('scheduled_at', nowIso)
-  .order('scheduled_at', { ascending: false })
-  .limit(30);
+// Group upcoming by day bucket
+const startOf = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const today = startOf(new Date()); const tomorrow = new Date(today.getTime() + 864e5); const week = new Date(today.getTime() + 7 * 864e5);
+const bucket = (s: string) => { const d = new Date(s); return d < tomorrow ? 'النهارده' : d < new Date(tomorrow.getTime() + 864e5) ? 'بكرة' : d < week ? 'الأسبوع ده' : 'لاحقًا'; };
+const groups: Record<string, any[]> = {};
+for (const v of upcoming ?? []) (groups[bucket(v.scheduled_at)] ??= []).push(v);
+const ORDER = ['النهارده', 'بكرة', 'الأسبوع ده', 'لاحقًا'];
 
 const MODE_AR: Record<string, string> = { online: 'أونلاين', onsite: 'في المقر', phone: 'هاتفيًا' };
-const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' });
+const STATUS_AR: Record<string, string> = { proposed: 'مقترحة', confirmed: 'مؤكدة', completed: 'تمت', cancelled: 'ملغاة' };
+const fmtT = (s: string) => new Date(s).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+const fmtD = (s: string) => new Date(s).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
 const fmtShort = (s: string) => new Date(s).toLocaleDateString('ar-EG', { dateStyle: 'medium' });
+const isLink = (l?: string | null) => !!l && /^https?:\/\//.test(l);
 ---
 <Admin title="المقابلات | لوحة الإدارة" path="/admin/interviews" active="interviews">
 <Fragment slot="heading">المقابلات</Fragment>
 <div class="admin-body">
-    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:20px;">تُجدول المقابلات من صفحة كل مرشح.</p>
+  {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+  {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    <h2 style="margin-bottom:14px;">القادمة ({upcoming?.length ?? 0})</h2>
-    {(!upcoming || upcoming.length === 0) ? <p style="color:var(--muted);">مفيش مقابلات قادمة.</p> : (
-      <div class="table-scroll"><table class="data-table">
-        <thead><tr><th>الموعد</th><th>المرشح</th><th>الوظيفة</th><th>النوع</th><th>المكان/الرابط</th></tr></thead>
-        <tbody>
-          {upcoming.map((v: any) => (
-            <tr>
-              <td>{fmt(v.scheduled_at)}</td>
-              <td>{v.applications?.candidate_id ? <a href={`/admin/candidates/${v.applications.candidate_id}`}>{v.applications?.profiles?.full_name ?? '—'}</a> : (v.applications?.profiles?.full_name ?? '—')}</td>
-              <td>{v.applications?.jobs?.title ?? '—'}</td>
-              <td>{MODE_AR[v.mode] ?? v.mode}</td>
-              <td dir="ltr" style="text-align:right;">{v.location ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
+  <div class="ptiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+    <div class="ptile"><b>{groups['النهارده']?.length ?? 0}</b><span>النهارده</span></div>
+    <div class="ptile"><b>{(groups['النهارده']?.length ?? 0) + (groups['بكرة']?.length ?? 0) + (groups['الأسبوع ده']?.length ?? 0)}</b><span>خلال 7 أيام</span></div>
+    <div class="ptile"><b>{upcoming?.length ?? 0}</b><span>إجمالي القادمة</span></div>
+  </div>
+  <p style="color:var(--muted);font-size:.85rem;margin:-8px 0 18px;">تُجدول المقابلات من صفحة المرشح (زرار "جدولة مقابلة" تحت كل طلب).</p>
+
+  {(!upcoming || upcoming.length === 0) ? <div class="cempty">مفيش مقابلات قادمة.</div> : ORDER.filter((k) => groups[k]?.length).map((k) => (
+    <section class="psec">
+      <div class="psec-head"><h2>{k} <small style="color:var(--muted);font-weight:400;">({groups[k].length})</small></h2></div>
+      {groups[k].map((v: any) => (
+        <div class="prow iv-row">
+          <div class="iv-time"><b>{fmtT(v.scheduled_at)}</b><small>{fmtD(v.scheduled_at)}</small></div>
+          <div class="prow-main">
+            <strong>{v.applications?.candidate_id ? <a href={`/admin/candidates/${v.applications.candidate_id}`}>{v.applications?.profiles?.full_name ?? '—'}</a> : (v.applications?.profiles?.full_name ?? '—')}</strong>
+            <small>{v.applications?.jobs?.title ?? '—'} · {MODE_AR[v.mode] ?? v.mode}{v.location && <> · {isLink(v.location) ? <a href={v.location} target="_blank" rel="noopener">رابط الاجتماع ↗</a> : <span dir="ltr">{v.location}</span>}</>}</small>
+          </div>
+          <div class="iv-acts">
+            {v.applications?.profiles?.phone && <a href={`tel:${v.applications.profiles.phone}`} class="mini-link" title="اتصال">📞</a>}
+            <form method="POST"><input type="hidden" name="id" value={v.id} /><input type="hidden" name="_action" value="complete" /><button class="mini-link" title="تمت">✓</button></form>
+            <form method="POST" onsubmit="return confirm('إلغاء المقابلة؟')"><input type="hidden" name="id" value={v.id} /><input type="hidden" name="_action" value="cancel" /><button class="mini-link" title="إلغاء" style="color:#9A3B1C;">✕</button></form>
+          </div>
+        </div>
+      ))}
+    </section>
+  ))}
+
+  <section class="psec">
+    <div class="psec-head"><h2>السابقة</h2></div>
+    {(!past || past.length === 0) ? <p class="pempty">—</p> : (
+      <div class="table-scroll" style="border:0;"><table class="data-table">
+        <thead><tr><th>التاريخ</th><th>المرشح</th><th>الوظيفة</th><th>الحالة</th></tr></thead>
+        <tbody>{past.map((v: any) => (
+          <tr><td style="white-space:nowrap;">{fmtShort(v.scheduled_at)}</td>
+            <td>{v.applications?.candidate_id ? <a href={`/admin/candidates/${v.applications.candidate_id}`}>{v.applications?.profiles?.full_name ?? '—'}</a> : '—'}</td>
+            <td>{v.applications?.jobs?.title ?? '—'}</td>
+            <td><span class={`status-pill status-${v.status === 'completed' ? 'shortlisted' : v.status === 'cancelled' ? 'rejected' : 'submitted'}`}>{STATUS_AR[v.status] ?? v.status}</span></td></tr>
+        ))}</tbody>
       </table></div>
     )}
-
-    <h2 style="margin:36px 0 14px;">السابقة</h2>
-    {(!past || past.length === 0) ? <p style="color:var(--muted);">—</p> : (
-      <div class="table-scroll"><table class="data-table">
-        <thead><tr><th>الموعد</th><th>المرشح</th><th>الوظيفة</th></tr></thead>
-        <tbody>
-          {past.map((v: any) => (
-            <tr><td>{fmtShort(v.scheduled_at)}</td><td>{v.applications?.profiles?.full_name ?? '—'}</td><td>{v.applications?.jobs?.title ?? '—'}</td></tr>
-          ))}
-        </tbody>
-      </table></div>
-    )}
+  </section>
 </div>
+<style is:global>
+  .iv-row{ display:grid; grid-template-columns:96px minmax(0,1fr) auto; gap:14px; align-items:center; }
+  .iv-time{ display:flex; flex-direction:column; line-height:1.2; }
+  .iv-time b{ font-size:1.05rem; color:var(--accent-strong); }
+  .iv-time small{ color:var(--muted); font-size:.75rem; }
+  .iv-acts{ display:flex; gap:6px; }
+  .iv-acts form{ margin:0; }
+  .mini-link{ display:inline-flex; width:30px; height:30px; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:#fff; cursor:pointer; font-size:.9rem; font-family:inherit; }
+  .mini-link:hover{ color:var(--accent); border-color:var(--accent); }
+  @media (max-width:600px){ .iv-row{ grid-template-columns:1fr; gap:6px; } }
+</style>
 </Admin>

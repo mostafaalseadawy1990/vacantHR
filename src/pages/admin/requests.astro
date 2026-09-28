@@ -18,10 +18,15 @@ if (Astro.request.method === 'POST') {
 }
 const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
 
-const { data: reqs } = await supabase
+const urlQ = new URL(Astro.request.url);
+const fStatus = urlQ.searchParams.get('status') || '';
+const { data: reqsAll } = await supabase
   .from('client_requests')
-  .select('id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone)')
+  .select('id, role_title, headcount, details_md, status, created_at, profiles(full_name, company_name, phone), client_shortlist(client_decision, admin_status)')
   .order('created_at', { ascending: false });
+const reqs = (reqsAll ?? []).filter((r: any) => !fStatus || r.status === fStatus);
+const counts: Record<string, number> = { all: (reqsAll ?? []).length };
+for (const r of reqsAll ?? []) counts[r.status] = (counts[r.status] || 0) + 1;
 
 const ST: Array<[string, string]> = [
   ['new', 'جديد'], ['in_progress', 'شغّالين عليه'], ['candidates_sent', 'أرسلنا مرشحين'], ['closed', 'مغلق'],
@@ -32,42 +37,60 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
 <Admin title="طلبات الشركات | Vacant HR" path="/admin/requests" active="requests">
 <Fragment slot="heading">طلبات الشركات</Fragment>
 <div class="admin-body">
-    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
-    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+  {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
+  {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    {(!reqs || reqs.length === 0) ? (
-      <p style="color:var(--teal-2);">مفيش طلبات من شركات لسه.</p>
-    ) : (
-      <div style="display:grid;gap:18px;">
-        {reqs.map((r: any) => (
-          <div class="form-box" style="max-width:none;">
-            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:baseline;">
-              <h3 style="margin:0;">{r.role_title} <span style="color:var(--teal-2);font-size:0.85rem;">× {r.headcount}</span></h3>
-              <span style="font-size:0.85rem;color:var(--teal-2);">{fmt(r.created_at)}</span>
+  <div class="an-bar">
+    <div class="seg">
+      <a href="/admin/requests" class:list={{ active: !fStatus }}>الكل <small>{counts.all}</small></a>
+      {ST.map(([v, l]) => <a href={`/admin/requests?status=${v}`} class:list={{ active: fStatus === v }}>{l} <small>{counts[v] || 0}</small></a>)}
+    </div>
+  </div>
+
+  {reqs.length === 0 ? <div class="cempty">مفيش طلبات{fStatus ? ' في الحالة دي' : ' من شركات لسه'}.</div> : (
+    <div class="req-grid">
+      {reqs.map((r: any) => {
+        const sl = r.client_shortlist ?? [];
+        const sent = sl.filter((x: any) => x.admin_status === 'sent').length, drafts = sl.length - sent;
+        const pend = sl.filter((x: any) => x.admin_status === 'sent' && x.client_decision === 'pending').length;
+        const appr = sl.filter((x: any) => x.client_decision === 'approved').length;
+        return (
+          <div class="req-card">
+            <div class="req-head">
+              <div><a href={`/admin/requests/${r.id}`} class="req-title">{r.role_title}</a><small>× {r.headcount} · {fmt(r.created_at)}</small></div>
+              <span class={`status-pill status-${r.status}`}>{ST.find(([v]) => v === r.status)?.[1] ?? r.status}</span>
             </div>
-            <p style="margin:10px 0 6px;color:var(--teal-2);font-size:0.9rem;">
-              {r.profiles?.company_name ?? '—'} — {r.profiles?.full_name ?? '—'}
-              {r.profiles?.phone && <span dir="ltr"> · {r.profiles.phone}</span>}
-            </p>
-            {r.details_md && <p style="white-space:pre-wrap;">{r.details_md}</p>}
-            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
-              <form method="POST" style="display:flex;gap:8px;">
+            <p class="req-client">{r.profiles?.company_name ?? '—'} — {r.profiles?.full_name ?? '—'}{r.profiles?.phone && <span dir="ltr"> · {r.profiles.phone}</span>}</p>
+            {r.details_md && <p class="req-details">{r.details_md}</p>}
+            <div class="req-stats">
+              <span>{sent} مرسل</span>{drafts > 0 && <span>{drafts} مسودة</span>}{pend > 0 && <span class="warn">{pend} بانتظار العميل</span>}{appr > 0 && <span class="good">{appr} موافق عليهم</span>}
+            </div>
+            <div class="req-acts">
+              <a href={`/admin/requests/${r.id}`} class="btn solid" style="padding:7px 14px;font-size:.84rem;">المرشحون ←</a>
+              <form method="POST" style="display:flex;gap:6px;">
                 <input type="hidden" name="id" value={r.id} />
-                <select name="status" class="mini-select">
-                  {ST.map(([v, l]) => <option value={v} selected={sel(r.status, v)}>{l}</option>)}
-                </select>
-                <button type="submit" class="mini-btn">تحديث الحالة</button>
+                <select name="status" class="mini-select" onchange="this.form.submit()">{ST.map(([v, l]) => <option value={v} selected={sel(r.status, v)}>{l}</option>)}</select>
               </form>
-              <a href={`/admin/requests/${r.id}`} class="btn" style="padding:6px 14px;font-size:0.82rem;">المرشحون المقترحون ←</a>
             </div>
           </div>
-        ))}
-      </div>
-    )}
+        );
+      })}
+    </div>
+  )}
 </div>
-</Admin>
-
 <style is:global>
-  .mini-select,.mini-btn{font-family:'Cairo',sans-serif;font-size:0.82rem;padding:6px 12px;border:1px solid var(--line);border-radius:2px;background:#fff;}
-  .mini-btn{background:var(--teal);color:var(--paper);cursor:pointer;border-color:var(--teal);}
+  .req-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
+  .req-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; display:flex; flex-direction:column; gap:8px; }
+  .req-head{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .req-title{ font-weight:700; font-size:1.02rem; display:block; }
+  .req-head small{ color:var(--muted); font-size:.8rem; }
+  .req-client{ margin:0; font-size:.88rem; color:var(--body); }
+  .req-details{ margin:0; font-size:.86rem; color:var(--muted); white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .req-stats{ display:flex; flex-wrap:wrap; gap:6px; font-size:.75rem; }
+  .req-stats span{ background:var(--surface-soft); border:1px solid var(--line); border-radius:999px; padding:2px 9px; color:var(--body); }
+  .req-stats .warn{ background:#FEF3C7; border-color:#FCD34D; color:#78350F; }
+  .req-stats .good{ background:#E4F3E7; border-color:#A7D9B3; color:#276749; }
+  .req-acts{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:auto; padding-top:6px; }
+  .mini-select{ font-family:inherit; font-size:.82rem; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
 </style>
+</Admin>

@@ -3,88 +3,229 @@ import Admin from '../../layouts/Admin.astro';
 import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
-const today = new Date();
-const d14 = new Date(today.getTime() - 13 * 864e5).toISOString().slice(0, 10);
-const d30 = new Date(today.getTime() - 29 * 864e5).toISOString().slice(0, 10);
+const url = new URL(Astro.request.url);
+const period = [7, 30, 90].includes(Number(url.searchParams.get('p'))) ? Number(url.searchParams.get('p')) : 30;
+const DAY = 864e5;
+const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const start = new Date(today.getTime() - (period - 1) * DAY);
+const prevStart = new Date(start.getTime() - period * DAY);
+const prevEnd = new Date(start.getTime() - DAY);
 
-const [{ data: ev }, { count: apps30 }, { data: jv }, { data: signups }] = await Promise.all([
-  supabase.from('events').select('path, ref, day').eq('kind', 'pageview').gte('day', d14).limit(20000),
-  supabase.from('applications').select('id', { count: 'exact', head: true }).gte('created_at', d30),
-  supabase.from('job_views').select('count').gte('day', d30),
-  supabase.from('profiles').select('created_at, role').gte('created_at', d30),
+const [
+  { data: ev }, { data: prevEv },
+  { data: apps }, { count: prevApps },
+  { data: jv }, { data: prevJv },
+  { data: signups }, { count: prevSignups },
+  { data: reqs }, { data: jobs },
+] = await Promise.all([
+  supabase.from('events').select('path, ref, day, device, utm_source, utm_medium, utm_campaign').eq('kind', 'pageview').gte('day', iso(start)).limit(50000),
+  supabase.from('events').select('day').eq('kind', 'pageview').gte('day', iso(prevStart)).lte('day', iso(prevEnd)).limit(50000),
+  supabase.from('applications').select('id, status, created_at, job_id').gte('created_at', start.toISOString()),
+  supabase.from('applications').select('id', { count: 'exact', head: true }).gte('created_at', prevStart.toISOString()).lt('created_at', start.toISOString()),
+  supabase.from('job_views').select('job_id, day, count').gte('day', iso(start)),
+  supabase.from('job_views').select('count').gte('day', iso(prevStart)).lte('day', iso(prevEnd)),
+  supabase.from('profiles').select('role, created_at').gte('created_at', start.toISOString()),
+  supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', prevStart.toISOString()).lt('created_at', start.toISOString()),
+  supabase.from('client_requests').select('id, status, created_at').gte('created_at', start.toISOString()),
+  supabase.from('jobs').select('id, title, slug, status'),
 ]);
 
 const events = ev ?? [];
-// daily pageviews
 const days: string[] = [];
-for (let i = 0; i < 14; i++) days.push(new Date(today.getTime() - (13 - i) * 864e5).toISOString().slice(0, 10));
+for (let i = 0; i < period; i++) days.push(iso(new Date(start.getTime() + i * DAY)));
 const perDay: Record<string, number> = Object.fromEntries(days.map((d) => [d, 0]));
 for (const e of events) if (perDay[e.day] !== undefined) perDay[e.day]++;
-const maxDay = Math.max(1, ...Object.values(perDay));
-const totalViews = events.length;
+const prevPerDay: number[] = Array(period).fill(0);
+for (const e of prevEv ?? []) { const i = Math.round((new Date(e.day).getTime() - prevStart.getTime()) / DAY); if (i >= 0 && i < period) prevPerDay[i]++; }
+const series = days.map((d) => perDay[d]);
+const maxY = Math.max(1, ...series, ...prevPerDay);
 
-const topPages = Object.entries(events.reduce((a: Record<string, number>, e) => {
-  a[e.path || '/'] = (a[e.path || '/'] || 0) + 1; return a;
-}, {})).sort((a, b) => b[1] - a[1]).slice(0, 10);
+// ---- KPIs with deltas vs previous period
+const pct = (cur: number, prev: number) => prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
+const views = events.length, prevViews = (prevEv ?? []).length;
+const jobViews = (jv ?? []).reduce((s: number, r: any) => s + (r.count ?? 0), 0);
+const prevJobViews = (prevJv ?? []).reduce((s: number, r: any) => s + (r.count ?? 0), 0);
+const appsN = (apps ?? []).length;
+const signupsN = (signups ?? []).length;
+const candN = (signups ?? []).filter((r: any) => r.role === 'candidate').length;
+const clientN = (signups ?? []).filter((r: any) => r.role === 'client').length;
+const kpis = [
+  { l: 'مشاهدات الصفحات', v: views, d: pct(views, prevViews) },
+  { l: 'مشاهدات الوظائف', v: jobViews, d: pct(jobViews, prevJobViews) },
+  { l: 'طلبات تقديم', v: appsN, d: pct(appsN, prevApps ?? 0) },
+  { l: 'حسابات جديدة', v: signupsN, d: pct(signupsN, prevSignups ?? 0), sub: `${candN} مرشح · ${clientN} شركة` },
+];
 
-const topRefs = Object.entries(events.reduce((a: Record<string, number>, e) => {
-  const r = e.ref || '(مباشر)'; a[r] = (a[r] || 0) + 1; return a;
-}, {})).sort((a, b) => b[1] - a[1]).slice(0, 8);
+// ---- funnel
+const shortlisted = (apps ?? []).filter((a: any) => ['shortlisted', 'hired'].includes(a.status)).length;
+const hired = (apps ?? []).filter((a: any) => a.status === 'hired').length;
+const funnel = [
+  { l: 'مشاهدة وظيفة', v: jobViews }, { l: 'تقديم', v: appsN }, { l: 'قائمة مختصرة', v: shortlisted }, { l: 'تعيين', v: hired },
+];
+const fmax = Math.max(1, jobViews);
 
-const jobViews30 = (jv ?? []).reduce((s: number, r: any) => s + (r.count ?? 0), 0);
-const conv = jobViews30 > 0 ? Math.round(((apps30 ?? 0) / jobViews30) * 100) : 0;
-const newCandidates = (signups ?? []).filter((r: any) => r.role === 'candidate').length;
-const newClients = (signups ?? []).filter((r: any) => r.role === 'client').length;
+// ---- tables
+const count = (arr: any[], key: (x: any) => string) => Object.entries(arr.reduce((a: Record<string, number>, x) => { const k = key(x); a[k] = (a[k] || 0) + 1; return a; }, {})).sort((a, b) => b[1] - a[1]);
+const topPages = count(events, (e) => e.path || '/').slice(0, 10);
+const source = (r: string | null) => {
+  if (!r) return 'مباشر';
+  const h = r.toLowerCase();
+  if (/google|bing|yahoo|duckduckgo/.test(h)) return 'بحث (Google…)';
+  if (/facebook|fb\.|instagram|l\.instagram/.test(h)) return 'Facebook / Instagram';
+  if (/linkedin|lnkd/.test(h)) return 'LinkedIn';
+  if (/whatsapp|wa\.me/.test(h)) return 'WhatsApp';
+  if (/t\.co|twitter|x\.com/.test(h)) return 'X / Twitter';
+  if (/vacanthr/.test(h)) return 'داخلي';
+  return h;
+};
+const topSources = count(events, (e) => source(e.ref)).slice(0, 8);
+const campaigns = count(events.filter((e) => e.utm_source || e.utm_campaign), (e) => `${e.utm_source || '?'}${e.utm_medium ? ' / ' + e.utm_medium : ''}${e.utm_campaign ? ' — ' + e.utm_campaign : ''}`).slice(0, 8);
+const devices = count(events.filter((e) => e.device), (e) => e.device === 'mobile' ? 'موبايل' : 'كمبيوتر');
+const devTotal = devices.reduce((s, [, n]) => s + n, 0);
 
+const viewsByJob: Record<string, number> = {};
+for (const r of jv ?? []) viewsByJob[r.job_id] = (viewsByJob[r.job_id] || 0) + (r.count ?? 0);
+const appsByJob: Record<string, number> = {};
+for (const a of apps ?? []) if (a.job_id) appsByJob[a.job_id] = (appsByJob[a.job_id] || 0) + 1;
+const topJobs = (jobs ?? []).map((j: any) => ({ ...j, views: viewsByJob[j.id] || 0, apps: appsByJob[j.id] || 0 }))
+  .filter((j: any) => j.views || j.apps).sort((a: any, b: any) => b.views - a.views).slice(0, 8);
+
+const reqN = (reqs ?? []).length;
 const label = (p: string) => p === '/' ? 'الرئيسية' : p;
+const fmtDay = (d: string) => new Date(d).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+
+// SVG line chart geometry
+const W = 720, H = 200, PX = 8, PY = 12;
+const x = (i: number) => PX + (i / Math.max(1, period - 1)) * (W - 2 * PX);
+const y = (v: number) => H - PY - (v / maxY) * (H - 2 * PY);
+const path = (arr: number[]) => arr.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+const area = `${path(series)} L${x(period - 1).toFixed(1)},${H - PY} L${x(0).toFixed(1)},${H - PY} Z`;
+const tickEvery = period === 7 ? 1 : period === 30 ? 5 : 15;
 ---
 <Admin title="التحليلات | لوحة الإدارة" path="/admin/analytics" active="analytics">
 <Fragment slot="heading">التحليلات</Fragment>
 <div class="admin-body">
-
-    <div class="stat-cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:8px;">
-      <div class="stat-card"><span class="n">{totalViews.toLocaleString('en-US')}</span><span class="l">مشاهدات صفحات (14 يوم)</span></div>
-      <div class="stat-card"><span class="n">{jobViews30.toLocaleString('en-US')}</span><span class="l">مشاهدات وظائف (30 يوم)</span></div>
-      <div class="stat-card"><span class="n">{apps30 ?? 0}</span><span class="l">تقديمات (30 يوم)</span></div>
-      <div class="stat-card"><span class="n">{conv}%</span><span class="l">تحويل مشاهدة → تقديم</span></div>
+  <div class="an-bar">
+    <div class="seg">
+      {[7, 30, 90].map((p) => <a href={`/admin/analytics?p=${p}`} class:list={{ active: period === p }}>آخر {p} يوم</a>)}
     </div>
-    <p style="color:var(--muted);font-size:0.88rem;margin:14px 0 26px;">
-      تسجيلات جديدة (30 يوم): {newCandidates} مرشح · {newClients} شركة —
-      لتحليلات أعمق (دول، أجهزة) استخدم <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">Cloudflare Web Analytics</a>.
-    </p>
+    <span style="color:var(--muted);font-size:.85rem;">{fmtDay(days[0])} — {fmtDay(days[days.length - 1])} · مقارنة بالفترة اللي قبلها</span>
+  </div>
 
-    <h2 style="margin-bottom:14px;">مشاهدات الصفحات — آخر 14 يوم</h2>
-    <div class="mini-bars">
-      {days.map((d) => (
-        <div class="mini-bar" title={`${d}: ${perDay[d]}`}>
-          <span style={`height:${Math.round((perDay[d] / maxDay) * 100)}%`}></span>
-          <em>{d.slice(8)}</em>
+  <div class="ptiles an-kpis">
+    {kpis.map((k) => (
+      <div class="ptile">
+        <b>{k.v.toLocaleString('en-US')}</b>
+        <span>{k.l}</span>
+        <em class:list={['delta', { up: k.d > 0, down: k.d < 0 }]}>{k.d > 0 ? '▲' : k.d < 0 ? '▼' : '•'} {Math.abs(k.d)}%</em>
+        {k.sub && <small style="color:var(--muted);font-size:.78rem;">{k.sub}</small>}
+      </div>
+    ))}
+  </div>
+
+  <section class="psec">
+    <div class="psec-head"><h2>مشاهدات الصفحات يوميًا</h2><span class="legend"><i class="cur"></i> الفترة الحالية <i class="prev"></i> الفترة السابقة</span></div>
+    <svg viewBox={`0 0 ${W} ${H}`} class="an-chart" role="img" aria-label="مشاهدات الصفحات يوميًا">
+      {[0.25, 0.5, 0.75, 1].map((f) => <line x1={PX} x2={W - PX} y1={y(maxY * f)} y2={y(maxY * f)} class="grid" />)}
+      <path d={path(prevPerDay)} class="line-prev" />
+      <path d={area} class="area" />
+      <path d={path(series)} class="line" />
+      {series.map((v, i) => <circle cx={x(i)} cy={y(v)} r="3" class="dot"><title>{fmtDay(days[i])}: {v}</title></circle>)}
+      {days.map((d, i) => (i % tickEvery === 0 || i === period - 1) && <text x={x(i)} y={H - 1} class="tick" text-anchor={i === 0 ? 'start' : i === period - 1 ? 'end' : 'middle'}>{fmtDay(d)}</text>)}
+      <text x={W - PX} y={y(maxY) - 2} class="tick" text-anchor="end">{maxY}</text>
+    </svg>
+  </section>
+
+  <div class="pgrid2">
+    <section class="psec">
+      <div class="psec-head"><h2>قمع التوظيف</h2><small style="color:var(--muted);">خلال الفترة</small></div>
+      <div class="funnel">
+        {funnel.map((f, i) => (
+          <div class="frow">
+            <span class="fl">{f.l}</span>
+            <span class="fbar"><i style={`width:${Math.max(2, Math.round((f.v / fmax) * 100))}%`}></i></span>
+            <b>{f.v.toLocaleString('en-US')}</b>
+            <small>{i === 0 ? '' : funnel[i - 1].v ? `${Math.round((f.v / funnel[i - 1].v) * 100)}%` : '—'}</small>
+          </div>
+        ))}
+      </div>
+      <p style="margin:10px 0 0;font-size:.82rem;color:var(--muted);">طلبات شركات جديدة خلال الفترة: <strong>{reqN}</strong></p>
+    </section>
+
+    <section class="psec">
+      <div class="psec-head"><h2>الأجهزة</h2></div>
+      {devTotal === 0 ? <p class="pempty">مفيش بيانات أجهزة لسه (بتتجمع من أول ما تشغّل migration-16).</p> : (
+        <div class="funnel">
+          {devices.map(([d, n]) => (
+            <div class="frow"><span class="fl">{d}</span><span class="fbar"><i style={`width:${Math.round((n / devTotal) * 100)}%`}></i></span><b>{Math.round((n / devTotal) * 100)}%</b><small>{n}</small></div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+      <div class="psec-head" style="margin-top:18px;"><h2>الحملات (UTM)</h2></div>
+      {campaigns.length === 0 ? <p class="pempty">مفيش زيارات بروابط UTM. استخدم روابط زي <code dir="ltr">?utm_source=facebook&utm_campaign=sep</code> في إعلاناتك.</p> : (
+        <table class="an-table"><tbody>{campaigns.map(([c, n]) => <tr><td dir="ltr" style="text-align:right;">{c}</td><td>{n}</td></tr>)}</tbody></table>
+      )}
+    </section>
+  </div>
 
-    <div class="split-2" style="margin-top:36px;">
-      <div>
-        <h2 style="margin-bottom:12px;">أكثر الصفحات زيارة</h2>
-        <div class="table-scroll"><table class="data-table">
-          <thead><tr><th>الصفحة</th><th>مشاهدات</th></tr></thead>
-          <tbody>{topPages.map(([p, n]) => <tr><td>{label(p)}</td><td>{n}</td></tr>)}</tbody>
-        </table></div>
+  <div class="pgrid2">
+    <section class="psec">
+      <div class="psec-head"><h2>أكثر الصفحات زيارة</h2></div>
+      <table class="an-table"><tbody>{topPages.map(([p, n]) => <tr><td>{label(p)}</td><td><span class="bar" style={`--w:${Math.round((n / (topPages[0]?.[1] || 1)) * 100)}%`}></span>{n}</td></tr>)}</tbody></table>
+    </section>
+    <section class="psec">
+      <div class="psec-head"><h2>مصادر الزيارات</h2></div>
+      <table class="an-table"><tbody>{topSources.map(([r, n]) => <tr><td dir="auto">{r}</td><td><span class="bar" style={`--w:${Math.round((n / (topSources[0]?.[1] || 1)) * 100)}%`}></span>{n}</td></tr>)}</tbody></table>
+    </section>
+  </div>
+
+  <section class="psec">
+    <div class="psec-head"><h2>أداء الوظائف</h2><a href="/admin/jobs">كل الوظائف ←</a></div>
+    {topJobs.length === 0 ? <p class="pempty">مفيش مشاهدات وظائف خلال الفترة.</p> : (
+      <div class="table-scroll" style="border:0;">
+        <table class="data-table">
+          <thead><tr><th>الوظيفة</th><th>الحالة</th><th>مشاهدات</th><th>تقديمات</th><th>تحويل</th></tr></thead>
+          <tbody>{topJobs.map((j: any) => (
+            <tr>
+              <td><a href={`/admin/jobs/${j.slug}`}>{j.title}</a></td>
+              <td><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{j.status === 'open' ? 'مفتوحة' : j.status === 'closed' ? 'مغلقة' : 'مسودة'}</span></td>
+              <td>{j.views}</td><td>{j.apps}</td><td>{j.views ? Math.round((j.apps / j.views) * 100) : 0}%</td>
+            </tr>
+          ))}</tbody>
+        </table>
       </div>
-      <div>
-        <h2 style="margin-bottom:12px;">مصادر الزيارات</h2>
-        <div class="table-scroll"><table class="data-table">
-          <thead><tr><th>المصدر</th><th>مشاهدات</th></tr></thead>
-          <tbody>{topRefs.map(([r, n]) => <tr><td dir="ltr" style="text-align:right;">{r}</td><td>{n}</td></tr>)}</tbody>
-        </table></div>
-      </div>
-    </div>
+    )}
+  </section>
 </div>
-</Admin>
 
 <style is:global>
-  .mini-bars{display:flex;gap:6px;align-items:flex-end;height:160px;border-bottom:1px solid var(--line);padding-bottom:4px;}
-  .mini-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;}
-  .mini-bar > span{width:100%;max-width:34px;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;}
-  .mini-bar > em{font-size:0.7rem;color:var(--muted);font-style:normal;}
+  .an-bar{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .seg{ display:inline-flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px; }
+  .seg a{ padding:6px 14px; border-radius:999px; font-size:.86rem; font-weight:600; color:var(--body); }
+  .seg a.active{ background:var(--accent); color:#fff; }
+  .an-kpis .ptile{ position:relative; }
+  .delta{ font-style:normal; font-size:.78rem; font-weight:700; color:var(--muted); }
+  .delta.up{ color:#276749; } .delta.down{ color:#9A3B1C; }
+  .an-chart{ width:100%; height:auto; display:block; }
+  .an-chart .grid{ stroke:var(--line-soft); stroke-width:1; }
+  .an-chart .line{ fill:none; stroke:var(--accent); stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+  .an-chart .line-prev{ fill:none; stroke:#CBD5E1; stroke-width:1.6; stroke-dasharray:4 4; }
+  .an-chart .area{ fill:var(--accent); opacity:.08; }
+  .an-chart .dot{ fill:#fff; stroke:var(--accent); stroke-width:1.6; }
+  .an-chart .tick{ font-size:10px; fill:var(--muted); font-family:inherit; }
+  .legend{ font-size:.8rem; color:var(--muted); display:flex; gap:6px; align-items:center; }
+  .legend i{ width:14px; height:3px; display:inline-block; border-radius:2px; background:var(--accent); }
+  .legend i.prev{ background:#CBD5E1; }
+  .funnel{ display:flex; flex-direction:column; gap:8px; }
+  .frow{ display:grid; grid-template-columns:110px minmax(0,1fr) 56px 40px; gap:10px; align-items:center; font-size:.88rem; }
+  .fl{ color:var(--body); } .fbar{ height:14px; background:var(--surface-soft); border-radius:999px; overflow:hidden; }
+  .fbar i{ display:block; height:100%; background:var(--accent); border-radius:999px; }
+  .frow b{ text-align:left; } .frow small{ color:var(--muted); font-size:.75rem; }
+  .an-table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .an-table td{ padding:7px 4px; border-bottom:1px solid var(--line-soft); }
+  .an-table td:last-child{ width:120px; text-align:left; color:var(--ink); font-weight:600; white-space:nowrap; }
+  .an-table .bar{ display:inline-block; width:var(--w); max-width:70px; height:6px; background:var(--accent-soft); border-radius:3px; margin-inline-end:8px; vertical-align:middle; }
+  @media (max-width:640px){ .frow{ grid-template-columns:90px minmax(0,1fr) 46px 34px; font-size:.82rem; } }
 </style>
+</Admin>

@@ -7,9 +7,11 @@ const role = Astro.locals.profile?.role;
 const nowIso = new Date().toISOString();
 const d7 = new Date(Date.now() - 7 * 864e5).toISOString();
 
+const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 const [
   { count: openJobs }, { count: draftJobs }, { count: newApps }, { count: newReqs },
   { data: recent }, { data: upcoming }, { data: convs }, { data: activity },
+  { count: apps7 }, { count: pendingDecisions }, { count: candidates }, { data: viewsRows },
 ] = await Promise.all([
   supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'open'),
   supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
@@ -21,7 +23,22 @@ const [
   role === 'admin'
     ? supabase.from('audit_log').select('actor_name, action, target, created_at').order('created_at', { ascending: false }).limit(6)
     : Promise.resolve({ data: [] as any[] }),
+  supabase.from('applications').select('id', { count: 'exact', head: true }).gte('created_at', d7),
+  supabase.from('client_shortlist').select('id', { count: 'exact', head: true }).eq('admin_status', 'sent').eq('client_decision', 'pending'),
+  supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'candidate'),
+  supabase.from('job_views').select('count').gte('day', d7.slice(0, 10)),
 ]);
+const views7 = (viewsRows ?? []).reduce((s: number, r: any) => s + (r.count ?? 0), 0);
+const todayIv = (upcoming ?? []).filter((v: any) => new Date(v.scheduled_at) <= todayEnd);
+const attention = [
+  { n: newApps ?? 0, l: 'طلب تقديم جديد محتاج مراجعة', href: '/admin/candidates' },
+  { n: newReqs ?? 0, l: 'طلب شركة جديد', href: '/admin/requests' },
+  { n: todayIv.length, l: 'مقابلة النهارده', href: '/admin/interviews' },
+  { n: pendingDecisions ?? 0, l: 'مرشح مستني قرار العميل', href: '/admin/requests' },
+  { n: draftJobs ?? 0, l: 'وظيفة مسودة لسه ما اتنشرتش', href: '/admin/jobs?status=draft' },
+].filter((a) => a.n > 0);
+const hello = new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير';
+
 
 const STATUS_AR: Record<string, string> = {
   submitted: 'تحت المراجعة', reviewing: 'قيد الفحص', shortlisted: 'قائمة مختصرة',
@@ -32,103 +49,93 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { month: 'sho
 const fmtDT = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 ---
 <Admin title="لوحة الإدارة | Vacant HR" path="/admin" active="home">
-<Fragment slot="heading">نظرة عامة</Fragment>
+<Fragment slot="heading">{hello}، {Astro.locals.profile?.full_name?.split(' ')[0] ?? ''}</Fragment>
 <div class="admin-body">
 
-    <div class="stat-cards" style="grid-template-columns:repeat(4,1fr);">
-      <a href="/admin/jobs" class="stat-card"><span class="n">{openJobs ?? 0}</span><span class="l">وظيفة مفتوحة</span></a>
-      <a href="/admin/jobs" class="stat-card"><span class="n">{draftJobs ?? 0}</span><span class="l">مسودة</span></a>
-      <a href="/admin/jobs" class="stat-card"><span class="n">{newApps ?? 0}</span><span class="l">تقديم جديد للمراجعة</span></a>
-      <a href="/admin/requests" class="stat-card"><span class="n">{newReqs ?? 0}</span><span class="l">طلب شركة جديد</span></a>
-    </div>
+  <div class="ptiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+    <a href="/admin/jobs?status=open" class="ptile"><b>{openJobs ?? 0}</b><span>وظيفة مفتوحة</span></a>
+    <a href="/admin/candidates" class="ptile"><b>{apps7 ?? 0}</b><span>تقديمات آخر 7 أيام</span></a>
+    <a href="/admin/analytics?p=7" class="ptile"><b>{views7.toLocaleString('en-US')}</b><span>مشاهدات وظائف (7 أيام)</span></a>
+    <a href="/admin/candidates" class="ptile"><b>{(candidates ?? 0).toLocaleString('en-US')}</b><span>مرشح في القاعدة</span></a>
+    <a href="/admin/interviews" class="ptile"><b>{upcoming?.length ?? 0}</b><span>مقابلات قادمة</span></a>
+  </div>
 
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 32px;">
-      <a href="/admin/jobs/new" class="btn solid">+ وظيفة جديدة</a>
-      <a href="/admin/candidates" class="btn">المرشحون</a>
-      <a href="/admin/inbox" class="btn">الرسائل</a>
-    </div>
+  <div class="pgrid2" style="grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr);">
+    <div>
+      {attention.length > 0 && (
+        <section class="psec attention">
+          <div class="psec-head"><h2>محتاج انتباهك</h2></div>
+          {attention.map((a) => (
+            <a href={a.href} class="prow" style="color:inherit;">
+              <div class="prow-main"><strong>{a.n} {a.l}</strong></div><span class="arrow">←</span>
+            </a>
+          ))}
+        </section>
+      )}
 
-    <div class="split-2">
-      <div>
-        <h2 style="margin-bottom:12px;">آخر المتقدمين</h2>
-        {(!recent || recent.length === 0) ? <p style="color:var(--muted);">مفيش طلبات لسه.</p> : (
-          <div class="table-scroll"><table class="data-table">
-            <thead><tr><th>المرشح</th><th>الوظيفة</th><th>الحالة</th><th></th></tr></thead>
-            <tbody>
-              {recent.map((a: any) => (
-                <tr>
-                  <td>{a.candidate_id ? <a href={`/admin/candidates/${a.candidate_id}`}>{a.profiles?.full_name ?? '—'}</a> : (a.profiles?.full_name ?? '—')}</td>
-                  <td>{a.jobs?.title ?? '—'}</td>
-                  <td><span class={`status-pill status-${a.status}`}>{STATUS_AR[a.status] ?? a.status}</span></td>
-                  <td style="color:var(--muted);">{fmt(a.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        )}
-      </div>
-
-      <div>
-        <h2 style="margin-bottom:12px;">مقابلات قادمة</h2>
-        {(!upcoming || upcoming.length === 0) ? <p style="color:var(--muted);">مفيش مقابلات مجدولة.</p> : (
-          <div style="display:grid;gap:10px;">
-            {upcoming.map((v: any) => (
-              <div class="form-box" style="max-width:none;padding:14px 16px;">
-                <strong>{v.applications?.profiles?.full_name ?? '—'}</strong>
-                <span style="color:var(--muted);"> · {v.applications?.jobs?.title ?? ''}</span>
-                <div style="font-size:0.85rem;color:var(--muted);margin-top:4px;">{fmtDT(v.scheduled_at)} — {MODE_AR[v.mode] ?? v.mode}</div>
-              </div>
-            ))}
-            <a href="/admin/interviews" style="font-size:0.85rem;">كل المقابلات ←</a>
+      <section class="psec">
+        <div class="psec-head"><h2>آخر المتقدمين</h2><a href="/admin/candidates">الكل ←</a></div>
+        {(!recent || recent.length === 0) ? <p class="pempty">مفيش طلبات لسه.</p> : recent.map((a: any) => (
+          <div class="prow">
+            <div class="prow-main">
+              <strong>{a.candidate_id ? <a href={`/admin/candidates/${a.candidate_id}`}>{a.profiles?.full_name ?? '—'}</a> : (a.profiles?.full_name ?? '—')}</strong>
+              <small>{a.jobs?.title ?? '—'} · {fmt(a.created_at)}</small>
+            </div>
+            <span class={`status-pill status-${a.status}`}>{STATUS_AR[a.status] ?? a.status}</span>
           </div>
-        )}
-      </div>
+        ))}
+      </section>
+
+      <section class="psec">
+        <div class="psec-head"><h2>أحدث المحادثات</h2><a href="/admin/inbox">الكل ←</a></div>
+        {(!convs || convs.length === 0) ? <p class="pempty">مفيش محادثات.</p> : convs.map((c: any) => (
+          <div class="prow">
+            <div class="prow-main"><strong><a href={`/admin/inbox/${c.id}`}>{c.profiles?.company_name || c.profiles?.full_name || '—'}</a></strong><small>{c.subject}</small></div>
+            <small style="color:var(--muted);">{fmt(c.last_message_at)}</small>
+          </div>
+        ))}
+      </section>
     </div>
 
-    <div class="split-2" style="margin-top:32px;">
-      <div>
-        <h2 style="margin-bottom:12px;">أحدث المحادثات</h2>
-        {(!convs || convs.length === 0) ? <p style="color:var(--muted);">مفيش محادثات.</p> : (
-          <div class="table-scroll"><table class="data-table">
-            <thead><tr><th>الطرف</th><th>الموضوع</th><th></th></tr></thead>
-            <tbody>
-              {convs.map((c: any) => (
-                <tr>
-                  <td><a href={`/admin/inbox/${c.id}`}>{c.profiles?.company_name || c.profiles?.full_name || '—'}</a></td>
-                  <td>{c.subject}</td>
-                  <td style="color:var(--muted);">{fmt(c.last_message_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        )}
-      </div>
+    <div>
+      <section class="psec">
+        <div class="psec-head"><h2>إجراءات سريعة</h2></div>
+        <div class="quick">
+          <a href="/admin/jobs/new" class="btn solid">+ وظيفة جديدة</a>
+          <a href="/admin/blog" class="btn">+ مقال</a>
+          <a href="/admin/candidates" class="btn">بحث عن مرشح</a>
+          <a href="/admin/media" class="btn">رفع صور</a>
+        </div>
+      </section>
+
+      <section class="psec">
+        <div class="psec-head"><h2>مقابلات قادمة</h2><a href="/admin/interviews">الكل ←</a></div>
+        {(!upcoming || upcoming.length === 0) ? <p class="pempty">مفيش مقابلات مجدولة.</p> : upcoming.map((v: any) => (
+          <div class="prow">
+            <div class="prow-main">
+              <strong>{v.applications?.candidate_id ? <a href={`/admin/candidates/${v.applications.candidate_id}`}>{v.applications?.profiles?.full_name ?? '—'}</a> : (v.applications?.profiles?.full_name ?? '—')}</strong>
+              <small>{v.applications?.jobs?.title ?? ''} · {fmtDT(v.scheduled_at)} — {MODE_AR[v.mode] ?? v.mode}</small>
+            </div>
+          </div>
+        ))}
+      </section>
 
       {role === 'admin' && (
-        <div>
-          <h2 style="margin-bottom:12px;">آخر نشاط الفريق</h2>
-          {(!activity || activity.length === 0) ? <p style="color:var(--muted);">—</p> : (
-            <ul style="list-style:none;padding:0;margin:0;font-size:0.9rem;">
-              {activity.map((r: any) => (
-                <li style="padding:9px 0;border-top:1px solid var(--line-soft);color:var(--body);">
-                  <strong>{r.actor_name ?? '—'}</strong> — {r.action}{r.target ? ` · ${r.target}` : ''}
-                  <span style="color:var(--muted);"> · {fmt(r.created_at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <a href="/admin/activity" style="font-size:0.85rem;display:inline-block;margin-top:8px;">السجل الكامل ←</a>
-        </div>
+        <section class="psec">
+          <div class="psec-head"><h2>آخر نشاط الفريق</h2><a href="/admin/activity">السجل ←</a></div>
+          {(!activity || activity.length === 0) ? <p class="pempty">—</p> : activity.map((r: any) => (
+            <div class="prow"><div class="prow-main"><strong style="font-size:.9rem;">{r.actor_name ?? '—'}</strong><small>{r.action}{r.target ? ` · ${r.target}` : ''} · {fmt(r.created_at)}</small></div></div>
+          ))}
+        </section>
       )}
     </div>
+  </div>
 </div>
-</Admin>
-
 <style is:global>
-  .stat-cards{display:grid;gap:14px;}
-  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 20px;display:flex;flex-direction:column;gap:4px;transition:transform .16s, box-shadow .16s;}
-  .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
-  .stat-card .n{font-size:1.9rem;color:var(--ink);font-weight:700;letter-spacing:-0.02em;}
-  .stat-card .l{font-size:0.84rem;color:var(--muted);}
-  @media(max-width:720px){.stat-cards{grid-template-columns:1fr 1fr!important;}}
+  .attention{ border-color:#FCD34D; background:#FFFBEB; }
+  .attention .prow .arrow{ color:#B45309; font-weight:700; }
+  .quick{ display:flex; flex-wrap:wrap; gap:8px; }
+  .quick .btn{ padding:8px 14px; font-size:.86rem; }
+  @media (max-width:900px){ .pgrid2{ grid-template-columns:1fr !important; } }
 </style>
+</Admin>

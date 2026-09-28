@@ -5,31 +5,43 @@ import { serverClient } from '../../../lib/supabase';
 const supabase = serverClient(Astro);
 const { data: convs } = await supabase
   .from('conversations')
-  .select('id, subject, last_message_at, created_at, profiles(full_name, company_name, email)')
+  .select('id, subject, last_message_at, created_at, application_id, request_id, profiles(full_name, company_name, email, role)')
   .order('last_message_at', { ascending: false })
   .limit(100);
 const fmt = (s: string) => new Date(s).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+const q = (new URL(Astro.request.url).searchParams.get('q') || '').trim().toLowerCase();
+const shown = (convs ?? []).filter((c: any) => !q || `${c.subject} ${c.profiles?.full_name ?? ''} ${c.profiles?.company_name ?? ''}`.toLowerCase().includes(q));
 ---
 <Admin title="الرسائل | لوحة الإدارة" path="/admin/inbox" active="inbox">
 <Fragment slot="heading">الرسائل</Fragment>
 <div class="admin-body">
-    {(!convs || convs.length === 0) ? (
-      <p style="color:var(--muted);">مفيش محادثات. تقدر تبدأ محادثة من صفحة أي مرشح أو طلب شركة.</p>
-    ) : (
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead><tr><th>الطرف</th><th>الموضوع</th><th>آخر رسالة</th></tr></thead>
-          <tbody>
-            {convs.map((c: any) => (
-              <tr>
-                <td><a href={`/admin/inbox/${c.id}`}>{c.profiles?.company_name || c.profiles?.full_name || c.profiles?.email || '—'}</a></td>
-                <td>{c.subject}</td>
-                <td>{fmt(c.last_message_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
+  <div class="an-bar">
+    <form method="GET" style="display:flex;gap:8px;align-items:center;flex:1;max-width:420px;">
+      <input type="search" name="q" value={q} placeholder="بحث بالاسم أو الموضوع…" style="margin:0;padding:8px 12px;" />
+      {q && <a href="/admin/inbox" class="btn" style="padding:7px 12px;font-size:.84rem;">مسح</a>}
+    </form>
+    <span style="color:var(--muted);font-size:.85rem;">{shown.length} محادثة</span>
+  </div>
+  {shown.length === 0 ? (
+    <div class="cempty">مفيش محادثات. تقدر تبدأ محادثة من صفحة أي مرشح أو طلب شركة.</div>
+  ) : (
+    <div class="citems" style="max-width:none;">
+      {shown.map((c: any) => (
+        <a href={`/admin/inbox/${c.id}`} class="conv">
+          <span class="cand-avatar" style="width:40px;height:40px;font-size:1rem;">{(c.profiles?.company_name || c.profiles?.full_name || '?').trim().slice(0, 1)}</span>
+          <span class="prow-main">
+            <strong>{c.profiles?.company_name || c.profiles?.full_name || c.profiles?.email || '—'} <small style="font-weight:400;">· {c.profiles?.role === 'client' ? 'شركة' : 'مرشح'}</small></strong>
+            <small>{c.subject}{c.application_id ? ' · بخصوص طلب تقديم' : c.request_id ? ' · بخصوص طلب توظيف' : ''}</small>
+          </span>
+          <small style="color:var(--muted);white-space:nowrap;">{fmt(c.last_message_at)}</small>
+        </a>
+      ))}
+    </div>
+  )}
 </div>
+<style is:global>
+  .conv{ display:flex; gap:12px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; color:inherit; }
+  .conv:hover{ border-color:var(--accent); }
+  .cand-avatar{ border-radius:50%; background:var(--accent-soft); color:var(--accent-strong); font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+</style>
 </Admin>
