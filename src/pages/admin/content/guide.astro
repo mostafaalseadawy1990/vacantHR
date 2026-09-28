@@ -1,6 +1,9 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { handleListAction } from '../../../lib/content';
+import ContentNav from '../../../components/ContentNav.astro';
+import CItem from '../../../components/CItem.astro';
 import { logAction } from '../../../lib/audit';
 import { ytEmbed } from '../../../lib/settings';
 import { sanitizeHtml } from '../../../lib/html';
@@ -20,10 +23,7 @@ if (Astro.request.method === 'POST') {
   const action = String(form.get('_action') || 'save');
   const id = String(form.get('id') || '');
 
-  if (action === 'delete' && id) {
-    await supabase.from('guide_sections').delete().eq('id', id);
-    return Astro.redirect('/admin/content/guide?ok=1', 303);
-  }
+  if (await handleListAction(supabase, 'guide_sections', form)) return Astro.redirect('/admin/content/guide?ok=1', 303);
   if (action === 'save') {
     const title = String(form.get('title') || '').trim();
     const row = {
@@ -53,56 +53,52 @@ const { data: items } = await supabase.from('guide_sections').select('*').order(
 <Admin title="دليل HRM | لوحة الإدارة" path="/admin/content/guide" active="content">
 <Fragment slot="heading">دليل استخدام HRM</Fragment>
 <div class="admin-body">
-    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a> · <a href="/hrm-guide" target="_blank" rel="noopener">معاينة الدليل ↗</a></p>
+    <ContentNav active="guide" preview="/hrm-guide" />
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    <div style="display:grid;gap:16px;max-width:760px;">
-      {(items ?? []).map((it: any) => (
-        <form method="POST" class="form-box" style="max-width:none;">
-          <input type="hidden" name="_action" value="save" />
-          <input type="hidden" name="id" value={it.id} />
-          <div class="form-grid-2">
-            <div class="form-row"><label>عنوان القسم</label><input name="title" value={it.title} required /></div>
-            <div class="form-row"><label>الـ slug</label><input name="slug" value={it.slug} pattern="[a-z0-9-]*" /></div>
-          </div>
-          <div class="form-row">
-            <label>رابط فيديو YouTube (اختياري)</label>
-            <input name="video_url" value={it.video_url ?? ''} placeholder="https://www.youtube.com/watch?v=..." />
-            {it.video_url && !ytEmbed(it.video_url) && <small style="color:#9A3B1C;">الرابط ده مش رابط يوتيوب صحيح.</small>}
-          </div>
-          <div class="form-row">
-            <label>المحتوى</label>
-            <RichEditor name="body_html" value={it.body_html || renderMarkdown(it.body_md || '')} minHeight={220} />
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={it.position} /></div>
-            <div class="form-row" style="display:flex;align-items:end;">
-              <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked={it.published} /> منشور</label>
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;">
-            <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
-            <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف القسم؟')">حذف</button>
-          </div>
-        </form>
-      ))}
-
-      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+    <details class="cadd">
+      <summary>+ إضافة قسم</summary>
+      <form method="POST" class="citem-body">
         <input type="hidden" name="_action" value="save" />
-        <h3 style="margin-bottom:12px;">إضافة قسم</h3>
-        <div class="form-row"><label>عنوان القسم</label><input name="title" required /></div>
-        <div class="form-row"><label>رابط فيديو YouTube (اختياري)</label><input name="video_url" placeholder="https://youtu.be/..." /></div>
-        <div class="form-row"><label>المحتوى</label><RichEditor name="body_html" minHeight={180} /></div>
         <div class="form-grid-2">
-          <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
-          <div class="form-row" style="display:flex;align-items:end;">
-            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked /> منشور</label>
-          </div>
+          <div class="form-row"><label>عنوان القسم *</label><input name="title" required placeholder="إضافة الموظفين" /></div>
+          <div class="form-row"><label>رابط فيديو YouTube (اختياري)</label><input name="video_url" placeholder="https://youtu.be/..." dir="ltr" /></div>
         </div>
+        <div class="form-row"><label>المحتوى</label><RichEditor name="body_html" minHeight={180} /></div>
+        <input type="hidden" name="position" value="999" /><input type="hidden" name="published" value="on" />
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
       </form>
-    </div>
+    </details>
+
+    {(!items || items.length === 0) ? <p class="cempty">مفيش أقسام في الدليل لسه.</p> : (
+      <div class="citems">
+        {items.map((it: any, i: number) => (
+          <CItem id={it.id} title={it.title} subtitle={`/hrm-guide#${it.slug}${it.video_url ? ' · فيه فيديو' : ''}`} published={it.published} index={i} total={items.length}>
+            <form method="POST">
+              <input type="hidden" name="_action" value="save" />
+              <input type="hidden" name="id" value={it.id} />
+              <input type="hidden" name="position" value={it.position} />
+              <input type="hidden" name="published" value={it.published ? 'on' : ''} />
+              <div class="form-grid-2">
+                <div class="form-row"><label>عنوان القسم *</label><input name="title" value={it.title} required /></div>
+                <div class="form-row"><label>الـ slug (للرابط)</label><input name="slug" value={it.slug} pattern="[a-z0-9-]*" dir="ltr" /></div>
+              </div>
+              <div class="form-row">
+                <label>رابط فيديو YouTube (اختياري)</label>
+                <input name="video_url" value={it.video_url ?? ''} placeholder="https://www.youtube.com/watch?v=..." dir="ltr" />
+                {it.video_url && !ytEmbed(it.video_url) && <small style="color:#9A3B1C;">الرابط ده مش رابط يوتيوب صحيح.</small>}
+              </div>
+              <div class="form-row"><label>المحتوى</label><RichEditor name="body_html" value={it.body_html || renderMarkdown(it.body_md || '')} minHeight={220} /></div>
+              <div class="citem-actions">
+                <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+                <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف القسم؟')">حذف</button>
+              </div>
+            </form>
+          </CItem>
+        ))}
+      </div>
+    )}
 </div>
 
 </Admin>

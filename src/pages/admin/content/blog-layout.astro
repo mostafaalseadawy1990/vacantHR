@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import ContentNav from '../../../components/ContentNav.astro';
 import { clearSettingsCache, getSettings } from '../../../lib/settings';
 import { logAction } from '../../../lib/audit';
 import { parseBlogLayout, blogLayoutFromForm, BLOG_OPTIONS } from '../../../lib/blog';
@@ -23,7 +24,7 @@ const chk = (b: boolean) => (b ? true : undefined);
 <Admin title="شكل المدوّنة | لوحة الإدارة" path="/admin/content/blog-layout" active="content">
 <Fragment slot="heading">شكل المدوّنة</Fragment>
 <div class="admin-body">
-    <p style="margin-bottom:16px;"><a href="/admin/content">→ رجوع للمحتوى</a> · <a href="/blog" target="_blank" rel="noopener">معاينة المدوّنة ↗</a></p>
+    <ContentNav active="blog-layout" preview="/blog" />
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ — التغيير بيظهر على الموقع خلال دقيقتين.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 

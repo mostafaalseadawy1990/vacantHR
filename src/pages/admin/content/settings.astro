@@ -1,40 +1,46 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
+import ContentNav from '../../../components/ContentNav.astro';
+import ImagePicker from '../../../components/ImagePicker.astro';
 import { serverClient } from '../../../lib/supabase';
 import { logAction } from '../../../lib/audit';
-import { DEFAULT_SETTINGS, mediaUrl, clearSettingsCache } from '../../../lib/settings';
+import { DEFAULT_SETTINGS, clearSettingsCache } from '../../../lib/settings';
 
 const supabase = serverClient(Astro);
 
-const TEXT_FIELDS: Array<{ key: string; label: string; textarea?: boolean }> = [
-  { key: 'contact_email', label: 'البريد الإلكتروني' },
-  { key: 'contact_phone', label: 'رقم الهاتف (بصيغة +20…)' },
-  { key: 'whatsapp_number', label: 'رقم واتساب (أرقام فقط، 201…)' },
-  { key: 'address', label: 'العنوان' },
-  { key: 'working_hours', label: 'ساعات العمل' },
-  { key: 'linkedin_url', label: 'رابط لينكدإن' },
-  { key: 'company_blurb', label: 'نبذة الشركة (الفوتر)', textarea: true },
-  { key: 'home_hero_eyebrow', label: 'الرئيسية — السطر الصغير فوق العنوان' },
-  { key: 'home_hero_title', label: 'الرئيسية — العنوان الكبير', textarea: true },
-  { key: 'home_hero_lead', label: 'الرئيسية — الفقرة تحت العنوان', textarea: true },
-  { key: 'google_site_verification', label: 'رمز التحقق من Google Search Console (محتوى وسم google-site-verification فقط)' },
-  { key: 'analytics_snippet', label: 'كود التحليلات (الصق سكربت Cloudflare / Plausible / GA كامل — يُحقن في <head>)', textarea: true },
+type Field = { key: string; label: string; textarea?: boolean; help?: string; dir?: 'ltr' };
+const TABS: Array<{ key: string; label: string; fields: Field[] }> = [
+  { key: 'identity', label: 'الهوية البصرية', fields: [] },
+  { key: 'contact', label: 'بيانات التواصل', fields: [
+    { key: 'contact_email', label: 'البريد الإلكتروني', dir: 'ltr' },
+    { key: 'contact_phone', label: 'رقم الهاتف', help: 'بصيغة دولية: +2010…', dir: 'ltr' },
+    { key: 'whatsapp_number', label: 'رقم واتساب', help: 'أرقام فقط بدون + : 2010…', dir: 'ltr' },
+    { key: 'linkedin_url', label: 'رابط LinkedIn', dir: 'ltr' },
+    { key: 'address', label: 'العنوان' },
+    { key: 'working_hours', label: 'ساعات العمل' },
+    { key: 'company_blurb', label: 'نبذة الشركة (تظهر في الفوتر)', textarea: true },
+  ] },
+  { key: 'home', label: 'الصفحة الرئيسية', fields: [
+    { key: 'home_hero_eyebrow', label: 'السطر الصغير فوق العنوان' },
+    { key: 'home_hero_title', label: 'العنوان الكبير', textarea: true },
+    { key: 'home_hero_lead', label: 'الفقرة تحت العنوان', textarea: true },
+  ] },
+  { key: 'seo', label: 'SEO والتحليلات', fields: [
+    { key: 'google_site_verification', label: 'رمز التحقق من Google Search Console', help: 'محتوى وسم google-site-verification فقط (بدون HTML).', dir: 'ltr' },
+    { key: 'analytics_snippet', label: 'كود التحليلات / البكسل', textarea: true, help: 'الصق الكود كامل بوسم <script> (Meta Pixel / GA / Cloudflare). بيتحمّل بعد موافقة الزائر على الكوكيز.' },
+  ] },
 ];
+const ALL_FIELDS = TABS.flatMap((t) => t.fields);
 
 let flash = '';
-
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const rows: Array<{ key: string; value: unknown; updated_at: string }> = [];
   const now = new Date().toISOString();
-
-  for (const f of TEXT_FIELDS) {
-    rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
-  }
+  for (const f of ALL_FIELDS) rows.push({ key: f.key, value: String(form.get(f.key) ?? '').trim(), updated_at: now });
   for (const k of ['logo_path', 'favicon_path', 'theme_color', 'home_hero_image']) {
     rows.push({ key: k, value: String(form.get(k) ?? '').trim(), updated_at: now });
   }
-  // stats: 4 pairs
   const stats = [];
   for (let i = 0; i < 4; i++) {
     const value = String(form.get(`stat_value_${i}`) ?? '').trim();
@@ -44,76 +50,91 @@ if (Astro.request.method === 'POST') {
   rows.push({ key: 'home_stats', value: stats, updated_at: now });
 
   const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
-  if (!error) { clearSettingsCache(); await logAction(Astro, supabase, 'تعديل إعدادات الموقع'); return Astro.redirect('/admin/content/settings?ok=1', 303); }
+  if (!error) { clearSettingsCache(); await logAction(Astro, supabase, 'تعديل إعدادات الموقع'); return Astro.redirect(`/admin/content/settings?ok=1&tab=${form.get('_tab') || 'identity'}`, 303); }
   flash = `تعذّر الحفظ: ${error.message}`;
 }
-const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+const url = new URL(Astro.request.url);
+const ok = url.searchParams.get('ok') === '1';
+const initialTab = url.searchParams.get('tab') || 'identity';
 
 const { data } = await supabase.from('site_settings').select('key, value');
 const cur: Record<string, any> = { ...DEFAULT_SETTINGS };
 for (const r of data ?? []) cur[r.key] = r.value;
 
-const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(100);
+const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(200);
 const stats: Array<{ value: string; label: string }> = Array.isArray(cur.home_stats) ? cur.home_stats : DEFAULT_SETTINGS.home_stats;
 while (stats.length < 4) stats.push({ value: '', label: '' });
 ---
 <Admin title="إعدادات الموقع | لوحة الإدارة" path="/admin/content/settings" active="settings">
 <Fragment slot="heading">إعدادات الموقع</Fragment>
 <div class="admin-body">
-    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
-    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ. التعديلات تظهر على الموقع خلال دقيقة.</p>}
+    <ContentNav active="settings" preview="/" />
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ — التعديلات تظهر على الموقع خلال دقيقتين.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    <form method="POST" class="form-box" style="max-width:720px;">
-      <h3 style="margin:0 0 12px;">الهوية البصرية</h3>
-      <div class="form-grid-2">
-        <div class="form-row">
-          <label for="logo_path">شعار الموقع (يظهر في الهيدر)</label>
-          <select id="logo_path" name="logo_path">
-            <option value="">— نص "Vacant HR" —</option>
-            {(media ?? []).map((m: any) => <option value={m.path} selected={cur.logo_path === m.path}>{m.alt || m.path}</option>)}
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="favicon_path">أيقونة التاب (favicon — PNG/SVG مربّعة)</label>
-          <select id="favicon_path" name="favicon_path">
-            <option value="">— الافتراضية —</option>
-            {(media ?? []).map((m: any) => <option value={m.path} selected={cur.favicon_path === m.path}>{m.alt || m.path}</option>)}
-          </select>
-        </div>
+    <form method="POST" class="form-box" style="max-width:860px;" id="setForm">
+      <input type="hidden" name="_tab" id="tabField" value={initialTab} />
+      <div class="stabs" role="tablist">
+        {TABS.map((t) => <button type="button" role="tab" data-tab={t.key} class:list={{ active: t.key === initialTab }}>{t.label}</button>)}
       </div>
-      {cur.logo_path && <img src={mediaUrl(cur.logo_path)} alt="" style="max-height:44px;margin-bottom:10px;" />}
-      <div class="form-row">
-        <label for="home_hero_image">صورة هيرو الصفحة الرئيسية (بديل الرسمة)</label>
-        <select id="home_hero_image" name="home_hero_image">
-          <option value="">— الرسمة الافتراضية —</option>
-          {(media ?? []).map((m: any) => <option value={m.path} selected={cur.home_hero_image === m.path}>{m.alt || m.path}</option>)}
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="theme_color">لون التاب في المتصفح (theme-color)</label>
-        <input type="color" id="theme_color" name="theme_color" value={cur.theme_color || '#0E7C66'} style="width:80px;height:40px;padding:2px;" />
-      </div>
-      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:22px;">ارفع الشعار والأيقونة من <a href="/admin/media">الوسائط</a> الأول.</p>
 
-      {TEXT_FIELDS.map((f) => (
+      <section class="spanel" data-panel="identity" hidden={initialTab !== 'identity'}>
+        <ImagePicker name="logo_path" label="شعار الموقع" value={cur.logo_path} media={media ?? []} noneLabel='نص "Vacant HR"' help="يظهر في الهيدر وفي الشريط الجانبي للإدارة. يُفضّل PNG بخلفية شفافة، عرض 300–600px." />
+        <ImagePicker name="favicon_path" label="أيقونة التاب (Favicon)" value={cur.favicon_path} media={media ?? []} noneLabel="الافتراضية" help="صورة مربّعة PNG أو SVG، 64×64 على الأقل." />
+        <ImagePicker name="home_hero_image" label="صورة هيرو الصفحة الرئيسية" value={cur.home_hero_image} media={media ?? []} noneLabel="الرسمة الافتراضية" help="صورة عرضية (مثلًا 1200×900) — بتحل محل الرسمة جنب العنوان." />
         <div class="form-row">
-          <label for={f.key}>{f.label}</label>
-          {f.textarea
-            ? <textarea id={f.key} name={f.key} style="min-height:80px;">{cur[f.key] ?? ''}</textarea>
-            : <input id={f.key} name={f.key} value={cur[f.key] ?? ''} />}
+          <label for="theme_color">لون شريط المتصفح على الموبايل (theme-color)</label>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="color" id="theme_color" name="theme_color" value={cur.theme_color || '#0E7C66'} style="width:56px;height:40px;padding:2px;" />
+            <small class="shelp" style="margin:0;">بيظهر كلون لشريط العنوان في Chrome على الموبايل.</small>
+          </div>
         </div>
+      </section>
+
+      {TABS.filter((t) => t.fields.length).map((t) => (
+        <section class="spanel" data-panel={t.key} hidden={initialTab !== t.key}>
+          {t.fields.map((f) => (
+            <div class="form-row">
+              <label for={f.key}>{f.label}</label>
+              {f.textarea
+                ? <textarea id={f.key} name={f.key} style={`min-height:${f.key === 'analytics_snippet' ? 160 : 80}px;`} dir={f.key === 'analytics_snippet' ? 'ltr' : undefined}>{cur[f.key] ?? ''}</textarea>
+                : <input id={f.key} name={f.key} value={cur[f.key] ?? ''} dir={f.dir} />}
+              {f.help && <small class="shelp" style="margin:6px 0 0;display:block;">{f.help}</small>}
+            </div>
+          ))}
+          {t.key === 'home' && (
+            <>
+              <h3 style="margin:8px 0 12px;font-size:1rem;">أرقام الإحصائيات</h3>
+              <small class="shelp" style="display:block;margin:0 0 12px;">٤ أرقام تظهر تحت الهيرو، مثل "+120 شركة تثق بينا". سيب الخانة فاضية لإخفاء الرقم.</small>
+              {stats.slice(0, 4).map((st, i) => (
+                <div class="form-grid-2">
+                  <div class="form-row"><label for={`stat_value_${i}`}>الرقم {i + 1}</label><input id={`stat_value_${i}`} name={`stat_value_${i}`} value={st.value} placeholder="+120" /></div>
+                  <div class="form-row"><label for={`stat_label_${i}`}>الوصف {i + 1}</label><input id={`stat_label_${i}`} name={`stat_label_${i}`} value={st.label} placeholder="شركة تثق بينا" /></div>
+                </div>
+              ))}
+            </>
+          )}
+        </section>
       ))}
 
-      <h3 style="margin:24px 0 12px;">أرقام الإحصائيات (الرئيسية)</h3>
-      {stats.slice(0, 4).map((st, i) => (
-        <div class="form-grid-2">
-          <div class="form-row"><label for={`stat_value_${i}`}>الرقم {i + 1}</label><input id={`stat_value_${i}`} name={`stat_value_${i}`} value={st.value} placeholder="+120" /></div>
-          <div class="form-row"><label for={`stat_label_${i}`}>الوصف {i + 1}</label><input id={`stat_label_${i}`} name={`stat_label_${i}`} value={st.label} placeholder="شركة تثق بينا" /></div>
-        </div>
-      ))}
-
-      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الإعدادات</button>
+      <div class="ssticky">
+        <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ الإعدادات</button>
+        <small style="color:var(--muted);">الحفظ بيحفظ كل التبويبات مرة واحدة.</small>
+      </div>
     </form>
 </div>
+
+<script is:inline>
+  (function () {
+    var btns = document.querySelectorAll('.stabs [data-tab]'), panels = document.querySelectorAll('.spanel'), field = document.getElementById('tabField');
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        btns.forEach(function (x) { x.classList.toggle('active', x === b); });
+        panels.forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
+        field.value = b.dataset.tab;
+        try { history.replaceState(null, '', '?tab=' + b.dataset.tab); } catch (e) {}
+      });
+    });
+  })();
+</script>
 </Admin>

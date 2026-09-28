@@ -1,0 +1,22 @@
+---
+// One row in an ordered CMS list: collapsible header (order arrows, title, publish switch)
+// with the edit form in the slot. The arrows/switch submit a tiny hidden form via `form=`.
+interface Props { id: string; title: string; subtitle?: string; published: boolean; index: number; total: number; open?: boolean }
+const { id, title, subtitle, published, index, total, open = false } = Astro.props;
+const fid = `ctl-${id}`;
+---
+<details class="citem" open={open}>
+  <summary>
+    <span class="citem-order">
+      <button type="submit" form={fid} name="_action" value="move_up" title="تحريك لأعلى" disabled={index === 0}>▲</button>
+      <button type="submit" form={fid} name="_action" value="move_down" title="تحريك لأسفل" disabled={index === total - 1}>▼</button>
+    </span>
+    <span class="citem-title"><strong>{title || '—'}</strong>{subtitle && <small>{subtitle}</small>}</span>
+    <span class="citem-side">
+      <button type="submit" form={fid} name="_action" value="toggle" class:list={['switch', { on: published }]} title={published ? 'ظاهر على الموقع — اضغط للإخفاء' : 'مخفي — اضغط للإظهار'} aria-label="إظهار/إخفاء"></button>
+      <span class="citem-chev">▼</span>
+    </span>
+  </summary>
+  <div class="citem-body"><slot /></div>
+</details>
+<form method="POST" id={fid} hidden><input type="hidden" name="id" value={id} /></form>

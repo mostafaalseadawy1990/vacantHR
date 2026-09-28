@@ -1,0 +1,64 @@
+---
+// Image field: preview + upload (to /admin/media/upload) + pick from the media library.
+// Emits a hidden input `name` holding the media path ('' = none).
+import { mediaUrl } from '../lib/settings';
+interface Props { name: string; label: string; value?: string | null; media: Array<{ path: string; alt?: string | null }>; help?: string; noneLabel?: string }
+const { name, label, value = '', media, help, noneLabel = 'بدون' } = Astro.props;
+const id = `ip-${name}`;
+---
+<div class="form-row ipk" id={id}>
+  <label>{label}</label>
+  <div class="ipk-box">
+    <div class="ipk-prev" data-empty={!value ? '1' : undefined}>
+      <img src={value ? mediaUrl(value) : ''} alt="" hidden={!value} />
+      <span class="ipk-none">{noneLabel}</span>
+    </div>
+    <div class="ipk-acts">
+      <button type="button" class="btn ipk-up">⬆ رفع</button>
+      <button type="button" class="btn ipk-pick">اختيار من المكتبة</button>
+      <button type="button" class="btn ipk-clear" hidden={!value} style="color:#9A3B1C;">إزالة</button>
+      <small class="ipk-st"></small>
+    </div>
+  </div>
+  {help && <small class="shelp" style="margin:6px 0 0;display:block;">{help}</small>}
+  <div class="ipk-grid" hidden>
+    {media.map((m) => <button type="button" class="ipk-thumb" data-path={m.path} title={m.alt || m.path}><img src={mediaUrl(m.path)} alt="" loading="lazy" /></button>)}
+  </div>
+  <input type="hidden" name={name} value={value ?? ''} />
+  <input type="file" accept="image/*" hidden />
+</div>
+
+<script is:inline define:vars={{ id }}>
+  (function () {
+    var root = document.getElementById(id), hidden = root.querySelector('input[type=hidden]'), file = root.querySelector('input[type=file]');
+    var prev = root.querySelector('.ipk-prev'), img = prev.querySelector('img'), clear = root.querySelector('.ipk-clear'), grid = root.querySelector('.ipk-grid'), st = root.querySelector('.ipk-st');
+    function set(p, url) { hidden.value = p || ''; img.hidden = !p; if (p) img.src = url; prev.toggleAttribute('data-empty', !p); clear.hidden = !p; grid.hidden = true; }
+    root.querySelector('.ipk-pick').addEventListener('click', function () { grid.hidden = !grid.hidden; });
+    root.querySelector('.ipk-up').addEventListener('click', function () { file.click(); });
+    clear.addEventListener('click', function () { set('', ''); });
+    grid.addEventListener('click', function (e) { var b = e.target.closest('.ipk-thumb'); if (b) set(b.dataset.path, b.querySelector('img').src); });
+    file.addEventListener('change', function () {
+      var f = file.files[0]; if (!f) return; st.textContent = 'جارٍ الرفع…';
+      var fd = new FormData(); fd.append('file', f);
+      fetch('/admin/media/upload', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j.path) throw new Error(j.error || ''); set(j.path, j.url); st.textContent = '';
+      }).catch(function (e) { st.textContent = 'تعذّر الرفع: ' + (e.message || ''); });
+      file.value = '';
+    });
+  })();
+</script>
+
+<style is:global>
+  .ipk-box{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .ipk-prev{ width:120px; height:80px; border:1px solid var(--line); border-radius:8px; background:repeating-conic-gradient(#f1f5f9 0 25%, #fff 0 50%) 0 0/14px 14px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex:none; }
+  .ipk-prev img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .ipk-none{ display:none; font-size:.8rem; color:var(--muted); }
+  .ipk-prev[data-empty] .ipk-none{ display:block; }
+  .ipk-acts{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .ipk-acts .btn{ padding:7px 14px; font-size:.84rem; cursor:pointer; }
+  .ipk-st{ color:var(--muted); font-size:.8rem; }
+  .ipk-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:6px; margin-top:10px; max-height:260px; overflow:auto; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--surface-soft); }
+  .ipk-thumb{ padding:0; border:2px solid transparent; border-radius:6px; background:#fff; cursor:pointer; overflow:hidden; aspect-ratio:1; }
+  .ipk-thumb:hover{ border-color:var(--accent); }
+  .ipk-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+</style>

@@ -1,0 +1,67 @@
+---
+// Tab bar shared by every "المحتوى" page, plus the shared styles for the accordion item lists.
+interface Props { active: string; preview?: string }
+const { active, preview } = Astro.props;
+const tabs = [
+  { key: 'index', href: '/admin/content', label: 'نظرة عامة' },
+  { key: 'settings', href: '/admin/content/settings', label: 'الإعدادات' },
+  { key: 'testimonials', href: '/admin/content/testimonials', label: 'آراء العملاء' },
+  { key: 'faqs', href: '/admin/content/faqs', label: 'الأسئلة الشائعة' },
+  { key: 'pricing', href: '/admin/content/pricing', label: 'الباقات' },
+  { key: 'guide', href: '/admin/content/guide', label: 'دليل HRM' },
+  { key: 'blog-layout', href: '/admin/content/blog-layout', label: 'شكل المدوّنة' },
+];
+---
+<div class="cnav-wrap">
+  <nav class="cnav" aria-label="أقسام المحتوى">
+    {tabs.map((t) => <a href={t.href} class:list={{ active: active === t.key }} aria-current={active === t.key ? 'page' : undefined}>{t.label}</a>)}
+  </nav>
+  {preview && <a href={preview} target="_blank" rel="noopener" class="btn cnav-preview">معاينة على الموقع ↗</a>}
+</div>
+
+<style is:global>
+  .cnav-wrap{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .cnav{ display:flex; gap:4px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:4px; }
+  .cnav a{ padding:7px 14px; border-radius:999px; font-size:.88rem; font-weight:500; color:var(--body); white-space:nowrap; }
+  .cnav a:hover{ background:var(--surface-soft); }
+  .cnav a.active{ background:var(--accent); color:#fff; }
+  .cnav-preview{ padding:7px 14px; font-size:.85rem; }
+  @media (max-width:640px){ .cnav{ border-radius:12px; } }
+
+  /* ── Accordion item lists ── */
+  .citems{ display:flex; flex-direction:column; gap:8px; max-width:900px; }
+  .citem{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); }
+  .citem[open]{ border-color:var(--accent); box-shadow:var(--shadow-sm); }
+  .citem > summary{ list-style:none; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 14px; cursor:pointer; }
+  .citem > summary::-webkit-details-marker{ display:none; }
+  .citem-order{ display:flex; flex-direction:column; gap:2px; }
+  .citem-order button{ border:1px solid var(--line); background:var(--surface-soft); width:24px; height:18px; line-height:1; font-size:.7rem; border-radius:4px; cursor:pointer; color:var(--muted); padding:0; }
+  .citem-order button:hover{ color:var(--accent); border-color:var(--accent); }
+  .citem-order button:disabled{ opacity:.3; cursor:default; }
+  .citem-title{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .citem-title strong{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.97rem; }
+  .citem-title small{ color:var(--muted); font-size:.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .citem-side{ display:flex; align-items:center; gap:10px; }
+  .citem-chev{ color:var(--muted); transition:transform .15s; font-size:.8rem; }
+  .citem[open] .citem-chev{ transform:rotate(180deg); }
+  .citem-body{ border-top:1px solid var(--line-soft); padding:16px 18px 18px; }
+  .citem-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+  .cadd{ margin-bottom:14px; }
+  .cadd > summary{ list-style:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; padding:10px 18px; border-radius:999px; background:var(--accent); color:#fff; font-weight:600; font-size:.9rem; }
+  .cadd > summary::-webkit-details-marker{ display:none; }
+  .cadd .citem-body{ border:1px dashed var(--accent); border-radius:var(--radius-sm); margin-top:10px; background:var(--surface); }
+  /* toggle switch (a form button) */
+  .switch{ position:relative; width:40px; height:22px; border-radius:999px; border:0; background:#CBD5E1; cursor:pointer; padding:0; transition:background .15s; flex:none; }
+  .switch::after{ content:''; position:absolute; top:3px; inset-inline-start:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; }
+  .switch.on{ background:var(--accent); }
+  .switch.on::after{ transform:translateX(-18px); }
+  [dir="ltr"] .switch.on::after{ transform:translateX(18px); }
+  .cempty{ color:var(--muted); background:var(--surface); border:1px dashed var(--line); border-radius:var(--radius-sm); padding:24px; text-align:center; }
+  /* settings tabs */
+  .stabs{ display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:20px; overflow-x:auto; }
+  .stabs button{ background:none; border:0; border-bottom:2px solid transparent; padding:10px 14px; font-family:inherit; font-size:.92rem; font-weight:600; color:var(--muted); cursor:pointer; white-space:nowrap; margin-bottom:-1px; }
+  .stabs button.active{ color:var(--accent); border-bottom-color:var(--accent); }
+  .spanel[hidden]{ display:none; }
+  .shelp{ font-size:.82rem; color:var(--muted); margin:-10px 0 14px; }
+  .ssticky{ position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:12px 0 0; margin-top:10px; display:flex; gap:10px; align-items:center; }
+</style>

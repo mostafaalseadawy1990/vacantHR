@@ -1,6 +1,9 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { handleListAction } from '../../../lib/content';
+import ContentNav from '../../../components/ContentNav.astro';
+import CItem from '../../../components/CItem.astro';
 import { sanitizeHtml } from '../../../lib/html';
 import RichEditor from '../../../components/RichEditor.astro';
 
@@ -12,10 +15,7 @@ if (Astro.request.method === 'POST') {
   const action = String(form.get('_action') || '');
   const id = String(form.get('id') || '');
 
-  if (action === 'delete' && id) {
-    await supabase.from('faqs').delete().eq('id', id);
-    return Astro.redirect('/admin/content/faqs?ok=1', 303);
-  }
+  if (await handleListAction(supabase, 'faqs', form)) return Astro.redirect('/admin/content/faqs?ok=1', 303);
   if (action === 'save') {
     const row = {
       question: String(form.get('question') || '').trim(),
@@ -41,43 +41,40 @@ const { data: items } = await supabase.from('faqs').select('*').order('position'
 <Admin title="الأسئلة الشائعة | لوحة الإدارة" path="/admin/content/faqs" active="content">
 <Fragment slot="heading">الأسئلة الشائعة</Fragment>
 <div class="admin-body">
-    <p style="margin-bottom:20px;"><a href="/admin/content">→ رجوع للمحتوى</a></p>
+    <ContentNav active="faqs" preview="/#faq" />
     {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ.</p>}
     {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
 
-    <div style="display:grid;gap:16px;max-width:720px;">
-      {(items ?? []).map((f: any) => (
-        <form method="POST" class="form-box" style="max-width:none;">
-          <input type="hidden" name="_action" value="save" />
-          <input type="hidden" name="id" value={f.id} />
-          <div class="form-row"><label>السؤال</label><input name="question" value={f.question} required /></div>
-          <div class="form-row"><label>الإجابة</label><RichEditor name="answer" value={f.answer} minHeight={120} /></div>
-          <div class="form-grid-2">
-            <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={f.position} /></div>
-            <div class="form-row" style="display:flex;align-items:end;">
-              <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked={f.published} /> ظاهر</label>
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;">
-            <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
-            <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;">حذف</button>
-          </div>
-        </form>
-      ))}
-
-      <form method="POST" class="form-box" style="max-width:none;border-style:dashed;">
+    <details class="cadd">
+      <summary>+ إضافة سؤال جديد</summary>
+      <form method="POST" class="citem-body">
         <input type="hidden" name="_action" value="save" />
-        <h3 style="margin-bottom:14px;">إضافة سؤال جديد</h3>
-        <div class="form-row"><label>السؤال</label><input name="question" required /></div>
-        <div class="form-row"><label>الإجابة</label><RichEditor name="answer" minHeight={120} /></div>
-        <div class="form-grid-2">
-          <div class="form-row"><label>الترتيب</label><input type="number" name="position" value="99" /></div>
-          <div class="form-row" style="display:flex;align-items:end;">
-            <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="published" checked /> ظاهر</label>
-          </div>
-        </div>
+        <div class="form-row"><label>السؤال *</label><input name="question" required /></div>
+        <div class="form-row"><label>الإجابة *</label><RichEditor name="answer" minHeight={120} /></div>
+        <input type="hidden" name="position" value="999" /><input type="hidden" name="published" value="on" />
         <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
       </form>
-    </div>
+    </details>
+
+    {(!items || items.length === 0) ? <p class="cempty">مفيش أسئلة لسه.</p> : (
+      <div class="citems">
+        {items.map((f: any, i: number) => (
+          <CItem id={f.id} title={f.question} subtitle={f.answer.replace(/<[^>]+>/g, ' ').slice(0, 120)} published={f.published} index={i} total={items.length}>
+            <form method="POST">
+              <input type="hidden" name="_action" value="save" />
+              <input type="hidden" name="id" value={f.id} />
+              <input type="hidden" name="position" value={f.position} />
+              <input type="hidden" name="published" value={f.published ? 'on' : ''} />
+              <div class="form-row"><label>السؤال *</label><input name="question" value={f.question} required /></div>
+              <div class="form-row"><label>الإجابة *</label><RichEditor name="answer" value={f.answer} minHeight={120} /></div>
+              <div class="citem-actions">
+                <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+                <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف السؤال؟')">حذف</button>
+              </div>
+            </form>
+          </CItem>
+        ))}
+      </div>
+    )}
 </div>
 </Admin>
