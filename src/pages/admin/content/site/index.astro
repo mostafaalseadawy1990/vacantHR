@@ -1,0 +1,55 @@
+---
+import Admin from '../../../../layouts/Admin.astro';
+import ContentNav from '../../../../components/ContentNav.astro';
+import { serverClient } from '../../../../lib/supabase';
+import { logAction } from '../../../../lib/audit';
+import { SITE_PAGES, DEFAULT_SECTIONS } from '../../../../lib/sections';
+
+const supabase = serverClient(Astro);
+const me = Astro.locals.user!;
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const page = String(form.get('page') || '');
+  if (form.get('_action') === 'seed' && DEFAULT_SECTIONS[page]) {
+    const { count } = await supabase.from('site_sections').select('id', { count: 'exact', head: true }).eq('page', page);
+    if ((count ?? 0) > 0) flash = 'الصفحة دي فيها أقسام بالفعل — احذفها الأول لو عايز تبدأ من الافتراضي.';
+    else {
+      const rows = DEFAULT_SECTIONS[page].map((s, i) => ({ page, kind: s.kind, eyebrow: s.eyebrow ?? null, title: s.title ?? null, body_html: s.body_html ?? '', image_path: null, reverse: !!s.reverse, cta_label: s.cta_label ?? null, cta_href: s.cta_href ?? null, cta2_label: s.cta2_label ?? null, cta2_href: s.cta2_href ?? null, items: s.items ?? [], position: i + 1, published: true }));
+      const { error } = await supabase.from('site_sections').insert(rows);
+      if (error) flash = `تعذّر الاستيراد: ${error.message}`;
+      else { await logAction(Astro, supabase, 'استيراد محتوى صفحة', page); return Astro.redirect(`/admin/content/site/${page}?ok=1`, 303); }
+    }
+  }
+}
+const { data: rows, error } = await supabase.from('site_sections').select('page, published');
+const counts: Record<string, { n: number; pub: number }> = {};
+for (const r of rows ?? []) { const c = (counts[r.page] ??= { n: 0, pub: 0 }); c.n++; if (r.published) c.pub++; }
+---
+<Admin title="صفحات الموقع | لوحة الإدارة" path="/admin/content/site" active="content">
+<Fragment slot="heading">صفحات الموقع</Fragment>
+<div class="admin-body">
+  <ContentNav active="site" preview="/" />
+  {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+  {error && <p class="notice notice-error" style="margin-bottom:18px;">تعذّر تحميل الأقسام — تأكد من تشغيل migration-17 في Supabase.</p>}
+  <p style="color:var(--muted);font-size:.9rem;margin-bottom:16px;">كل صفحة مكوّنة من أقسام (هيرو، ميزة بصورة، خطوات، نص حر، دعوة لإجراء…) بتتعدل وتترتّب من هنا. لو الصفحة لسه ما فيهاش أقسام، الموقع بيعرض المحتوى الافتراضي المدمج — اضغط "استيراد" عشان تبدأ التعديل عليه.</p>
+  <div class="ccards">
+    {SITE_PAGES.map((pg) => {
+      const c = counts[pg.key];
+      return (
+        <div class="ccard" style="gap:10px;">
+          <span class="ccard-head"><strong>{pg.label}</strong>{c && <b>{c.pub}/{c.n} قسم</b>}</span>
+          <span class="ccard-desc" dir="ltr" style="text-align:right;">{pg.href}</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {c
+              ? <a href={`/admin/content/site/${pg.key}`} class="btn solid" style="padding:7px 14px;font-size:.85rem;">تعديل الأقسام</a>
+              : <form method="POST"><input type="hidden" name="_action" value="seed" /><input type="hidden" name="page" value={pg.key} /><button class="btn solid" style="border:none;cursor:pointer;padding:7px 14px;font-size:.85rem;">استيراد المحتوى الحالي وابدأ التعديل</button></form>}
+            <a href={pg.href} target="_blank" rel="noopener" class="btn" style="padding:7px 14px;font-size:.85rem;">معاينة ↗</a>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
+</Admin>

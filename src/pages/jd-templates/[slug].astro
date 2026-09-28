@@ -1,0 +1,47 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getJdTemplates } from '../../lib/jd';
+
+const { items } = await getJdTemplates();
+const t = items.find((x) => x.slug === Astro.params.slug);
+if (!t) return Astro.rewrite('/404');
+const others = items.filter((x) => x.slug !== t.slug).slice(0, 4);
+const jsonld = [{ '@context': 'https://schema.org', '@type': 'DigitalDocument', name: `نموذج وصف وظيفي — ${t.title}`, description: t.summary, url: `https://vacanthr.com/jd-templates/${t.slug}`, inLanguage: 'ar', publisher: { '@type': 'Organization', name: 'Vacant HR' } }];
+---
+<Base title={`نموذج وصف وظيفي — ${t.title} | Vacant HR`} description={t.summary || `نموذج وصف وظيفي جاهز لدور ${t.title} قابل للتحميل بصيغة Word.`} active="jd" path={`/jd-templates/${t.slug}`} jsonld={jsonld}>
+<main id="main">
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span><a href="/jd-templates">نماذج الوصف الوظيفي</a><span>/</span>{t.title}</nav>
+</div>
+<section class="hero" style="padding:40px 0 24px;">
+  <div class="wrap">
+    {t.sector && <div class="eyebrow-line">{t.sector}</div>}
+    <h1 style="max-width:22ch;">نموذج وصف وظيفي — {t.title}</h1>
+    {t.summary && <p class="lead" style="max-width:62ch;">{t.summary}</p>}
+    <div class="btn-row">
+      <a href={`/jd-templates/${t.slug}.docx`} class="btn solid">⬇ تحميل Word (.docx)</a>
+      <a href="/contact" class="btn">اطلب نموذج مخصص</a>
+    </div>
+  </div>
+</section>
+<section style="padding-top:10px;">
+  <div class="wrap job-layout">
+    <div class="prose rich jd-doc"><Fragment set:html={t.body_html} /></div>
+    <aside class="job-aside">
+      <div class="job-apply-card">
+        <a href={`/jd-templates/${t.slug}.docx`} class="btn solid" style="width:100%;text-align:center;">⬇ تحميل Word</a>
+        <p class="job-aside-note">ملف Word جاهز بالعربية — عدّل ما بين [ ] بما يناسب شركتك.</p>
+        <dl class="job-facts">{t.sector && <><dt>القطاع</dt><dd>{t.sector}</dd></>}<dt>الصيغة</dt><dd>DOCX</dd><dt>السعر</dt><dd>مجاني</dd></dl>
+      </div>
+      {others.length > 0 && (
+        <div class="job-similar">
+          <h3>نماذج أخرى</h3>
+          {others.map((o) => <a href={`/jd-templates/${o.slug}`} class="job-sim"><strong>{o.title}</strong><small>{o.sector}</small></a>)}
+          <a href="/jd-templates" class="job-sim-all">كل النماذج ←</a>
+        </div>
+      )}
+    </aside>
+  </div>
+</section>
+</main>
+</Base>

@@ -1,8 +1,10 @@
 // Shared helpers for the ordered CMS lists (testimonials, faqs, pricing, guide sections).
 
 /** Moves an item one step up/down by swapping `position` with its neighbour, then renumbers 1..n. */
-export async function moveItem(supabase: any, table: string, id: string, dir: 'up' | 'down') {
-  const { data } = await supabase.from(table).select('id').order('position').order('created_at');
+export async function moveItem(supabase: any, table: string, id: string, dir: 'up' | 'down', scope?: { col: string; val: string }) {
+  let q = supabase.from(table).select('id').order('position').order('created_at');
+  if (scope) q = q.eq(scope.col, scope.val);
+  const { data } = await q;
   const ids: string[] = (data ?? []).map((r: any) => r.id);
   const i = ids.indexOf(id);
   const j = dir === 'up' ? i - 1 : i + 1;
@@ -19,12 +21,12 @@ export async function togglePublished(supabase: any, table: string, id: string) 
 }
 
 /** Handles the shared list actions (move / toggle / delete). Returns true when it handled one. */
-export async function handleListAction(supabase: any, table: string, form: FormData): Promise<boolean> {
+export async function handleListAction(supabase: any, table: string, form: FormData, scope?: { col: string; val: string }): Promise<boolean> {
   const action = String(form.get('_action') || '');
   const id = String(form.get('id') || '');
   if (!id) return false;
-  if (action === 'move_up') { await moveItem(supabase, table, id, 'up'); return true; }
-  if (action === 'move_down') { await moveItem(supabase, table, id, 'down'); return true; }
+  if (action === 'move_up') { await moveItem(supabase, table, id, 'up', scope); return true; }
+  if (action === 'move_down') { await moveItem(supabase, table, id, 'down', scope); return true; }
   if (action === 'toggle') { await togglePublished(supabase, table, id); return true; }
   if (action === 'delete') { await supabase.from(table).delete().eq('id', id); return true; }
   return false;

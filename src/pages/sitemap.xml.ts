@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { anonClient } from '../lib/supabase';
+import { getJdTemplates } from '../lib/jd';
 
 export const prerender = false;
 
@@ -46,6 +47,9 @@ export const GET: APIRoute = async () => {
     urls.push(`<url><loc>${SITE}/blog/${p.slug}</loc>${lastmod(p.updated_at)}<changefreq>monthly</changefreq></url>`);
   }
 
+  for (const t of (await getJdTemplates()).items) {
+    urls.push(`<url><loc>${SITE}/jd-templates/${t.slug}</loc><changefreq>monthly</changefreq></url>`);
+  }
   for (const p of pages ?? []) {
     urls.push(`<url><loc>${SITE}/${p.slug}</loc>${lastmod(p.updated_at)}<changefreq>monthly</changefreq></url>`);
   }

@@ -104,3 +104,18 @@ describe('candidates', () => {
     expect(waLink('')).toBeNull();
   });
 });
+
+import { htmlToDocx } from '../docx';
+import { unzipSync, strFromU8 } from 'fflate';
+describe('htmlToDocx', () => {
+  it('produces a docx with headings, lists and bold runs', () => {
+    const bytes = htmlToDocx('<h2>المهام</h2><ul><li>تسجيل <strong>القيود</strong></li><li>مراجعة</li></ul><p>نص &amp; آخر</p>', { title: 'محاسب' });
+    const files = unzipSync(bytes);
+    const doc = strFromU8(files['word/document.xml']);
+    expect(Object.keys(files)).toContain('[Content_Types].xml');
+    expect(doc).toContain('محاسب');
+    expect(doc).toContain('<w:numPr>');
+    expect(doc).toContain('<w:b/>');
+    expect(doc).toContain('نص &amp; آخر');
+  });
+});

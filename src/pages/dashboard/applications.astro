@@ -30,7 +30,7 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: '
               <span class={`status-pill status-${a.status}`}>{STATUS_AR[a.status] ?? a.status}</span>
             </div>
             <small style="color:var(--muted);">{a.jobs?.department && <>{a.jobs.department} · </>}قدّمت في {fmtDate(a.created_at)}{upcoming > 0 && <> · <a href="/dashboard/interviews">عندك مقابلة قادمة</a></>}</small>
-            <div class:list={['steps', { rejected: a.status === 'rejected' }]} title="مراحل الطلب">
+            <div class:list={['app-steps', { rejected: a.status === 'rejected' }]} title="مراحل الطلب">
               {STEPS.map((s, i) => <i class:list={{ on: a.status === 'rejected' ? i === 0 : i <= idx }}></i>)}
             </div>
             <small style="color:var(--muted);display:flex;justify-content:space-between;margin-top:4px;font-size:.75rem;"><span>تقديم</span><span>مراجعة</span><span>قائمة مختصرة</span><span>تعيين</span></small>

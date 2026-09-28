@@ -1,0 +1,124 @@
+---
+// Renders the editable sections of a service page (see lib/sections.ts).
+import { mediaUrl, getSettings, getPricingPlans } from '../lib/settings';
+import type { Section } from '../lib/sections';
+interface Props { sections: Section[]; crumb: string }
+const { sections, crumb } = Astro.props;
+const needSettings = sections.some((s) => s.kind === 'stats');
+const needPlans = sections.some((s) => s.kind === 'pricing');
+const [settings, plans] = await Promise.all([needSettings ? getSettings() : null, needPlans ? getPricingPlans() : []]);
+const hero = sections.find((s) => s.kind === 'hero');
+const rest = sections.filter((s) => s.kind !== 'hero');
+// Alternate backgrounds for a rhythm, and group consecutive features into one section.
+type Grp = { kind: string; items: Section[] };
+const groups: Grp[] = [];
+for (const s of rest) {
+  const last = groups[groups.length - 1];
+  if (s.kind === 'feature' && last?.kind === 'feature') last.items.push(s); else groups.push({ kind: s.kind, items: [s] });
+}
+let n = 0;
+---
+<div class="wrap">
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>{crumb}</nav>
+</div>
+
+{hero && (
+  <section class="hero" style="padding:40px 0 50px;">
+    <div class:list={['wrap', { 'hero-grid': !!hero.image_path }]}>
+      <div>
+        {hero.eyebrow && <div class="eyebrow-line">{hero.eyebrow}</div>}
+        <h1 style="max-width:20ch;">{hero.title}</h1>
+        {hero.body_html && <div class="lead rich" style="max-width:62ch;" set:html={hero.body_html} />}
+        {(hero.cta_label || hero.cta2_label) && (
+          <div class="btn-row">
+            {hero.cta_label && <a href={hero.cta_href || '/contact'} class="btn solid">{hero.cta_label}</a>}
+            {hero.cta2_label && <a href={hero.cta2_href || '/contact'} class="btn">{hero.cta2_label}</a>}
+          </div>
+        )}
+      </div>
+      {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path)} alt="" style="width:100%;height:100%;object-fit:cover;" /></div>}
+    </div>
+  </section>
+)}
+
+{groups.map((g) => {
+  const alt = (n++ % 2) === 1;
+  if (g.kind === 'feature') {
+    const first = g.items[0];
+    return (
+      <section class:list={{ alt }}>
+        <div class="wrap">
+          {(first.eyebrow) && <div class="section-head">{first.eyebrow && <div class="eyebrow-line">{first.eyebrow}</div>}</div>}
+          {g.items.map((s, i) => (
+            <div class:list={['feature-row', { rev: s.reverse }]}>
+              <div>
+                <h3>{s.title}</h3>
+                <div class="rich" set:html={s.body_html} />
+                {s.cta_label && <a href={s.cta_href || '/contact'} class="btn" style="margin-top:14px;">{s.cta_label}</a>}
+              </div>
+              {s.image_path
+                ? <div class="feature-media"><img src={mediaUrl(s.image_path)} alt={s.title ?? ''} loading="lazy" style="width:100%;height:100%;object-fit:cover;" /></div>
+                : <div class="feature-media feature-ph" aria-hidden="true"><span>{String(i + 1).padStart(2, '0')}</span></div>}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+  const s = g.items[0];
+  if (g.kind === 'steps') return (
+    <section class:list={{ alt }}>
+      <div class="wrap">
+        {(s.eyebrow || s.title) && <div class="section-head">{s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}{s.title && <h2>{s.title}</h2>}</div>}
+        <div class="steps">
+          {(s.items ?? []).map((it) => <div class="step"><div class="n"></div><div><h3>{it.title}</h3><p>{it.body}</p></div></div>)}
+        </div>
+      </div>
+    </section>
+  );
+  if (g.kind === 'rich') return (
+    <section class:list={{ alt }}>
+      <div class="wrap prose rich">
+        {s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}
+        {s.title && <h2>{s.title}</h2>}
+        <Fragment set:html={s.body_html} />
+        {s.image_path && <img src={mediaUrl(s.image_path)} alt="" loading="lazy" />}
+      </div>
+    </section>
+  );
+  if (g.kind === 'cta') return (
+    <section class="cta-banner">
+      <div class="wrap">
+        <h2>{s.title}</h2>
+        <div class="rich" set:html={s.body_html} />
+        {s.cta_label && <a href={s.cta_href || '/contact'} class="btn solid">{s.cta_label}</a>}
+      </div>
+    </section>
+  );
+  if (g.kind === 'stats' && settings) return (
+    <section class="alt"><div class="wrap"><div class="stats">
+      {settings.home_stats.map((st) => <div class="stat"><div class="num">{st.value}</div><div class="lbl">{st.label}</div></div>)}
+    </div></div></section>
+  );
+  if (g.kind === 'pricing') return (
+    <section class="alt" id="pricing">
+      <div class="wrap">
+        <div class="section-head">{s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}{s.title && <h2>{s.title}</h2>}</div>
+        {plans.length === 0 ? <p style="color:var(--muted);">الباقات بتتضاف من الإدارة ← المحتوى ← الباقات.</p> : (
+          <div class="pricing">
+            {plans.map((plan) => (
+              <div class:list={['plan', { featured: plan.featured }]}>
+                <h3>{plan.name}</h3>
+                <div class="price">{plan.price} {plan.unit && <span>{plan.unit}</span>}</div>
+                {plan.note && <p>{plan.note}</p>}
+                <ul>{plan.features.map((f) => <li>{f}</li>)}</ul>
+                <a href="/contact" class:list={['btn', { solid: plan.featured }]} style="margin-top:22px;">{plan.cta_label ?? 'ابدأ الآن'}</a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+  return null;
+})}

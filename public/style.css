@@ -279,6 +279,7 @@ main svg [stroke="#D9A354"]{stroke:var(--accent);}
   padding:24px 0;
 }
 .step + .step{border-top:1px solid var(--line-soft);}
+@media(max-width:600px){.step{grid-template-columns:44px 1fr;gap:14px;}.step .n{width:40px;height:40px;font-size:1.1rem;border-radius:10px;}}
 .step .n{
   counter-increment:step;font-size:1.4rem;font-weight:700;color:var(--accent);
   width:52px;height:52px;border-radius:14px;background:var(--accent-soft);
@@ -868,10 +869,10 @@ input[type=checkbox]{width:auto;}
 .pnudge p{ margin:0; font-size:.92rem; }
 .pgrid2{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
 /* application status steps */
-.steps{ display:flex; gap:4px; margin-top:6px; }
-.steps i{ flex:1; height:4px; border-radius:2px; background:var(--line); }
-.steps i.on{ background:var(--accent); }
-.steps.rejected i.on{ background:#C05621; }
+.app-steps{ display:flex; gap:4px; margin-top:6px; }
+.app-steps i{ flex:1; height:4px; border-radius:2px; background:var(--line); }
+.app-steps i.on{ background:var(--accent); }
+.app-steps.rejected i.on{ background:#C05621; }
 
 /* ===== Homepage: how it works / latest jobs ===== */
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
@@ -915,3 +916,14 @@ input[type=checkbox]{width:auto;}
 .job-sim small{color:var(--muted);font-size:.78rem;}
 .job-sim-all{display:inline-block;margin-top:8px;font-size:.85rem;color:var(--accent);font-weight:600;}
 @media(max-width:900px){.job-layout{grid-template-columns:1fr;}.job-aside{position:static;}}
+
+.feature-ph{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent-soft),var(--surface-tint));}
+.feature-ph span{font-size:3rem;font-weight:800;color:var(--accent);opacity:.5;letter-spacing:-.04em;}
+.hero .lead.rich p{font-size:1.18rem;color:var(--body);margin:20px 0 0;}
+.cta-banner .rich p{color:#CBD5E1;}
+
+.doc-card h3 a{color:inherit;}
+.doc-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+.doc-acts .btn{padding:8px 14px;font-size:.86rem;}
+.jd-doc h2{font-size:1.3rem;margin:28px 0 10px;}
+.jd-doc h1{font-size:1.6rem;}

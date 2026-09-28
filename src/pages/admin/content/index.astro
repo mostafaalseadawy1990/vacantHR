@@ -9,20 +9,22 @@ const cnt = async (t: string, filter?: (q: any) => any) => {
   if (filter) q = filter(q);
   const { count } = await q; return count ?? 0;
 };
-const [testimonials, faqs, pricing, guide, posts, pages, media] = await Promise.all([
-  cnt('testimonials'), cnt('faqs'), cnt('pricing_plans'), cnt('guide_sections'),
+const [testimonials, faqs, pricing, guide, jd, posts, pages, media] = await Promise.all([
+  cnt('testimonials'), cnt('faqs'), cnt('pricing_plans'), cnt('guide_sections'), cnt('jd_templates'),
   cnt('posts', (q) => q.eq('status', 'published')), cnt('pages', (q) => q.eq('status', 'published')), cnt('media'),
 ]);
 
 const groups = [
   { label: 'الصفحة الرئيسية والموقع', cards: [
     { href: '/admin/content/settings', title: 'الإعدادات', desc: 'الشعار، الأيقونة، بيانات التواصل، نصوص الرئيسية، SEO والبكسل', count: null },
+    { href: '/admin/content/site', title: 'صفحات الموقع', desc: 'التوظيف، برنامج HRM، الاستشارات، من نحن — نصوص وصور كل قسم بالمحرّر', count: null },
     { href: '/admin/content/testimonials', title: 'آراء العملاء', desc: 'الشهادات اللي بتظهر على الرئيسية', count: testimonials },
     { href: '/admin/content/faqs', title: 'الأسئلة الشائعة', desc: 'قسم الأسئلة والأجوبة على الرئيسية', count: faqs },
   ] },
   { label: 'برنامج HRM', cards: [
     { href: '/admin/content/pricing', title: 'باقات الأسعار', desc: 'الباقات والمميزات على صفحة برنامج HRM', count: pricing },
     { href: '/admin/content/guide', title: 'دليل الاستخدام', desc: 'أقسام /hrm-guide بشروحات وفيديوهات', count: guide },
+    { href: '/admin/content/jd', title: 'نماذج الوصف الوظيفي', desc: 'النماذج اللي بتتنزّل Word من /jd-templates', count: jd },
   ] },
   { label: 'المدوّنة والصفحات', cards: [
     { href: '/admin/blog', title: 'المقالات', desc: 'كتابة ونشر المقالات', count: posts },

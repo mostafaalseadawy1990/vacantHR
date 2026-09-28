@@ -1,0 +1,141 @@
+---
+import Admin from '../../../../layouts/Admin.astro';
+import ContentNav from '../../../../components/ContentNav.astro';
+import CItem from '../../../../components/CItem.astro';
+import RichEditor from '../../../../components/RichEditor.astro';
+import ImagePicker from '../../../../components/ImagePicker.astro';
+import { serverClient } from '../../../../lib/supabase';
+import { logAction } from '../../../../lib/audit';
+import { sanitizeHtml } from '../../../../lib/html';
+import { handleListAction } from '../../../../lib/content';
+import { clearSettingsCache } from '../../../../lib/settings';
+import { SITE_PAGES, KIND_AR, type SectionKind } from '../../../../lib/sections';
+
+const page = String(Astro.params.page);
+const pg = SITE_PAGES.find((p) => p.key === page);
+if (!pg) return Astro.redirect('/admin/content/site', 302);
+const supabase = serverClient(Astro);
+const back = `/admin/content/site/${page}`;
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (await handleListAction(supabase, 'site_sections', form, { col: 'page', val: page })) { clearSettingsCache(); return Astro.redirect(`${back}?ok=1`, 303); }
+  const action = String(form.get('_action') || '');
+  const id = String(form.get('id') || '');
+  if (action === 'save') {
+    const g = (k: string) => String(form.get(k) ?? '').trim();
+    const kind = (Object.keys(KIND_AR).includes(g('kind')) ? g('kind') : 'rich') as SectionKind;
+    const titles = form.getAll('item_title').map(String), bodies = form.getAll('item_body').map(String);
+    const items = titles.map((t, i) => ({ title: t.trim(), body: (bodies[i] ?? '').trim() })).filter((x) => x.title || x.body);
+    const row: Record<string, unknown> = {
+      page, kind, eyebrow: g('eyebrow') || null, title: g('title') || null,
+      body_html: sanitizeHtml(g('body_html')), image_path: g('image_path') || null, reverse: form.get('reverse') === 'on',
+      cta_label: g('cta_label') || null, cta_href: g('cta_href') || null, cta2_label: g('cta2_label') || null, cta2_href: g('cta2_href') || null,
+      items, updated_at: new Date().toISOString(),
+    };
+    if (!id) { row.position = parseInt(g('position') || '999', 10) || 999; row.published = true; }
+    const res = id ? await supabase.from('site_sections').update(row).eq('id', id) : await supabase.from('site_sections').insert(row);
+    if (res.error) flash = `تعذّر الحفظ: ${res.error.message}`;
+    else { clearSettingsCache(); await logAction(Astro, supabase, `تعديل أقسام صفحة ${pg.label}`, String(row.title ?? kind)); return Astro.redirect(`${back}?ok=1`, 303); }
+  }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+const { data: items } = await supabase.from('site_sections').select('*').eq('page', page).order('position');
+const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(200);
+const strip = (h: string) => (h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+---
+<Admin title={`${pg.label} | صفحات الموقع`} path={back} active="content">
+<Fragment slot="heading">صفحة: {pg.label}</Fragment>
+<div class="admin-body">
+  <ContentNav active="site" preview={pg.href} />
+  <p style="margin-bottom:14px;"><a href="/admin/content/site">→ كل الصفحات</a></p>
+  {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ — بيظهر على الموقع خلال دقيقتين.</p>}
+  {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+  <details class="cadd">
+    <summary>+ إضافة قسم</summary>
+    <form method="POST" class="citem-body">
+      <input type="hidden" name="_action" value="save" />
+      <div class="form-grid-2">
+        <div class="form-row"><label>نوع القسم</label>
+          <select name="kind" class="kind-sel">{Object.entries(KIND_AR).map(([k, l]) => <option value={k}>{l}</option>)}</select></div>
+        <div class="form-row"><label>الترتيب</label><input type="number" name="position" value={(items?.length ?? 0) + 1} /></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>السطر الصغير فوق العنوان (اختياري)</label><input name="eyebrow" /></div>
+        <div class="form-row"><label>العنوان</label><input name="title" /></div>
+      </div>
+      <div class="form-row"><label>النص</label><RichEditor name="body_html" minHeight={160} /></div>
+      <ImagePicker name="image_path" label="صورة (اختياري)" media={media ?? []} />
+      <label class="cand-check" style="margin-bottom:12px;"><input type="checkbox" name="reverse" /> الصورة على الجهة الأخرى (للميزة)</label>
+      <div class="form-grid-2">
+        <div class="form-row"><label>زرار — النص</label><input name="cta_label" placeholder="تواصل معنا" /></div>
+        <div class="form-row"><label>زرار — الرابط</label><input name="cta_href" placeholder="/contact" dir="ltr" /></div>
+        <div class="form-row"><label>زرار ثانٍ — النص (للهيرو)</label><input name="cta2_label" /></div>
+        <div class="form-row"><label>زرار ثانٍ — الرابط</label><input name="cta2_href" dir="ltr" /></div>
+      </div>
+      <div class="steps-editor">
+        <label>الخطوات (لنوع "خطوات مرقّمة")</label>
+        {[0, 1, 2, 3].map(() => <div class="form-grid-2"><div class="form-row"><input name="item_title" placeholder="عنوان الخطوة" /></div><div class="form-row"><input name="item_body" placeholder="وصف قصير" /></div></div>)}
+      </div>
+      <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إضافة</button>
+    </form>
+  </details>
+
+  {(!items || items.length === 0) ? <p class="cempty">مفيش أقسام — الموقع بيعرض المحتوى الافتراضي. <a href="/admin/content/site">استورد المحتوى الحالي</a> أو ضيف قسم.</p> : (
+    <div class="citems">
+      {items.map((s: any, i: number) => (
+        <CItem id={s.id} title={`${KIND_AR[s.kind as SectionKind]?.split(' ')[0] ?? s.kind} — ${s.title || strip(s.body_html) || '—'}`} subtitle={strip(s.body_html)} published={s.published} index={i} total={items.length}>
+          <form method="POST">
+            <input type="hidden" name="_action" value="save" />
+            <input type="hidden" name="id" value={s.id} />
+            <input type="hidden" name="kind" value={s.kind} />
+            <p style="margin:0 0 12px;font-size:.85rem;color:var(--muted);">النوع: <strong>{KIND_AR[s.kind as SectionKind]}</strong></p>
+            {['stats', 'pricing'].includes(s.kind) ? (
+              <p class="shelp">القسم ده بيعرض بياناته من {s.kind === 'stats' ? 'الإعدادات ← الصفحة الرئيسية ← الأرقام' : 'المحتوى ← الباقات'}. تقدر تعدّل العنوان بس.</p>
+            ) : null}
+            <div class="form-grid-2">
+              <div class="form-row"><label>السطر الصغير فوق العنوان</label><input name="eyebrow" value={s.eyebrow ?? ''} /></div>
+              <div class="form-row"><label>العنوان</label><input name="title" value={s.title ?? ''} /></div>
+            </div>
+            {!['stats', 'pricing', 'steps'].includes(s.kind) && <div class="form-row"><label>النص</label><RichEditor name="body_html" value={s.body_html} minHeight={160} /></div>}
+            {['hero', 'feature', 'rich'].includes(s.kind) && (
+              <>
+                <ImagePicker name="image_path" label="صورة" value={s.image_path} media={media ?? []} help={s.kind === 'feature' ? 'يُفضّل صورة عرضية 4:3 (مثلًا 800×600).' : s.kind === 'hero' ? 'صورة عمودية أو مربّعة جنب العنوان.' : undefined} />
+                {s.kind === 'feature' && <label class="cand-check" style="margin-bottom:12px;"><input type="checkbox" name="reverse" checked={s.reverse} /> الصورة على الجهة الأخرى</label>}
+              </>
+            )}
+            {['hero', 'feature', 'cta'].includes(s.kind) && (
+              <div class="form-grid-2">
+                <div class="form-row"><label>زرار — النص</label><input name="cta_label" value={s.cta_label ?? ''} /></div>
+                <div class="form-row"><label>زرار — الرابط</label><input name="cta_href" value={s.cta_href ?? ''} dir="ltr" /></div>
+                {s.kind === 'hero' && <><div class="form-row"><label>زرار ثانٍ — النص</label><input name="cta2_label" value={s.cta2_label ?? ''} /></div><div class="form-row"><label>زرار ثانٍ — الرابط</label><input name="cta2_href" value={s.cta2_href ?? ''} dir="ltr" /></div></>}
+              </div>
+            )}
+            {s.kind === 'steps' && (
+              <div class="steps-editor">
+                <label>الخطوات</label>
+                {[...(s.items ?? []), { title: '', body: '' }].map((it: any) => (
+                  <div class="form-grid-2"><div class="form-row"><input name="item_title" value={it.title} placeholder="عنوان الخطوة" /></div><div class="form-row"><input name="item_body" value={it.body} placeholder="وصف قصير" /></div></div>
+                ))}
+                <small class="shelp">سيب صف فاضي لحذفه — الصف الأخير الفاضي لإضافة خطوة جديدة.</small>
+              </div>
+            )}
+            <div class="citem-actions">
+              <button type="submit" class="btn solid" style="border:none;cursor:pointer;">حفظ</button>
+              <button type="submit" name="_action" value="delete" class="btn" style="cursor:pointer;color:#9A3B1C;border-color:#F1B4A3;" onclick="return confirm('حذف القسم؟')">حذف</button>
+            </div>
+          </form>
+        </CItem>
+      ))}
+    </div>
+  )}
+</div>
+<style is:global>
+  .steps-editor{ margin-bottom:12px; }
+  .steps-editor .form-row{ margin-bottom:8px; }
+  .cand-check{ display:flex; align-items:center; gap:8px; font-weight:400; font-size:.9rem; }
+  .cand-check input{ width:auto; }
+</style>
+</Admin>

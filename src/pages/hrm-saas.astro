@@ -1,5 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
+import SiteSections from '../components/SiteSections.astro';
+import { getSections } from '../lib/sections';
+
+const sections = await getSections('hrm-saas');
 import { getPricingPlans } from '../lib/settings';
 
 const plans = await getPricingPlans();
@@ -27,6 +31,8 @@ const jsonld = [{
   jsonld={jsonld}
 >
 <main id="main">
+{sections.length > 0 ? <SiteSections sections={sections} crumb="برنامج HRM" /> : (
+<>
 
 <div class="wrap">
   <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>برنامج HRM</nav>
@@ -106,5 +112,7 @@ const jsonld = [{
   </div>
 </section>
 
+</>
+)}
 </main>
 </Base>
