@@ -1,8 +1,25 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getPosts, mediaUrl } from '../../lib/settings';
+import { getPosts, getSettings, mediaUrl } from '../../lib/settings';
+import { parseBlogLayout, readingTime } from '../../lib/blog';
 
-const posts = await getPosts();
+const [all, settings] = await Promise.all([getPosts(), getSettings()]);
+const L = parseBlogLayout(settings.blog_layout);
+
+const url = new URL(Astro.request.url);
+const cat = (url.searchParams.get('cat') || '').trim();
+const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+
+const categories = [...new Set(all.map((p) => p.category).filter(Boolean))] as string[];
+const filtered = cat ? all.filter((p) => p.category === cat) : all;
+
+// Featured hero only on the first unfiltered page.
+const featured = L.featured && page === 1 && !cat ? filtered[0] : null;
+const rest = featured ? filtered.slice(1) : filtered;
+const pages = Math.max(1, Math.ceil(rest.length / L.per_page));
+const posts = rest.slice((page - 1) * L.per_page, page * L.per_page);
+const latest = all.slice(0, 5);
+
 const jsonld = [{
   '@context': 'https://schema.org',
   '@type': 'Blog',
@@ -11,44 +28,114 @@ const jsonld = [{
   inLanguage: 'ar',
 }];
 const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+const pageHref = (n: number) => `/blog${cat ? `?cat=${encodeURIComponent(cat)}&page=${n}` : n > 1 ? `?page=${n}` : ''}`;
+const canonical = page > 1 || cat ? `/blog${url.search}` : '/blog';
 ---
 <Base
-  title="المدوّنة | Vacant HR"
+  title={`${cat ? `${cat} | ` : ''}المدوّنة | Vacant HR`}
   description="مقالات ودلائل عملية في التوظيف وإدارة الموارد البشرية للشركات الناشئة والمتوسطة في مصر — من فريق Vacant HR."
   active="blog"
-  path="/blog"
+  path={canonical}
   jsonld={jsonld}
 >
 <main id="main">
 
 <div class="wrap">
-  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>المدوّنة</nav>
+  <nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>{cat ? <><a href="/blog">المدوّنة</a><span>/</span>{cat}</> : 'المدوّنة'}</nav>
 </div>
 
-<section class="hero" style="padding:40px 0 40px;">
+<section class="hero" style="padding:40px 0 24px;">
   <div class="wrap">
     <div class="eyebrow-line">المدوّنة</div>
-    <h1 style="max-width:20ch;">أفكار ودلائل في التوظيف والموارد البشرية</h1>
+    <h1 style="max-width:24ch;">{L.title}</h1>
+    {L.lead && <p class="lead" style="max-width:62ch;">{L.lead}</p>}
   </div>
 </section>
 
-<section style="padding-top:0;">
+{categories.length > 0 && (
   <div class="wrap">
-    {posts.length === 0 ? (
-      <p style="color:var(--muted);">لسه مفيش مقالات منشورة.</p>
+    <nav class="blog-cats" aria-label="التصنيفات">
+      <a href="/blog" class:list={{ active: !cat }}>الكل</a>
+      {categories.map((c) => <a href={`/blog?cat=${encodeURIComponent(c)}`} class:list={{ active: cat === c }}>{c}</a>)}
+    </nav>
+  </div>
+)}
+
+<section style="padding-top:8px;">
+  <div class="wrap">
+    {filtered.length === 0 ? (
+      <p style="color:var(--muted);">لسه مفيش مقالات منشورة{cat ? ' في التصنيف ده' : ''}.</p>
     ) : (
-      <div class="post-grid">
-        {posts.map((p) => (
-          <a href={`/blog/${p.slug}`} class="post-card">
-            {p.cover_path && <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" />}
-            <div class="post-card-body">
-              <div class="post-tags">{(p.tags ?? []).slice(0, 3).map((t) => <span>{t}</span>)}</div>
-              <h2>{p.title}</h2>
-              <p>{p.excerpt}</p>
-              <span class="post-date">{fmt(p.published_at)}</span>
+      <div class:list={['blog-body', { 'has-side': L.sidebar }]}>
+        <div class="blog-main">
+          {featured && (
+            <a href={`/blog/${featured.slug}`} class="post-feat">
+              {featured.cover_path && <img src={mediaUrl(featured.cover_path)} alt={featured.title} />}
+              <div class="post-feat-body">
+                <span class="post-meta">
+                  {L.show_category && featured.category && <b class="post-cat">{featured.category}</b>}
+                  {L.show_date && <span>{fmt(featured.published_at)}</span>}
+                  {L.show_readtime && <span>{readingTime(featured.body_html || featured.body_md)} دقائق قراءة</span>}
+                </span>
+                <h2>{featured.title}</h2>
+                {L.show_excerpt && featured.excerpt && <p>{featured.excerpt}</p>}
+                <span class="post-more">اقرأ المقال ←</span>
+              </div>
+            </a>
+          )}
+
+          <div class={`post-grid layout-${L.layout} card-${L.card}`} style={`--cols:${L.columns};--ratio:${L.ratio};`}>
+            {posts.map((p, i) => (
+              <a href={`/blog/${p.slug}`} class:list={['post-card', { lead: L.layout === 'magazine' && i === 0 && page === 1 }]}>
+                {p.cover_path
+                  ? <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" />
+                  : <span class="post-noimg" aria-hidden="true">{p.title.slice(0, 1)}</span>}
+                <div class="post-card-body">
+                  <span class="post-meta">
+                    {L.show_category && p.category && <b class="post-cat">{p.category}</b>}
+                    {L.show_date && <span>{fmt(p.published_at)}</span>}
+                  </span>
+                  <h2>{p.title}</h2>
+                  {L.show_excerpt && p.excerpt && <p>{p.excerpt}</p>}
+                  <span class="post-foot">
+                    {L.show_author && <span>{p.author_name || 'فريق Vacant HR'}</span>}
+                    {L.show_readtime && <span>{readingTime(p.body_html || p.body_md)} دقائق</span>}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {pages > 1 && (
+            <nav class="pager" aria-label="الصفحات">
+              {page > 1 && <a href={pageHref(page - 1)} class="btn">→ الأحدث</a>}
+              <span>صفحة {page} من {pages}</span>
+              {page < pages && <a href={pageHref(page + 1)} class="btn">الأقدم ←</a>}
+            </nav>
+          )}
+        </div>
+
+        {L.sidebar && (
+          <aside class="blog-side">
+            {categories.length > 0 && (
+              <div class="side-box">
+                <h3>التصنيفات</h3>
+                <ul>{categories.map((c) => <li><a href={`/blog?cat=${encodeURIComponent(c)}`}>{c}</a><span>{all.filter((p) => p.category === c).length}</span></li>)}</ul>
+              </div>
+            )}
+            <div class="side-box">
+              <h3>أحدث المقالات</h3>
+              <ul class="side-latest">{latest.map((p) => (
+                <li><a href={`/blog/${p.slug}`}>{p.cover_path && <img src={mediaUrl(p.cover_path)} alt="" loading="lazy" />}<span>{p.title}</span></a></li>
+              ))}</ul>
             </div>
-          </a>
-        ))}
+            <div class="side-box side-cta">
+              <h3>محتاج مساعدة في التوظيف؟</h3>
+              <p>فريقنا بيساعد الشركات تلاقي الكفاءات المناسبة بسرعة.</p>
+              <a href="/contact" class="btn solid">تواصل معنا</a>
+            </div>
+          </aside>
+        )}
       </div>
     )}
   </div>

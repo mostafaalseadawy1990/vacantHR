@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getPostBySlug, mediaUrl } from '../../lib/settings';
+import { getPostBySlug, getPosts, mediaUrl } from '../../lib/settings';
+import { readingTime } from '../../lib/blog';
 import { renderMarkdown } from '../../lib/jobs';
 
 const { slug } = Astro.params;
@@ -8,6 +9,8 @@ const post = await getPostBySlug(slug!);
 if (!post) return Astro.rewrite('/404');
 
 const date = post.published_at ?? post.created_at;
+const mins = readingTime(post.body_html || post.body_md);
+const related = (await getPosts()).filter((p) => p.slug !== post.slug && (!post.category || p.category === post.category)).slice(0, 3);
 const cover = post.cover_path ? mediaUrl(post.cover_path) : 'https://vacanthr.com/og-image.png';
 
 const jsonld = [{
@@ -19,7 +22,8 @@ const jsonld = [{
   datePublished: date,
   dateModified: post.updated_at,
   inLanguage: 'ar',
-  author: { '@type': 'Organization', name: 'Vacant HR' },
+  author: post.author_name ? { '@type': 'Person', name: post.author_name } : { '@type': 'Organization', name: 'Vacant HR' },
+  ...(post.category ? { articleSection: post.category } : {}),
   publisher: { '@type': 'Organization', name: 'Vacant HR', logo: { '@type': 'ImageObject', url: 'https://vacanthr.com/favicon.svg' } },
   mainEntityOfPage: `https://vacanthr.com/blog/${post.slug}`,
 }];
@@ -46,7 +50,12 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
     <div class="wrap" style="max-width:760px;">
       <div class="post-tags">{(post.tags ?? []).map((t) => <span>{t}</span>)}</div>
       <h1 style="margin:12px 0;">{post.title}</h1>
-      <p style="color:var(--muted);margin:0;">{fmt(date)}</p>
+      <p class="post-meta" style="margin:0;font-size:.9rem;">
+        {post.category && <a href={`/blog?cat=${encodeURIComponent(post.category)}`} class="post-cat">{post.category}</a>}
+        <span>{fmt(date)}</span>
+        <span>{mins} دقائق قراءة</span>
+        {post.author_name && <span>بقلم {post.author_name}</span>}
+      </p>
     </div>
   </section>
 
@@ -69,6 +78,22 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
     </div>
   </section>
 </article>
+
+{related.length > 0 && (
+  <section style="padding:30px 0 60px;">
+    <div class="wrap">
+      <h2 style="font-size:1.3rem;margin-bottom:16px;">مقالات ذات صلة</h2>
+      <div class="post-grid card-border" style="--cols:3;--ratio:16/9;">
+        {related.map((p) => (
+          <a href={`/blog/${p.slug}`} class="post-card">
+            {p.cover_path ? <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" /> : <span class="post-noimg" aria-hidden="true">{p.title.slice(0, 1)}</span>}
+            <div class="post-card-body"><h2>{p.title}</h2>{p.excerpt && <p>{p.excerpt}</p>}</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
 
 </main>
 </Base>

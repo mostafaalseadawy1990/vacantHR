@@ -18,6 +18,7 @@ export type Settings = {
   favicon_path: string;
   theme_color: string;
   home_hero_image: string;
+  blog_layout: unknown;   // see lib/blog.ts (parseBlogLayout)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -44,10 +45,12 @@ export const DEFAULT_SETTINGS: Settings = {
   favicon_path: '',
   theme_color: '#0E7C66',
   home_hero_image: '',
+  blog_layout: {},
 };
 
 export type Post = {
   id: string; slug: string; title: string; excerpt: string; cover_path: string | null;
+  category?: string | null; author_name?: string | null;
   body_html?: string; body_md: string; tags: string[]; status: 'draft' | 'published';
   published_at: string | null; created_at: string; updated_at: string;
 };
@@ -125,10 +128,10 @@ export function getPosts(): Promise<Post[]> {
   return cached('posts', async () => {
     const { data, error } = await anonClient()
       .from('posts')
-      .select('id, slug, title, excerpt, cover_path, tags, status, published_at, created_at, updated_at')
+      .select('id, slug, title, excerpt, cover_path, category, author_name, tags, status, published_at, created_at, updated_at, body_html, body_md')
       .eq('status', 'published')
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(60);
+      .limit(500);
     if (error) throw error;
     return (data ?? []) as Post[];
   }).catch(() => []);

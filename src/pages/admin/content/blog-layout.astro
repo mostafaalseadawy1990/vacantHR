@@ -1,0 +1,147 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { serverClient } from '../../../lib/supabase';
+import { clearSettingsCache, getSettings } from '../../../lib/settings';
+import { logAction } from '../../../lib/audit';
+import { parseBlogLayout, blogLayoutFromForm, BLOG_OPTIONS } from '../../../lib/blog';
+
+const supabase = serverClient(Astro);
+let flash = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const value = blogLayoutFromForm(form);
+  const { error } = await supabase.from('site_settings').upsert(
+    { key: 'blog_layout', value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) flash = `تعذّر الحفظ: ${error.message}`;
+  else { clearSettingsCache(); await logAction(Astro, supabase, 'تعديل شكل المدوّنة'); return Astro.redirect('/admin/content/blog-layout?ok=1', 303); }
+}
+const ok = new URL(Astro.request.url).searchParams.get('ok') === '1';
+const L = parseBlogLayout((await getSettings()).blog_layout);
+const chk = (b: boolean) => (b ? true : undefined);
+---
+<Admin title="شكل المدوّنة | لوحة الإدارة" path="/admin/content/blog-layout" active="content">
+<Fragment slot="heading">شكل المدوّنة</Fragment>
+<div class="admin-body">
+    <p style="margin-bottom:16px;"><a href="/admin/content">→ رجوع للمحتوى</a> · <a href="/blog" target="_blank" rel="noopener">معاينة المدوّنة ↗</a></p>
+    {ok && <p class="notice notice-ok" style="margin-bottom:18px;">تم الحفظ — التغيير بيظهر على الموقع خلال دقيقتين.</p>}
+    {flash && <p class="notice notice-error" style="margin-bottom:18px;">{flash}</p>}
+
+    <div class="bl-wrap">
+      <form method="POST" class="form-box bl-form" id="blForm">
+        <h3>العنوان</h3>
+        <div class="form-row"><label for="title">عنوان صفحة المدوّنة</label><input id="title" name="title" value={L.title} /></div>
+        <div class="form-row"><label for="lead">سطر تعريفي تحت العنوان (اختياري)</label><input id="lead" name="lead" value={L.lead} /></div>
+
+        <h3>التنظيم</h3>
+        <div class="bl-choices" data-key="layout">
+          {BLOG_OPTIONS.layout.map(([v, l]) => (
+            <label class="bl-choice"><input type="radio" name="layout" value={v} checked={chk(L.layout === v)} /><span class={`bl-ico bl-ico-${v}`} aria-hidden="true"><i></i><i></i><i></i><i></i></span>{l}</label>
+          ))}
+        </div>
+        <div class="form-grid-2">
+          <div class="form-row"><label for="columns">عدد الأعمدة</label>
+            <select id="columns" name="columns">{BLOG_OPTIONS.columns.map(([v, l]) => <option value={v} selected={chk(String(L.columns) === v)}>{l}</option>)}</select></div>
+          <div class="form-row"><label for="per_page">مقالات في الصفحة</label><input type="number" id="per_page" name="per_page" min="3" max="48" value={L.per_page} /></div>
+        </div>
+
+        <h3>البطاقة</h3>
+        <div class="form-grid-2">
+          <div class="form-row"><label for="card">شكل البطاقة</label>
+            <select id="card" name="card">{BLOG_OPTIONS.card.map(([v, l]) => <option value={v} selected={chk(L.card === v)}>{l}</option>)}</select></div>
+          <div class="form-row"><label for="ratio">نسبة الصورة</label>
+            <select id="ratio" name="ratio">{BLOG_OPTIONS.ratio.map(([v, l]) => <option value={v} selected={chk(L.ratio === v)}>{l}</option>)}</select></div>
+        </div>
+        <div class="bl-toggles">
+          <label><input type="checkbox" name="featured" checked={chk(L.featured)} /> أول مقال كمقال مميز عريض</label>
+          <label><input type="checkbox" name="sidebar" checked={chk(L.sidebar)} /> شريط جانبي (التصنيفات + أحدث المقالات)</label>
+          <label><input type="checkbox" name="show_category" checked={chk(L.show_category)} /> إظهار التصنيف</label>
+          <label><input type="checkbox" name="show_excerpt" checked={chk(L.show_excerpt)} /> إظهار المقتطف</label>
+          <label><input type="checkbox" name="show_date" checked={chk(L.show_date)} /> إظهار التاريخ</label>
+          <label><input type="checkbox" name="show_readtime" checked={chk(L.show_readtime)} /> إظهار وقت القراءة</label>
+          <label><input type="checkbox" name="show_author" checked={chk(L.show_author)} /> إظهار اسم الكاتب</label>
+        </div>
+        <button class="btn solid" style="border:none;cursor:pointer;margin-top:8px;">حفظ</button>
+      </form>
+
+      <div class="bl-preview-wrap">
+        <div class="bl-preview-head">معاينة حيّة</div>
+        <div class="bl-preview" id="blPreview">
+          <div class="pv-title">عنوان المدوّنة</div>
+          <div class="pv-feat"><span class="pv-img"></span><span class="pv-lines"><i style="width:70%"></i><i style="width:90%"></i><i style="width:60%"></i></span></div>
+          <div class="pv-body">
+            <div class="pv-grid" id="pvGrid">
+              {[1, 2, 3, 4, 5, 6].map(() => (
+                <div class="pv-card"><span class="pv-img"></span><span class="pv-lines"><i style="width:40%"></i><i style="width:85%"></i><i style="width:65%"></i></span></div>
+              ))}
+            </div>
+            <div class="pv-side"><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var f = document.getElementById('blForm'), pv = document.getElementById('blPreview');
+    function apply() {
+      var d = new FormData(f);
+      pv.dataset.layout = d.get('layout'); pv.dataset.card = d.get('card'); pv.dataset.ratio = d.get('ratio');
+      pv.style.setProperty('--cols', d.get('columns'));
+      pv.classList.toggle('feat', !!d.get('featured'));
+      pv.classList.toggle('side', !!d.get('sidebar'));
+      pv.classList.toggle('no-excerpt', !d.get('show_excerpt'));
+      pv.querySelector('.pv-title').textContent = d.get('title') || 'عنوان المدوّنة';
+    }
+    f.addEventListener('input', apply); f.addEventListener('change', apply); apply();
+  })();
+</script>
+
+<style is:global>
+  .bl-wrap{ display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,420px); gap:18px; align-items:start; }
+  @media (max-width:1000px){ .bl-wrap{ grid-template-columns:1fr; } }
+  .bl-form{ max-width:none; }
+  .bl-form h3{ margin:18px 0 10px; font-size:1rem; }
+  .bl-form h3:first-child{ margin-top:0; }
+  .bl-choices{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; margin-bottom:14px; }
+  .bl-choice{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px; border:1px solid var(--line); border-radius:var(--radius-sm); cursor:pointer; font-size:.85rem; font-weight:500; text-align:center; background:var(--surface); }
+  .bl-choice:has(input:checked){ border-color:var(--accent); background:var(--accent-soft); }
+  .bl-choice input{ display:none; }
+  .bl-ico{ display:grid; gap:3px; width:64px; height:44px; }
+  .bl-ico i{ background:#CBD5E1; border-radius:2px; }
+  .bl-choice:has(input:checked) .bl-ico i{ background:var(--accent); }
+  .bl-ico-grid{ grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+  .bl-ico-list{ grid-template-columns:1fr; } .bl-ico-list i{ height:8px; }
+  .bl-ico-magazine{ grid-template-columns:2fr 1fr; grid-template-rows:1fr 1fr; } .bl-ico-magazine i:first-child{ grid-row:1/3; }
+  .bl-ico-masonry{ grid-template-columns:1fr 1fr; grid-auto-rows:10px; } .bl-ico-masonry i:nth-child(1){ grid-row:span 3; } .bl-ico-masonry i:nth-child(2){ grid-row:span 2; } .bl-ico-masonry i:nth-child(3){ grid-row:span 1; } .bl-ico-masonry i:nth-child(4){ grid-row:span 2; }
+  .bl-toggles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; margin:6px 0 10px; }
+  .bl-toggles label{ display:flex; gap:8px; align-items:center; font-weight:400; font-size:.9rem; }
+  .bl-toggles input{ width:auto; }
+  /* preview */
+  .bl-preview-wrap{ position:sticky; top:80px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  .bl-preview-head{ padding:8px 14px; font-size:.8rem; color:var(--muted); border-bottom:1px solid var(--line); background:var(--surface-soft); }
+  .bl-preview{ --cols:3; padding:14px; }
+  .pv-title{ font-weight:700; font-size:.9rem; margin-bottom:10px; }
+  .pv-img{ display:block; background:linear-gradient(135deg,#CBD5E1,#E2E8F0); border-radius:4px; aspect-ratio:16/9; }
+  .bl-preview[data-ratio="4/3"] .pv-img{ aspect-ratio:4/3; } .bl-preview[data-ratio="3/2"] .pv-img{ aspect-ratio:3/2; } .bl-preview[data-ratio="1/1"] .pv-img{ aspect-ratio:1/1; }
+  .pv-lines{ display:flex; flex-direction:column; gap:4px; padding:6px 2px; }
+  .pv-lines i{ display:block; height:5px; background:#E2E8F0; border-radius:2px; }
+  .pv-lines i:first-child{ background:var(--accent); opacity:.6; height:4px; }
+  .no-excerpt .pv-lines i:last-child{ display:none; }
+  .pv-feat{ display:none; grid-template-columns:1.4fr 1fr; gap:10px; margin-bottom:12px; align-items:center; }
+  .bl-preview.feat .pv-feat{ display:grid; }
+  .pv-body{ display:grid; grid-template-columns:1fr; gap:12px; }
+  .bl-preview.side .pv-body{ grid-template-columns:1fr 70px; }
+  .pv-side{ display:none; flex-direction:column; gap:6px; } .bl-preview.side .pv-side{ display:flex; }
+  .pv-side i{ height:10px; background:#EEF1F4; border-radius:3px; }
+  .pv-grid{ display:grid; grid-template-columns:repeat(var(--cols),1fr); gap:8px; }
+  .pv-card{ border-radius:5px; overflow:hidden; }
+  .bl-preview[data-card="shadow"] .pv-card{ box-shadow:0 2px 6px rgba(15,23,42,.12); }
+  .bl-preview[data-card="border"] .pv-card{ border:1px solid var(--line); }
+  .bl-preview[data-card="overlay"] .pv-card{ position:relative; } .bl-preview[data-card="overlay"] .pv-lines{ position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(15,23,42,.7)); padding:14px 6px 6px; } .bl-preview[data-card="overlay"] .pv-lines i{ background:#fff; }
+  .bl-preview[data-layout="list"] .pv-grid{ grid-template-columns:1fr; } .bl-preview[data-layout="list"] .pv-card{ display:grid; grid-template-columns:90px 1fr; gap:8px; }
+  .bl-preview[data-layout="magazine"] .pv-grid{ grid-template-columns:repeat(var(--cols),1fr); } .bl-preview[data-layout="magazine"] .pv-card:first-child{ grid-column:span 2; grid-row:span 2; }
+  .bl-preview[data-layout="masonry"] .pv-card:nth-child(2n) .pv-img{ aspect-ratio:4/5; } .bl-preview[data-layout="masonry"] .pv-grid{ align-items:start; }
+</style>
+</Admin>

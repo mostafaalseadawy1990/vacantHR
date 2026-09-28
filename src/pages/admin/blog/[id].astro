@@ -26,6 +26,8 @@ if (Astro.request.method === 'POST') {
     title: String(form.get('title') || '').trim(),
     slug: String(form.get('slug') || '').trim().replace(/[^a-z0-9-]/g, ''),
     excerpt: String(form.get('excerpt') || '').trim(),
+    category: String(form.get('category') || '').trim() || null,
+    author_name: String(form.get('author_name') || '').trim() || null,
     cover_path: String(form.get('cover_path') || '').trim() || null,
     body_html: sanitizeHtml(String(form.get('body_html') || '')),
     tags: String(form.get('tags') || '').split(',').map((s) => s.trim()).filter(Boolean),
@@ -50,6 +52,8 @@ const { data: post } = await supabase.from('posts').select('*').eq('id', id).may
 if (!post) return Astro.redirect('/admin/blog', 302);
 
 // media picker options
+const { data: catRows } = await supabase.from('posts').select('category').not('category', 'is', null).limit(300);
+const cats = [...new Set((catRows ?? []).map((r: any) => r.category).filter(Boolean))];
 const { data: media } = await supabase.from('media').select('path, alt').order('created_at', { ascending: false }).limit(100);
 ---
 <Admin title={`${post.title} | تحرير مقال`} path={`/admin/blog/${id}`} active="blog">
@@ -68,6 +72,10 @@ const { data: media } = await supabase.from('media').select('path, alt').order('
         <div class="form-row"><label for="slug">الـ slug</label><input id="slug" name="slug" value={post.slug} pattern="[a-z0-9-]*" required /></div>
       </div>
       <div class="form-row"><label for="excerpt">المقتطف (يظهر في القائمة وفي جوجل)</label><textarea id="excerpt" name="excerpt" style="min-height:60px;">{post.excerpt}</textarea></div>
+      <div class="form-grid-2">
+        <div class="form-row"><label for="category">التصنيف</label><input id="category" name="category" value={post.category ?? ''} list="cats-dl" placeholder="توظيف / موارد بشرية / قانون عمل" /></div>
+        <div class="form-row"><label for="author_name">اسم الكاتب (اختياري)</label><input id="author_name" name="author_name" value={post.author_name ?? ''} placeholder="فريق Vacant HR" /></div>
+      </div>
       <div class="form-grid-2">
         <div class="form-row"><label for="tags">وسوم (مفصولة بفواصل)</label><input id="tags" name="tags" value={(post.tags ?? []).join(', ')} /></div>
       </div>
