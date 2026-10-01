@@ -47,7 +47,9 @@ export const GET: APIRoute = async () => {
     urls.push(`<url><loc>${SITE}/blog/${p.slug}</loc>${lastmod(p.updated_at)}<changefreq>monthly</changefreq></url>`);
   }
 
-  for (const t of (await getJdTemplates()).items) {
+  let jd: Array<{ slug: string }> = [];
+  try { jd = (await getJdTemplates()).items; } catch { /* static URLs only */ }
+  for (const t of jd) {
     urls.push(`<url><loc>${SITE}/jd-templates/${t.slug}</loc><changefreq>monthly</changefreq></url>`);
   }
   for (const p of pages ?? []) {
