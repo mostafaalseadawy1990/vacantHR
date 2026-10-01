@@ -215,6 +215,8 @@ S('admin: overview + sidebar + analytics periods', async ({ page, req }) => {
   for (const l of ['الوظائف', 'المرشحون', 'رسائل الموقع', 'المدوّنة', 'الصفحات', 'المحتوى', 'التحليلات', 'الفريق', 'سجل النشاط']) includes(nav.join('|'), l, 'sidebar has ' + l);
   includes(await page.textContent('main'), 'محتاج انتباهك', 'attention box');
   for (const p of [7, 30, 90]) { const r = await get(req, `/admin/analytics?p=${p}`); eq(r.status, 200, 'analytics ' + p); includes(r.text, 'قمع التوظيف', 'funnel'); }
+  const t = await get(req, '/admin/analytics?p=today'); eq(t.status, 200, 'analytics today'); includes(t.text, 'بالساعة', 'hourly chart'); includes(t.text, '21:00', 'hour ticks');
+  const yd = await get(req, '/admin/analytics?p=yesterday'); eq(yd.status, 200, 'analytics yesterday'); includes(yd.text, 'مقارنة باليوم اللي قبله', 'yesterday label');
 });
 
 S('admin: jobs list, create, duplicate slug, edit, status change, board', async ({ page, req }) => {

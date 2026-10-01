@@ -4,13 +4,18 @@ import { serverClient } from '../../lib/supabase';
 
 const supabase = serverClient(Astro);
 const url = new URL(Astro.request.url);
-const period = [7, 30, 90].includes(Number(url.searchParams.get('p'))) ? Number(url.searchParams.get('p')) : 30;
+const pRaw = url.searchParams.get('p') || '30';
+const mode: 'today' | 'yesterday' | 'range' = pRaw === 'today' ? 'today' : pRaw === 'yesterday' ? 'yesterday' : 'range';
+const period = mode === 'range' ? ([7, 30, 90].includes(Number(pRaw)) ? Number(pRaw) : 30) : 1;
 const DAY = 864e5;
 const today = new Date(); today.setUTCHours(0, 0, 0, 0);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const start = new Date(today.getTime() - (period - 1) * DAY);
+const end = mode === 'yesterday' ? new Date(today.getTime() - DAY) : today;      // last day of the period (inclusive)
+const endX = new Date(end.getTime() + DAY);                                        // exclusive upper bound
+const start = new Date(end.getTime() - (period - 1) * DAY);
 const prevStart = new Date(start.getTime() - period * DAY);
 const prevEnd = new Date(start.getTime() - DAY);
+const hourly = period === 1;
 
 const [
   { data: ev }, { data: prevEv },
@@ -19,15 +24,15 @@ const [
   { data: signups }, { count: prevSignups },
   { data: reqs }, { data: jobs },
 ] = await Promise.all([
-  supabase.from('events').select('path, ref, day, device, utm_source, utm_medium, utm_campaign').eq('kind', 'pageview').gte('day', iso(start)).limit(50000),
-  supabase.from('events').select('day').eq('kind', 'pageview').gte('day', iso(prevStart)).lte('day', iso(prevEnd)).limit(50000),
-  supabase.from('applications').select('id, status, created_at, job_id').gte('created_at', start.toISOString()),
+  supabase.from('events').select('path, ref, day, device, utm_source, utm_medium, utm_campaign, created_at').eq('kind', 'pageview').gte('day', iso(start)).lte('day', iso(end)).limit(50000),
+  supabase.from('events').select('day, created_at').eq('kind', 'pageview').gte('day', iso(prevStart)).lte('day', iso(prevEnd)).limit(50000),
+  supabase.from('applications').select('id, status, created_at, job_id').gte('created_at', start.toISOString()).lt('created_at', endX.toISOString()),
   supabase.from('applications').select('id', { count: 'exact', head: true }).gte('created_at', prevStart.toISOString()).lt('created_at', start.toISOString()),
-  supabase.from('job_views').select('job_id, day, count').gte('day', iso(start)),
+  supabase.from('job_views').select('job_id, day, count').gte('day', iso(start)).lte('day', iso(end)),
   supabase.from('job_views').select('count').gte('day', iso(prevStart)).lte('day', iso(prevEnd)),
-  supabase.from('profiles').select('role, created_at').gte('created_at', start.toISOString()),
+  supabase.from('profiles').select('role, created_at').gte('created_at', start.toISOString()).lt('created_at', endX.toISOString()),
   supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', prevStart.toISOString()).lt('created_at', start.toISOString()),
-  supabase.from('client_requests').select('id, status, created_at').gte('created_at', start.toISOString()),
+  supabase.from('client_requests').select('id, status, created_at').gte('created_at', start.toISOString()).lt('created_at', endX.toISOString()),
   supabase.from('jobs').select('id, title, slug, status'),
 ]);
 
@@ -38,8 +43,17 @@ const perDay: Record<string, number> = Object.fromEntries(days.map((d) => [d, 0]
 for (const e of events) if (perDay[e.day] !== undefined) perDay[e.day]++;
 const prevPerDay: number[] = Array(period).fill(0);
 for (const e of prevEv ?? []) { const i = Math.round((new Date(e.day).getTime() - prevStart.getTime()) / DAY); if (i >= 0 && i < period) prevPerDay[i]++; }
-const series = days.map((d) => perDay[d]);
-const maxY = Math.max(1, ...series, ...prevPerDay);
+// Single-day views are charted by hour (Cairo time) instead of by day.
+const hourOf = (ts: string | null) => ts ? Number(new Date(ts).toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Cairo' })) % 24 : 0;
+const perHour = Array(24).fill(0), prevPerHour = Array(24).fill(0);
+if (hourly) {
+  for (const e of events) perHour[hourOf(e.created_at)]++;
+  for (const e of prevEv ?? []) prevPerHour[hourOf(e.created_at)]++;
+}
+const series = hourly ? perHour : days.map((d) => perDay[d]);
+const prevSeries = hourly ? prevPerHour : prevPerDay;
+const nPts = series.length;
+const maxY = Math.max(1, ...series, ...prevSeries);
 
 // ---- KPIs with deltas vs previous period
 const pct = (cur: number, prev: number) => prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
@@ -97,20 +111,23 @@ const fmtDay = (d: string) => new Date(d).toLocaleDateString('ar-EG', { month: '
 
 // SVG line chart geometry
 const W = 720, H = 200, PX = 8, PY = 12;
-const x = (i: number) => PX + (i / Math.max(1, period - 1)) * (W - 2 * PX);
+const x = (i: number) => PX + (i / Math.max(1, nPts - 1)) * (W - 2 * PX);
 const y = (v: number) => H - PY - (v / maxY) * (H - 2 * PY);
 const path = (arr: number[]) => arr.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-const area = `${path(series)} L${x(period - 1).toFixed(1)},${H - PY} L${x(0).toFixed(1)},${H - PY} Z`;
-const tickEvery = period === 7 ? 1 : period === 30 ? 5 : 15;
+const area = `${path(series)} L${x(nPts - 1).toFixed(1)},${H - PY} L${x(0).toFixed(1)},${H - PY} Z`;
+const tickEvery = hourly ? 3 : period === 7 ? 1 : period === 30 ? 5 : 15;
+const tickLabel = (i: number) => hourly ? `${String(i).padStart(2, '0')}:00` : fmtDay(days[i]);
+const PERIODS: Array<[string, string]> = [['today', 'اليوم'], ['yesterday', 'أمس'], ['7', 'آخر 7 يوم'], ['30', 'آخر 30 يوم'], ['90', 'آخر 90 يوم']];
+const rangeText = mode === 'today' ? `اليوم ${fmtDay(days[0])} حتى الآن · مقارنة بأمس` : mode === 'yesterday' ? `أمس ${fmtDay(days[0])} · مقارنة باليوم اللي قبله` : `${fmtDay(days[0])} — ${fmtDay(days[days.length - 1])} · مقارنة بالفترة اللي قبلها`;
 ---
 <Admin title="التحليلات | لوحة الإدارة" path="/admin/analytics" active="analytics">
 <Fragment slot="heading">التحليلات</Fragment>
 <div class="admin-body">
   <div class="an-bar">
     <div class="seg">
-      {[7, 30, 90].map((p) => <a href={`/admin/analytics?p=${p}`} class:list={{ active: period === p }}>آخر {p} يوم</a>)}
+      {PERIODS.map(([v, l]) => <a href={`/admin/analytics?p=${v}`} class:list={{ active: pRaw === v || (mode === 'range' && String(period) === v) }}>{l}</a>)}
     </div>
-    <span style="color:var(--muted);font-size:.85rem;">{fmtDay(days[0])} — {fmtDay(days[days.length - 1])} · مقارنة بالفترة اللي قبلها</span>
+    <span style="color:var(--muted);font-size:.85rem;">{rangeText}</span>
   </div>
 
   <div class="ptiles an-kpis">
@@ -125,14 +142,14 @@ const tickEvery = period === 7 ? 1 : period === 30 ? 5 : 15;
   </div>
 
   <section class="psec">
-    <div class="psec-head"><h2>مشاهدات الصفحات يوميًا</h2><span class="legend"><i class="cur"></i> الفترة الحالية <i class="prev"></i> الفترة السابقة</span></div>
+    <div class="psec-head"><h2>{hourly ? 'مشاهدات الصفحات بالساعة' : 'مشاهدات الصفحات يوميًا'}</h2><span class="legend"><i class="cur"></i> الفترة الحالية <i class="prev"></i> الفترة السابقة</span></div>
     <svg viewBox={`0 0 ${W} ${H}`} class="an-chart" role="img" aria-label="مشاهدات الصفحات يوميًا">
       {[0.25, 0.5, 0.75, 1].map((f) => <line x1={PX} x2={W - PX} y1={y(maxY * f)} y2={y(maxY * f)} class="grid" />)}
-      <path d={path(prevPerDay)} class="line-prev" />
+      <path d={path(prevSeries)} class="line-prev" />
       <path d={area} class="area" />
       <path d={path(series)} class="line" />
-      {series.map((v, i) => <circle cx={x(i)} cy={y(v)} r="3" class="dot"><title>{fmtDay(days[i])}: {v}</title></circle>)}
-      {days.map((d, i) => (i % tickEvery === 0 || i === period - 1) && <text x={x(i)} y={H - 1} class="tick" text-anchor={i === 0 ? 'start' : i === period - 1 ? 'end' : 'middle'}>{fmtDay(d)}</text>)}
+      {series.map((v, i) => <circle cx={x(i)} cy={y(v)} r="3" class="dot"><title>{tickLabel(i)}: {v}</title></circle>)}
+      {series.map((_, i) => (i % tickEvery === 0 || i === nPts - 1) && <text x={x(i)} y={H - 1} class="tick" text-anchor={i === 0 ? 'start' : i === nPts - 1 ? 'end' : 'middle'}>{tickLabel(i)}</text>)}
       <text x={W - PX} y={y(maxY) - 2} class="tick" text-anchor="end">{maxY}</text>
     </svg>
   </section>
