@@ -9,6 +9,8 @@
 | `TELEGRAM_BOT_TOKEN` | إشعارات تيليجرام. المحادثة تُختار من لوحة الإدارة → الإعدادات → SEO والتحليلات → "اكتشاف محادثة تيليجرام" | لا |
 | `TELEGRAM_CHAT_ID` | يتجاوز المحادثة المحفوظة في الإعدادات (اختياري) | لا |
 | `META_PIXEL_ID` + `META_CAPI_TOKEN` | Meta Conversions API (تتبع التحويلات من السيرفر) | لا |
+| `IMAGE_RESIZE` = `1` | تصغير الصور عبر Cloudflare Image Transformations (بعد تفعيلها على الدومين) | لا |
+| `SUPABASE_IMAGE_TRANSFORM` = `1` | تصغير الصور عبر Supabase (خطة Pro) | لا |
 | `META_TEST_EVENT_CODE` | مؤقت لمشاهدة الأحداث في "اختبار الأحداث"، يُحذف بعد التأكد | لا |
 
 الرموز (Token / Key) تُحفظ بنوع **Secret** لا Text.

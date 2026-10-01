@@ -185,7 +185,7 @@ section.alt{background:var(--surface-soft);}
 @media(max-width:880px){
   .hero{padding:56px 0 60px;}
   .hero-grid{grid-template-columns:1fr;gap:36px;}
-  .hero-figure{order:-1;aspect-ratio:16/10;}
+  .hero-figure{order:1;aspect-ratio:16/10;max-height:260px;} /* phones: headline + CTA first, picture after (keeps the LCP on text) */
 }
 
 /* recolor legacy placeholder SVGs to the modern palette (site-wide) */

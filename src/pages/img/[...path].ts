@@ -6,7 +6,7 @@ export const prerender = false;
  * Same-origin image proxy for the Supabase `media` bucket.
  *  - Long immutable cache (uploads get unique timestamped names) → fixes "short cache lifetimes"
  *  - Cached at the Cloudflare edge through the Cache API, so Supabase is hit once per file
- *  - Optional resizing (?w=800) when the zone has Image Transformations enabled (IMAGE_RESIZE=1)
+ *  - Optional resizing (?w=800): Cloudflare Image Transformations (IMAGE_RESIZE=1) or Supabase Pro transforms (SUPABASE_IMAGE_TRANSFORM=1)
  */
 export const GET: APIRoute = async ({ params, request, locals }) => {
   const path = (params.path || '').replace(/^\/+/, '');
@@ -27,7 +27,7 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
   }
   let up: Response | null = null;
   // Supabase image transformations (Pro plan) resize at the source; silently fall back to the original file.
-  if (w && !init.cf && /\.(png|jpe?g|webp)$/i.test(path)) {
+  if (w && !init.cf && (env.SUPABASE_IMAGE_TRANSFORM ?? import.meta.env.SUPABASE_IMAGE_TRANSFORM) === '1' && /\.(png|jpe?g|webp)$/i.test(path)) {
     try {
       const r = await fetch(`${base}/storage/v1/render/image/public/media/${path}?width=${w}&quality=80&resize=contain`);
       if (r.ok && (r.headers.get('content-type') || '').startsWith('image/')) up = r;
