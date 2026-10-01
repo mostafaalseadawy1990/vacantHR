@@ -25,8 +25,17 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
   if (w && (env.IMAGE_RESIZE ?? import.meta.env.IMAGE_RESIZE) === '1') {
     init.cf = { image: { width: w, fit: 'scale-down', quality: 82, format: 'auto' } };
   }
-  let up: Response;
-  try { up = await fetch(origin, init); } catch { return new Response('Upstream error', { status: 502 }); }
+  let up: Response | null = null;
+  // Supabase image transformations (Pro plan) resize at the source; silently fall back to the original file.
+  if (w && !init.cf && /\.(png|jpe?g|webp)$/i.test(path)) {
+    try {
+      const r = await fetch(`${base}/storage/v1/render/image/public/media/${path}?width=${w}&quality=80&resize=contain`);
+      if (r.ok && (r.headers.get('content-type') || '').startsWith('image/')) up = r;
+    } catch { /* fall through */ }
+  }
+  if (!up) {
+    try { up = await fetch(origin, init); } catch { return new Response('Upstream error', { status: 502 }); }
+  }
   if (!up.ok) return new Response('Not found', { status: up.status === 404 ? 404 : 502 });
 
   const headers = new Headers();

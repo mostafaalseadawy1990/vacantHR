@@ -50,8 +50,8 @@ let n = 0;
           </div>
         )}
       </div>
-      {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path, 1200)} alt="" width="1200" height="900" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
-      {!hero.image_path && big && settingsHero && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(settingsHero, 1200)} alt="" width="1200" height="900" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
+      {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path, 1200)} alt="" width="1200" height="900" srcset={`${mediaUrl(hero.image_path, 720)} 720w, ${mediaUrl(hero.image_path, 1200)} 1200w`} sizes="(max-width:720px) 100vw, 50vw" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
+      {!hero.image_path && big && settingsHero && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(settingsHero, 1200)} alt="" width="1200" height="900" srcset={`${mediaUrl(settingsHero, 720)} 720w, ${mediaUrl(settingsHero, 1200)} 1200w`} sizes="(max-width:720px) 100vw, 50vw" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
     </div>
   </section>
 )}

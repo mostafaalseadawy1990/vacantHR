@@ -47,7 +47,7 @@ function statAttrs(value: string) {
 }
 ---
 <Base
-  preloadImage={s.home_hero_image ? mediaUrl(s.home_hero_image, 1200) : undefined}
+  preloadImage={s.home_hero_image ? mediaUrl(s.home_hero_image, 720) : undefined}
   title="Vacant HR | حلول التوظيف وإدارة الموارد البشرية للشركات"
   description="Vacant HR تقدم خدمات التوظيف، نظام إدارة موارد بشرية سحابي (HRM SaaS)، استشارات الهيكلة والسياسات، ومكتبة نماذج وصف وظيفي جاهزة — للشركات الناشئة والمتوسطة في مصر."
   active="home"
@@ -71,7 +71,7 @@ function statAttrs(value: string) {
     </div>
     <div class="hero-figure" aria-hidden="true">
       {s.home_hero_image ? (
-        <img src={mediaUrl(s.home_hero_image, 1200)} alt="Vacant HR — حلول التوظيف وإدارة الموارد البشرية" width="1200" height="900" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" />
+        <img src={mediaUrl(s.home_hero_image, 1200)} alt="Vacant HR — حلول التوظيف وإدارة الموارد البشرية" width="1200" height="900" srcset={`${mediaUrl(s.home_hero_image, 720)} 720w, ${mediaUrl(s.home_hero_image, 1200)} 1200w`} sizes="(max-width:720px) 100vw, 50vw" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" />
       ) : (
         <svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
           <rect width="400" height="500" fill="#E8E0CB"/>
