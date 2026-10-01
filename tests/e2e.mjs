@@ -66,6 +66,12 @@ S('public: core pages render and unknown routes 404', async ({ req }) => {
   eq((await get(req, '/rss.xml')).status, 200, 'rss');
 });
 
+S('public: canonical host + charset header', async ({ req }) => {
+  const r = await req.get('/about', { headers: { host: 'www.vacanthr.com' }, maxRedirects: 0 });
+  eq(r.status(), 301, 'www redirects'); eq(r.headers()['location'], 'https://vacanthr.com/about', 'www → apex');
+  const h = await req.get('/about', { maxRedirects: 0 }); includes(h.headers()['content-type'] || '', 'charset=utf-8', 'charset in header');
+});
+
 S('public: careers list, filters and search', async ({ page, req }) => {
   await page.goto('/careers');
   const titles = await page.locator('.job-card h2').allTextContents();

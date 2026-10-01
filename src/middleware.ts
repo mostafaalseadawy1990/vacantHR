@@ -8,6 +8,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Prerendered marketing pages have no real request — don't touch cookies/headers there.
   if (context.isPrerendered) return next();
 
+  // www → apex, http → https: one canonical host (301) so search engines see a single site.
+  const host = context.request.headers.get('host') || '';
+  if (host.startsWith('www.vacanthr.com')) {
+    return Response.redirect(`https://vacanthr.com${context.url.pathname}${context.url.search}`, 301);
+  }
+
   try {
     const { user, profile } = await getSessionProfile(context);
     context.locals.user = user;
@@ -33,5 +39,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  return next();
+  return withCharset(await next());
 });
+
+/** Astro emits `text/html` without a charset on SSR responses; crawlers prefer it in the header too. */
+function withCharset(res: Response): Response {
+  const ct = res.headers.get('content-type');
+  if (!ct || ct !== 'text/html') return res;
+  try { res.headers.set('content-type', 'text/html; charset=utf-8'); return res; }
+  catch { const r = new Response(res.body, res); r.headers.set('content-type', 'text/html; charset=utf-8'); return r; }
+}
