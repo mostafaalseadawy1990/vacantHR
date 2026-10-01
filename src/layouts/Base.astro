@@ -15,6 +15,7 @@ interface Props {
   waText?: string;
   jsonld?: unknown[];
   showChrome?: boolean;     // header/footer/whatsapp (default true)
+  preloadImage?: string;    // LCP image to preload (hero)
 }
 
 const {
@@ -27,6 +28,7 @@ const {
   waText,
   jsonld = [],
   showChrome = true,
+  preloadImage,
 } = Astro.props;
 
 const site = 'https://vacanthr.com';
@@ -34,7 +36,7 @@ const canonical = new URL(path, site).href;
 const ogImageAbs = new URL(ogImage, site).href;
 
 // Bump when style.css / script.js change — busts any stale CDN/browser cache.
-const ASSET_VER = '20260929i';
+const ASSET_VER = '20261001a';
 
 const settings = await getSettings();
 
@@ -69,7 +71,10 @@ try {
 {settings.google_site_verification && <meta name="google-site-verification" content={settings.google_site_verification} />}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" />
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" /></noscript>
+{preloadImage && <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />}
 <link rel="stylesheet" href={`/style.css?v=${ASSET_VER}`} />
 {jsonld.map((block) => (
   <script type="application/ld+json" set:html={JSON.stringify(block)} />

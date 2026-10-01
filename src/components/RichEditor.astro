@@ -50,6 +50,7 @@ const id = Astro.props.id ?? `re-${name}-${Math.random().toString(36).slice(2, 8
   <p class="re-status" id={`${id}-st`} aria-live="polite"></p>
 </div>
 
+<script is:inline src="/img-compress.js"></script>
 <script is:inline define:vars={{ id }}>
   (function () {
     // Load Quill (CSS + JS + fonts) once per page, then init this instance.
@@ -93,10 +94,11 @@ const id = Astro.props.id ?? `re-${name}-${Math.random().toString(36).slice(2, 8
         input.onchange = function () { if (input.files[0]) upload(input.files[0]); };
         input.click();
       }
-      function upload(file) {
+      function upload(file0) {
         status.textContent = 'جارٍ رفع الصورة…';
+        (window.vhCompressImage ? window.vhCompressImage(file0) : Promise.resolve(file0)).then(function (file) {
         var fd = new FormData(); fd.append('file', file);
-        fetch('/admin/media/upload', { method: 'POST', body: fd })
+        return fetch('/admin/media/upload', { method: 'POST', body: fd }); })
           .then(function (r) { return r.json(); })
           .then(function (j) {
             if (!j.url) throw new Error(j.error || 'failed');

@@ -70,7 +70,7 @@ const canonical = page > 1 || cat ? `/blog${url.search}` : '/blog';
         <div class="blog-main">
           {featured && (
             <a href={`/blog/${featured.slug}`} class="post-feat">
-              {featured.cover_path && <img src={mediaUrl(featured.cover_path)} alt={featured.title} />}
+              {featured.cover_path && <img src={mediaUrl(featured.cover_path, 1200)} alt={featured.title} fetchpriority="high" decoding="async" />}
               <div class="post-feat-body">
                 <span class="post-meta">
                   {L.show_category && featured.category && <b class="post-cat">{featured.category}</b>}

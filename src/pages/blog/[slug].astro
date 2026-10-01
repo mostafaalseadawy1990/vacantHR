@@ -11,7 +11,7 @@ if (!post) return Astro.rewrite('/404');
 const date = post.published_at ?? post.created_at;
 const mins = readingTime(post.body_html || post.body_md);
 const related = (await getPosts()).filter((p) => p.slug !== post.slug && (!post.category || p.category === post.category)).slice(0, 3);
-const cover = post.cover_path ? mediaUrl(post.cover_path) : 'https://vacanthr.com/og-image.png';
+const cover = post.cover_path ? `https://vacanthr.com${mediaUrl(post.cover_path)}` : 'https://vacanthr.com/og-image.png';
 
 const jsonld = [{
   '@context': 'https://schema.org',
@@ -61,7 +61,7 @@ const fmt = (s: string) => new Date(s).toLocaleDateString('ar-EG', { year: 'nume
 
   {post.cover_path && (
     <div class="wrap" style="max-width:900px;margin-bottom:8px;">
-      <img src={mediaUrl(post.cover_path)} alt={post.title} style="width:100%;border-radius:var(--radius);border:1px solid var(--line);" />
+      <img src={mediaUrl(post.cover_path, 1200)} alt={post.title} fetchpriority="high" decoding="async" style="width:100%;border-radius:var(--radius);border:1px solid var(--line);" />
     </div>
   )}
 

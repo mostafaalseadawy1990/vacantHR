@@ -4,6 +4,7 @@ import cloudflare from '@astrojs/cloudflare';
 
 // https://astro.build/config
 export default defineConfig({
+  devToolbar: { enabled: false }, // keeps the e2e locators clean; never shipped to production anyway
   site: 'https://vacanthr.com',
   output: 'server',
   adapter: cloudflare({ imageService: 'passthrough' }),

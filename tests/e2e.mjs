@@ -29,7 +29,7 @@ async function scenario(name, fn) {
     if (errors.length) throw new Error(errors.join(' | '));
     results.push({ name, ok: true, ms: Date.now() - t0 }); process.stdout.write(`  ✓ ${name}\n`);
   } catch (e) {
-    results.push({ name, ok: false, ms: Date.now() - t0, err: e.message }); process.stdout.write(`  ✗ ${name}\n      ${e.message.split('\n')[0]}\n`);
+    results.push({ name, ok: false, ms: Date.now() - t0, err: e.message }); process.stdout.write(`  ✗ ${name}\n      ${e.message.split('\n').slice(0, 12).join('\n      ')}\n`);
   } finally { await ctx.close(); }
 }
 function expect(cond, msg) { if (!cond) throw new Error('expect failed: ' + msg); }
@@ -379,11 +379,12 @@ async function main() {
     await waitFor(MOCK_URL + '/__db'); await waitFor(BASE + '/');
     browser = await chromium.launch({ executablePath: EXE });
     console.log(`Running ${scenarios.length} scenarios…`);
-    for (const [name, fn] of scenarios) { await reset(); await scenario(name, fn); }
+    const only = process.env.E2E_ONLY ? scenarios.filter(([n]) => n.includes(process.env.E2E_ONLY)) : scenarios;
+    for (const [name, fn] of only) { await reset(); await scenario(name, fn); }
     const failed = results.filter((r) => !r.ok);
     console.log(`\n${results.length - failed.length}/${results.length} passed`);
     process.exitCode = failed.length ? 1 : 0;
   } catch (e) { console.error(e); process.exitCode = 1; }
-  finally { await browser?.close(); app.kill('SIGTERM'); mock.kill('SIGTERM'); }
+  finally { await browser?.close(); app.kill('SIGTERM'); mock.kill('SIGTERM'); setTimeout(() => process.exit(process.exitCode ?? 0), 1500).unref(); }
 }
 main();

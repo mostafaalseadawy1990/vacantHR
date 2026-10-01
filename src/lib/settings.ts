@@ -161,8 +161,8 @@ export function ytEmbed(url?: string | null): string | null {
   return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
 }
 
-/** Public URL for a file in the `media` bucket. */
-export function mediaUrl(path: string): string {
-  const base = import.meta.env.PUBLIC_SUPABASE_URL;
-  return `${base}/storage/v1/object/public/media/${path}`;
+/** Same-origin URL for a file in the `media` bucket (served through /img with long-lived caching). */
+export function mediaUrl(path: string, width?: number): string {
+  const clean = String(path).replace(/^\/+/, '');
+  return `/img/${clean}${width ? `?w=${width}` : ''}`;
 }

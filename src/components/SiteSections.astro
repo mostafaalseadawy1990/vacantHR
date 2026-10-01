@@ -50,8 +50,8 @@ let n = 0;
           </div>
         )}
       </div>
-      {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path)} alt="" style="width:100%;height:100%;object-fit:cover;" /></div>}
-      {!hero.image_path && big && settingsHero && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(settingsHero)} alt="" style="width:100%;height:100%;object-fit:cover;" /></div>}
+      {hero.image_path && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(hero.image_path, 1200)} alt="" width="1200" height="900" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
+      {!hero.image_path && big && settingsHero && <div class="hero-figure" aria-hidden="true"><img src={mediaUrl(settingsHero, 1200)} alt="" width="1200" height="900" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>}
     </div>
   </section>
 )}
@@ -72,7 +72,7 @@ let n = 0;
                 {s.cta_label && <a href={s.cta_href || '/contact'} class="btn" style="margin-top:14px;">{s.cta_label}</a>}
               </div>
               {s.image_path
-                ? <div class="feature-media"><img src={mediaUrl(s.image_path)} alt={s.title ?? ''} loading="lazy" style="width:100%;height:100%;object-fit:cover;" /></div>
+                ? <div class="feature-media"><img src={mediaUrl(s.image_path, 900)} alt={s.title ?? ''} loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;" /></div>
                 : <div class="feature-media feature-ph" aria-hidden="true"><span>{String(i + 1).padStart(2, '0')}</span></div>}
             </div>
           ))}
@@ -97,7 +97,7 @@ let n = 0;
         {s.eyebrow && <div class="eyebrow-line">{s.eyebrow}</div>}
         {s.title && <h2>{s.title}</h2>}
         <Fragment set:html={s.body_html} />
-        {s.image_path && <img src={mediaUrl(s.image_path)} alt="" loading="lazy" />}
+        {s.image_path && <img src={mediaUrl(s.image_path, 1200)} alt="" loading="lazy" decoding="async" />}
       </div>
     </section>
   );
@@ -182,7 +182,7 @@ let n = 0;
         <div class="post-grid card-shadow" style="--cols:3;--ratio:16/9;">
           {posts.slice(0, 3).map((p) => (
             <a href={`/blog/${p.slug}`} class="post-card">
-              {p.cover_path ? <img src={mediaUrl(p.cover_path)} alt={p.title} loading="lazy" /> : <span class="post-noimg" aria-hidden="true">{p.title.slice(0, 1)}</span>}
+              {p.cover_path ? <img src={mediaUrl(p.cover_path, 600)} alt={p.title} loading="lazy" decoding="async" /> : <span class="post-noimg" aria-hidden="true">{p.title.slice(0, 1)}</span>}
               <div class="post-card-body">{p.category && <span class="post-meta"><b class="post-cat">{p.category}</b></span>}<h2>{p.title}</h2>{p.excerpt && <p>{p.excerpt}</p>}</div>
             </a>
           ))}

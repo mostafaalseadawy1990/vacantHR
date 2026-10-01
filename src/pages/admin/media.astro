@@ -86,7 +86,7 @@ const niceName = (p: string) => p.replace(/^\d+-/, '');
         </div>
         <div class="mlib">
           {items.map((m: any) => (
-            <div class="mcell" data-id={m.id} data-url={mediaUrl(m.path)} data-alt={m.alt || ''} data-name={niceName(m.path)} data-date={fmt(m.created_at)} data-path={m.path}>
+            <div class="mcell" data-id={m.id} data-url={`https://vacanthr.com${mediaUrl(m.path)}`} data-alt={m.alt || ''} data-name={niceName(m.path)} data-date={fmt(m.created_at)} data-path={m.path}>
               <label class="mcheck"><input type="checkbox" name="ids" value={m.id} /></label>
               <button type="button" class="mthumb" title="فتح التفاصيل"><img src={mediaUrl(m.path)} alt={m.alt || ''} loading="lazy" /></button>
               <div class="mname" title={niceName(m.path)}>{m.alt || niceName(m.path)}</div>
@@ -126,6 +126,7 @@ const niceName = (p: string) => p.replace(/^\d+-/, '');
   </aside>
 </div>
 
+<script is:inline src="/img-compress.js"></script>
 <script is:inline>
   (function () {
     // ---- Upload: drag & drop / click, multiple files, per-file progress, reload when done.
@@ -145,7 +146,8 @@ const niceName = (p: string) => p.replace(/^\d+-/, '');
       var arr = Array.prototype.slice.call(files).filter(function (f) { return f.type.indexOf('image/') === 0; });
       if (!arr.length) return;
       var left = arr.length;
-      arr.forEach(function (f) {
+      arr.forEach(function (f0) {
+        (window.vhCompressImage ? window.vhCompressImage(f0) : Promise.resolve(f0)).then(function (f) {
         var row = document.createElement('div'); row.className = 'up-row';
         row.innerHTML = '<span class="up-name"></span><span class="up-bar"><i></i></span><span class="up-st">جارٍ الرفع…</span>';
         row.querySelector('.up-name').textContent = f.name;
@@ -161,6 +163,7 @@ const niceName = (p: string) => p.replace(/^\d+-/, '');
         };
         xhr.onerror = function () { row.querySelector('.up-st').textContent = 'فشل الاتصال'; row.classList.add('err'); if (--left === 0) setTimeout(function () { location.reload(); }, 1200); };
         var fd = new FormData(); fd.append('file', f); xhr.send(fd);
+        });
       });
     }
 
