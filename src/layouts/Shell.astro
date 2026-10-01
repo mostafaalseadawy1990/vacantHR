@@ -98,6 +98,24 @@ const initials = (userName || 'V').trim().slice(0, 1);
     bd.addEventListener('click', function () { set(false); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { set(false); userSet(false); } });
     // Account menu (avatar in the top bar)
+    // Mobile: every data table becomes stacked cards (labels copied from the header row).
+    document.querySelectorAll('.table-scroll').forEach(function (el) {
+      var t = el.querySelector('table.data-table'); if (!t) return;
+      if (!el.classList.contains('cards')) {
+        var ths = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+        if (!ths.length) return;
+        t.querySelectorAll('tbody tr').forEach(function (tr) {
+          var tds = tr.children;
+          for (var i = 0; i < tds.length; i++) {
+            if (tds[i].tagName !== 'TD') continue;
+            if (i === 0) tds[i].classList.add('c-full');
+            else if (ths[i]) tds[i].setAttribute('data-label', ths[i]);
+            else tds[i].classList.add('c-actions');
+          }
+        });
+        el.classList.add('cards');
+      }
+    });
     var um = document.getElementById('admUser'), ub = document.getElementById('admUserBtn');
     function userSet(o) { um.classList.toggle('open', o); ub.setAttribute('aria-expanded', String(o)); }
     ub.addEventListener('click', function (e) { e.stopPropagation(); userSet(!um.classList.contains('open')); });

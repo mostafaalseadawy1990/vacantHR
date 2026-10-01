@@ -364,6 +364,14 @@ S('roles: recruiter / editor / support / viewer boundaries', async ({ browser: _
   await v.close();
 });
 
+if (process.env.E2E_SHOT) S('shot: mobile screenshots of admin lists', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, 'admin@test.com');
+  for (const [path, name] of [['/admin/jobs', 'jobs'], ['/admin/blog', 'blog'], ['/admin/staff', 'staff'], ['/admin/activity', 'activity'], ['/admin/candidates', 'candidates']]) {
+    await page.goto(path); await page.screenshot({ path: `${process.env.E2E_SHOT}/${name}.png`, fullPage: true });
+  }
+});
+
 S('auth: wrong password, logout, protected redirects', async ({ page, req }) => {
   await page.goto('/login'); await page.fill('input[name=email]', 'cand@test.com'); await page.fill('input[name=password]', 'wrong');
   await page.click('button[type=submit]'); await page.waitForLoadState('load'); includes(await page.textContent('main'), 'غير صحيحة', 'wrong password message');

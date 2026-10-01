@@ -64,7 +64,7 @@ const STATUS_AR = JOB_STATUS_AR;
   {shown.length === 0 ? (
     <div class="cempty">{(jobs ?? []).length === 0 ? <>مفيش وظائف لسه. <a href="/admin/jobs/new">ضيف أول وظيفة</a>.</> : 'مفيش وظائف مطابقة.'}</div>
   ) : (
-    <div class="table-scroll">
+    <div class="table-scroll cards">
       <table class="data-table jobs-table">
         <thead><tr><th>الوظيفة</th><th>النوع</th><th>مشاهدات</th><th>متقدمين</th><th>تحويل</th><th>النشر</th><th>الحالة</th><th></th></tr></thead>
         <tbody>
@@ -72,14 +72,14 @@ const STATUS_AR = JOB_STATUS_AR;
             const v = viewsByJob[j.id] ?? 0, a = j.applications?.[0]?.count ?? 0;
             return (
               <tr>
-                <td><a href={`/admin/jobs/${j.slug}`} style="font-weight:600;">{j.title}</a><br /><small style="color:var(--muted);">{j.department ?? '—'}{j.apply_url ? ' · تقديم خارجي' : ''}</small></td>
-                <td>{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR] ?? j.employment_type}</td>
-                <td>{v}</td>
-                <td>{a > 0 ? <a href={`/admin/jobs/${j.slug}#apps`}>{a}</a> : 0}</td>
-                <td style="color:var(--muted);">{v ? Math.round((a / v) * 100) : 0}%</td>
-                <td style="color:var(--muted);white-space:nowrap;">{fmtD(j.published_at)}</td>
-                <td><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{STATUS_AR[j.status]}</span></td>
-                <td>
+                <td class="c-full"><a href={`/admin/jobs/${j.slug}`} style="font-weight:600;font-size:1.02rem;">{j.title}</a><br /><small style="color:var(--muted);">{j.department ?? '—'}{j.apply_url ? ' · تقديم خارجي' : ''}</small></td>
+                <td data-label="النوع">{EMPLOYMENT_TYPE_AR[j.employment_type as keyof typeof EMPLOYMENT_TYPE_AR] ?? j.employment_type}</td>
+                <td data-label="مشاهدات">{v}</td>
+                <td data-label="متقدمين">{a > 0 ? <a href={`/admin/jobs/${j.slug}#apps`}>{a}</a> : 0}</td>
+                <td data-label="تحويل" style="color:var(--muted);">{v ? Math.round((a / v) * 100) : 0}%</td>
+                <td data-label="النشر" style="color:var(--muted);white-space:nowrap;">{fmtD(j.published_at)}</td>
+                <td data-label="الحالة"><span class={`status-pill status-${j.status === 'open' ? 'shortlisted' : j.status === 'closed' ? 'rejected' : 'submitted'}`}>{STATUS_AR[j.status]}</span></td>
+                <td class="c-actions">
                   <div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;">
                     <form method="POST" style="display:flex;gap:4px;">
                       <input type="hidden" name="id" value={j.id} />
