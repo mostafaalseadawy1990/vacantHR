@@ -367,7 +367,7 @@ S('roles: recruiter / editor / support / viewer boundaries', async ({ browser: _
 if (process.env.E2E_SHOT) S('shot: mobile screenshots of admin lists', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, 'admin@test.com');
-  for (const [path, name] of [['/admin/jobs', 'jobs'], ['/admin/blog', 'blog'], ['/admin/staff', 'staff'], ['/admin/activity', 'activity'], ['/admin/candidates', 'candidates']]) {
+  for (const [path, name] of [['/admin', 'overview'], ['/admin/jobs', 'jobs'], ['/admin/blog', 'blog'], ['/admin/staff', 'staff'], ['/admin/activity', 'activity'], ['/admin/candidates', 'candidates']]) {
     await page.goto(path); await page.screenshot({ path: `${process.env.E2E_SHOT}/${name}.png`, fullPage: true });
   }
 });
