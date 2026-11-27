@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import SiteSections from '../components/SiteSections.astro';
+import HrmShowcase from '../components/HrmShowcase.astro';
 import { getSections } from '../lib/sections';
 
 const sections = await getSections('hrm-saas');
@@ -8,32 +9,7 @@ import { getPricingPlans } from '../lib/settings';
 
 const plans = await getPricingPlans();
 
-const modules = [
-  { title: 'الحضور والانصراف', img: '/hrm/attendance.webp', alt: 'شاشة سجل الحضور اليومي في نظام HRM', body: 'سجل حضور يومي بالتأخير والانصراف المبكر والوقت الإضافي، مع ربط أجهزة البصمة والموبايل وجداول الورديات، وكله بيتحسب تلقائيًا على الراتب.' },
-  { title: 'الرواتب', img: '/hrm/payroll.webp', alt: 'شاشة مسيرة الرواتب الشهرية', body: 'مسيرة رواتب شهرية بالبدلات والخصومات والتأمينات والسلف، مع مراجعة قبل الاعتماد وقسائم رواتب إلكترونية لكل موظف.' },
-  { title: 'ملفات الموظفين', img: '/hrm/employees.webp', alt: 'دليل الموظفين بالبطاقات', body: 'دليل موظفين كامل بالبيانات الشخصية والوظيفية والمستندات، مع تتبع التعيين والنقل والترقية وإنهاء الخدمة في مكان واحد.' },
-  { title: 'الهيكل التنظيمي', img: '/hrm/org-chart.webp', alt: 'شجرة الهيكل التنظيمي للشركة', body: 'ارسم هيكل الإدارات والفروع والمسميات الوظيفية، واربط كل موظف بمكانه وبمديره المباشر.' },
-  { title: 'التوظيف ومتابعة المتقدمين', img: '/hrm/recruitment.webp', alt: 'شاشة المتقدمين للوظائف', body: 'انشر الوظائف واستقبل السير الذاتية وتابع كل متقدم من أول فرز لحد عرض العمل، مع جدولة المقابلات وتقييمها.' },
-  { title: 'تقييم الأداء', img: '/hrm/performance.webp', alt: 'دورات تقييم الأداء', body: 'دورات تقييم قابلة للتخصيص بمؤشرات أداء وأهداف واضحة، تساعدك في قرارات الترقية والتطوير والمكافآت.' },
-  { title: 'الجدارات والمهارات', img: '/hrm/competencies.webp', alt: 'مصفوفة الجدارات', body: 'مكتبة جدارات وملفات وظيفية ومصفوفة مهارات تبيّن فجوات كل موظف وتربطها بخطط التدريب.' },
-  { title: 'لوحة المتابعة (Dashboard)', img: '/hrm/analytics.webp', alt: 'لوحة مؤشرات الموارد البشرية — نظرة عامة', body: 'نظرة عامة لحظية على عدد الموظفين والحضور والإجازات والتوزيع على الإدارات، لتعرف وضع الشركة من شاشة واحدة.' },
-  { title: 'بطاقة أداء الموارد البشرية', img: '/hrm/dashboard-scorecard.webp', alt: 'بطاقة أداء الموارد البشرية بمؤشراتها', body: 'مؤشرات التوظيف والاحتفاظ والحضور والتدريب مقابل مستهدفاتك، بألوان توضح أين تحتاج تدخل.' },
-  { title: 'تقارير الموارد البشرية', img: '/hrm/hr-reports.webp', alt: 'شاشة تقارير وتحليلات الموارد البشرية', body: 'تقارير جاهزة للموظفين والحضور والرواتب والإجراءات، مع تصدير إلى Excel بضغطة واحدة.' },
-  { title: 'منشئ التقارير', img: '/hrm/report-builder.webp', alt: 'شاشة منشئ التقارير المخصصة', body: 'اختر الحقول والفلاتر بنفسك وابنِ تقريرك الخاص واحفظه لتعيد استخدامه، من غير ما تحتاج مبرمج.' },
-  { title: 'بوابة الموظف', img: '/hrm/employee-portal.webp', alt: 'الصفحة الرئيسية لبوابة الموظف', body: 'كل موظف يشوف حضوره ورصيد إجازاته وقسيمة راتبه ويقدّم طلباته من الموبايل، من غير ما يمرّ على الموارد البشرية.' },
-];
 
-const features = [
-  { title: 'سلاسل اعتماد مرنة', body: 'حدد مين يوافق على الإجازات والأذونات والمكافآت والسلف وبأي ترتيب.' },
-  { title: 'إجازات وأرصدة', body: 'قواعد إجازات قابلة للضبط (اعتيادي، مرضي، ترحيل رصيد) مع رصيد محدّث لحظيًا.' },
-  { title: 'ورديات وجداول عمل', body: 'جداول ورديات متعددة وتبديل ورديات وتنبيهات تأخير تلقائية.' },
-  { title: 'جزاءات وخصومات', body: 'لائحة جزاءات وخصومات تُطبَّق تلقائيًا وفق سياسة شركتك.' },
-  { title: 'نهاية الخدمة والمخالصات', body: 'حساب مستحقات نهاية الخدمة وإجراءات إخلاء الطرف بخطوات منظمة.' },
-  { title: 'تأمينات وضرائب', body: 'احتساب الاستقطاعات وفق قواعد التأمينات والضرائب، مع إعدادات تتحدث بتحديث اللوائح.' },
-  { title: 'تقييم الوظائف وهيكل الأجور', body: 'درجات وظيفية ومقارنة بالسوق لبناء هيكل أجور عادل ومتماسك.' },
-  { title: 'صلاحيات دقيقة', body: 'أدوار وصلاحيات على مستوى الشاشة، وسجل نشاط يوضح مين عمل إيه ومتى.' },
-  { title: 'واجهة عربية وتطبيق موبايل', body: 'واجهة عربية بالكامل تدعم RTL، وتطبيق ويب يعمل على الموبايل.' },
-];
 
 const jsonld = [{
   '@context': 'https://schema.org',
@@ -58,7 +34,7 @@ const jsonld = [{
   jsonld={jsonld}
 >
 <main id="main">
-{sections.length > 0 ? <SiteSections sections={sections} crumb="برنامج HRM" /> : (
+{sections.length > 0 ? <><SiteSections sections={sections} crumb="برنامج HRM" /><HrmShowcase /></> : (
 <>
 
 <div class="wrap">
@@ -82,33 +58,7 @@ const jsonld = [{
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow-line">المميزات</div>
-      <h2>وحدات النظام</h2>
-    </div>
-
-    {modules.map((m, i) => (
-      <div class:list={['feature-row', { rev: i % 2 === 1 }]}>
-        <div><h3>{m.title}</h3><p>{m.body}</p></div>
-        <div class="feature-media shot"><img src={m.img} alt={m.alt} width="1100" height="709" loading="lazy" decoding="async" /></div>
-      </div>
-    ))}
-  </div>
-</section>
-
-<section class="alt">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow-line">وأكتر من كده</div>
-      <h2>كل اللي محتاجه إدارة الموارد البشرية في نظام واحد</h2>
-    </div>
-    <div class="feat-grid">
-      {features.map((f) => <div class="feat-card"><h3>{f.title}</h3><p>{f.body}</p></div>)}
-    </div>
-  </div>
-</section>
+<HrmShowcase />
 
 <section class="alt">
   <div class="wrap">
