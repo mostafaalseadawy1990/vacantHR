@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import { SOLUTIONS } from '../../data/solutions';
+---
+<Base
+  title="حلول الموارد البشرية حسب القطاع | Vacant HR"
+  description="برنامج موارد بشرية يناسب طبيعة قطاعك: المصانع، التجزئة والفروع، المستشفيات، والمقاولات. ورديات وحضور ورواتب وموافقات في نظام واحد."
+  active="hrm" path="/solutions" waText="مرحبًا، عايز برنامج HRM يناسب قطاعي"
+>
+<main id="main">
+<div class="wrap"><nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>الحلول حسب القطاع</nav></div>
+<section class="hero" style="padding:40px 0 30px;">
+  <div class="wrap">
+    <div class="eyebrow-line">الحلول حسب القطاع</div>
+    <h1 style="max-width:20ch;">نظام موارد بشرية يفهم طبيعة شغلك</h1>
+    <p class="lead" style="max-width:62ch;">كل قطاع له تحدياته: ورديات المصانع، فروع التجزئة، تغطية المستشفيات، ومواقع المقاولات. اختار قطاعك وشوف إزاي النظام بيحل مشاكله.</p>
+  </div>
+</section>
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="doc-grid">
+      {SOLUTIONS.map((s) => (
+        <div class="doc-card">
+          <span class="cat">{s.name}</span>
+          <h3><a href={`/solutions/${s.slug}`}>{s.short}</a></h3>
+          <p>{s.description}</p>
+          <div class="doc-acts"><a href={`/solutions/${s.slug}`} class="btn solid">اعرف أكتر</a></div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+<section class="cta-banner"><div class="wrap"><h2>قطاعك مش موجود هنا؟</h2><p>قولنا طبيعة شغلك ونوضّح لك إزاي النظام يناسبه.</p><a href="/contact" class="btn solid">تواصل معنا</a></div></section>
+</main>
+</Base>

@@ -1,0 +1,97 @@
+---
+import Base from '../layouts/Base.astro';
+import Faq from '../components/Faq.astro';
+import { getPricingPlans } from '../lib/settings';
+
+const cms = await getPricingPlans();
+// Fallback mirrors the plans currently published on the site, used only when the CMS has none.
+const plans = cms.length ? cms : [
+  { id: 'a', name: 'أساسي', price: '40 ج.م', unit: '/ موظف / شهريًا', note: 'لفرق تحت 20 موظف', features: ['الحضور والانصراف', 'إدارة الإجازات', 'دعم عبر البريد الإلكتروني'], featured: false, cta_label: 'ابدأ الآن' },
+  { id: 'b', name: 'احترافي', price: '50 ج.م', unit: '/ موظف / شهريًا', note: 'الأكثر طلبًا للشركات المتوسطة', features: ['كل مميزات الباقة الأساسية', 'إدارة الرواتب الكاملة', 'تقييم الأداء', 'دعم فني مباشر'], featured: true, cta_label: 'اطلب عرض تجريبي' },
+  { id: 'c', name: 'مؤسسي', price: 'تواصل معنا', unit: '', note: 'لفرق أكبر من 100 موظف', features: ['كل المميزات', 'تكامل مع أنظمة أخرى (API)', 'مدير حساب مخصص'], featured: false, cta_label: 'تواصل مع المبيعات' },
+];
+const offers = plans.map((p) => {
+  const n = String(p.price).match(/\d+(\.\d+)?/);
+  return n ? { '@type': 'Offer', name: p.name, price: n[0], priceCurrency: 'EGP', description: String(p.unit || 'لكل موظف شهريًا') } : null;
+}).filter(Boolean);
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Vacant HR — نظام إدارة الموارد البشرية',
+  applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: 'ar', offers,
+  publisher: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+}];
+
+// Rows of the comparison table; a plan "has" a row when its feature list mentions it (or "كل المميزات").
+const rows: Array<[string, RegExp]> = [
+  ['الحضور والانصراف', /الحضور/], ['إدارة الإجازات', /الإجازات/], ['إدارة الرواتب الكاملة', /الرواتب/],
+  ['تقييم الأداء', /تقييم/], ['دعم عبر البريد الإلكتروني', /البريد/], ['دعم فني مباشر', /مباشر/],
+  ['تكامل مع أنظمة أخرى (API)', /API|تكامل/], ['مدير حساب مخصص', /مدير حساب/],
+];
+const has = (p: { features: string[] }, re: RegExp, i: number) =>
+  p.features.some((f) => re.test(f) || /^كل المميزات$/.test(f.trim())) || (i > 0 && p.features.some((f) => /كل مميزات الباقة/.test(f)) && rowsOfPrev(plans[i - 1], re));
+function rowsOfPrev(p: { features: string[] }, re: RegExp): boolean { return p.features.some((f) => re.test(f)); }
+---
+<Base
+  title="أسعار برنامج الموارد البشرية HRM | Vacant HR"
+  description="باقات برنامج إدارة الموارد البشرية بالموظف شهريًا بالجنيه المصري: حضور وانصراف، إجازات، رواتب، وتقييم أداء. قارن الباقات واطلب عرضًا تجريبيًا."
+  active="hrm" path="/pricing" waText="مرحبًا، عايز أعرف أسعار برنامج HRM" jsonld={jsonld}
+>
+<main id="main">
+<div class="wrap"><nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span><a href="/hrm-saas">برنامج HRM</a><span>/</span>الأسعار</nav></div>
+
+<section class="hero" style="padding:40px 0 30px;">
+  <div class="wrap">
+    <div class="eyebrow-line">الأسعار</div>
+    <h1 style="max-width:22ch;">أسعار برنامج الموارد البشرية: بتدفع على قد عدد موظفينك</h1>
+    <p class="lead" style="max-width:62ch;">اشتراك شهري بالموظف بالجنيه المصري، من غير رسوم مخفية. ابدأ بباقة تناسب حجمك وترقّى وقت ما تحتاج.</p>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="pricing">
+      {plans.map((plan) => (
+        <div class:list={['plan', { featured: plan.featured }]}>
+          <h3>{plan.name}</h3>
+          <div class="price">{plan.price} {plan.unit && <span>{plan.unit}</span>}</div>
+          {plan.note && <p>{plan.note}</p>}
+          <ul>{plan.features.map((f) => <li>{f}</li>)}</ul>
+          <a href="/contact" class:list={['btn', { solid: plan.featured }]} style="margin-top:22px;">{plan.cta_label ?? 'ابدأ الآن'}</a>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head"><div class="eyebrow-line">مقارنة</div><h2>مقارنة الباقات</h2></div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>الميزة</th>{plans.map((p) => <th>{p.name}</th>)}</tr></thead>
+        <tbody>
+          {rows.map(([label, re]) => (
+            <tr><td>{label}</td>{plans.map((p, i) => <td>{has(p, re, i) ? '✓' : '—'}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);margin-top:14px;font-size:.9rem;">الأسعار بالجنيه المصري. للشركات الكبيرة أو الاحتياجات الخاصة نجهّز لك عرضًا مخصصًا.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head"><div class="eyebrow-line">إيه اللي هتدفع عشانه</div><h2>كل باقة بتشمل</h2></div>
+    <div class="feat-grid">
+      <div class="feat-card"><h3>واجهة عربية بالكامل</h3><p>تدعم RTL وبوابة موظف على الموبايل.</p></div>
+      <div class="feat-card"><h3>إعداد واستيراد البيانات</h3><p>نساعدك تنقل موظفينك من Excel عند بداية التفعيل.</p></div>
+      <div class="feat-card"><h3>صلاحيات وسجل نشاط</h3><p>كل مستخدم يشوف اللي يخصه، وكل عملية مهمة بتتسجل.</p></div>
+    </div>
+  </div>
+</section>
+
+<Faq title="أسئلة عن الأسعار والاشتراك" />
+
+<section class="cta-banner"><div class="wrap"><h2>مش متأكد أي باقة تناسبك؟</h2><p>احجز عرض تجريبي لمدة 20 دقيقة ونرشّح لك الأنسب لحجم شركتك.</p><a href="/contact" class="btn solid">احجز عرض تجريبي</a></div></section>
+</main>
+</Base>

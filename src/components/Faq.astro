@@ -1,0 +1,13 @@
+---
+import { HRM_FAQ } from '../data/faq';
+interface Props { items?: Array<{ q: string; a: string }>; title?: string }
+const { items = HRM_FAQ, title = 'أسئلة شائعة' } = Astro.props;
+const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) };
+---
+<section>
+  <div class="wrap" style="max-width:820px;">
+    <div class="section-head"><div class="eyebrow-line">الأسئلة الشائعة</div><h2>{title}</h2></div>
+    <div class="faq">{items.map((f) => <details><summary>{f.q}</summary><div class="rich"><p>{f.a}</p></div></details>)}</div>
+  </div>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+</section>

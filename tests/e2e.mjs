@@ -66,6 +66,18 @@ S('public: core pages render and unknown routes 404', async ({ req }) => {
   eq((await get(req, '/rss.xml')).status, 200, 'rss');
 });
 
+S('public: pricing, solutions, glossary and FAQ pages', async ({ req }) => {
+  for (const p of ['/pricing', '/solutions', '/solutions/factories', '/solutions/retail', '/solutions/hospitals', '/solutions/contracting', '/glossary']) {
+    const r = await get(req, p); eq(r.status, 200, `GET ${p}`);
+  }
+  eq((await get(req, '/solutions/no-such-sector')).status, 404, 'unknown sector 404');
+  const pr = await get(req, '/pricing'); includes(pr.text, 'FAQPage', 'pricing FAQ JSON-LD'); includes(pr.text, 'SoftwareApplication', 'pricing offers JSON-LD');
+  includes((await get(req, '/hrm-saas')).text, 'FAQPage', 'hrm FAQ JSON-LD');
+  includes((await get(req, '/glossary')).text, 'الأجر التأميني', 'glossary term');
+  const sm = (await get(req, '/sitemap.xml')).text;
+  for (const u of ['/pricing', '/solutions/factories', '/glossary']) includes(sm, u, `sitemap ${u}`);
+});
+
 S('public: canonical host + charset header', async ({ req }) => {
   const r = await req.get('/about', { headers: { host: 'www.vacanthr.com' }, maxRedirects: 0 });
   eq(r.status(), 301, 'www redirects'); eq(r.headers()['location'], 'https://vacanthr.com/about', 'www → apex');

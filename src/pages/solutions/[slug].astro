@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import Faq from '../../components/Faq.astro';
+import { SOLUTIONS, getSolution } from '../../data/solutions';
+import { getPosts } from '../../lib/settings';
+
+const s = getSolution(String(Astro.params.slug));
+if (!s) return Astro.rewrite('/404');
+const all = await getPosts();
+const posts = s.posts.map((slug) => all.find((p) => p.slug === slug)).filter(Boolean) as typeof all;
+const others = SOLUTIONS.filter((x) => x.slug !== s.slug);
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'WebPage', name: s.title, url: `https://vacanthr.com/solutions/${s.slug}`, inLanguage: 'ar',
+  isPartOf: { '@type': 'WebSite', name: 'Vacant HR', url: 'https://vacanthr.com/' },
+}];
+---
+<Base title={s.title} description={s.description} active="hrm" path={`/solutions/${s.slug}`} waText={`مرحبًا، عايز برنامج HRM لقطاع ${s.name}`} jsonld={jsonld}>
+<main id="main">
+<div class="wrap"><nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span><a href="/solutions">الحلول حسب القطاع</a><span>/</span>{s.name}</nav></div>
+
+<section class="hero" style="padding:40px 0 50px;">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow-line">{s.name}</div>
+      <h1>برنامج موارد بشرية لـ{s.name}</h1>
+      <p class="lead">{s.lead}</p>
+      <div class="btn-row"><a href="/contact" class="btn solid">اطلب عرضًا تجريبيًا</a><a href="/pricing" class="btn">شوف الأسعار</a></div>
+    </div>
+    <div class="feature-media shot"><img src={s.img} alt={s.imgAlt} width="1100" height="709" decoding="async" fetchpriority="high" /></div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head"><div class="eyebrow-line">التحديات</div><h2>مشاكل {s.name} وإزاي بنحلها</h2></div>
+    <div class="feat-grid" style="grid-template-columns:repeat(2,1fr);">
+      {s.challenges.map((c) => (
+        <div class="feat-card"><h3>{c.title}</h3><p><b>المشكلة:</b> {c.problem}</p><p style="margin-top:8px;"><b>الحل:</b> {c.solution}</p></div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head"><div class="eyebrow-line">اللي هتحصل عليه</div><h2>ميزات مناسبة لقطاعك</h2></div>
+    <div class="feat-grid">{s.features.map((f) => <div class="feat-card"><h3>{f.title}</h3><p>{f.body}</p></div>)}</div>
+  </div>
+</section>
+
+<Faq items={s.faq} title={`أسئلة عن النظام في ${s.name}`} />
+
+{posts.length > 0 && (
+  <section class="alt">
+    <div class="wrap">
+      <div class="section-head"><div class="eyebrow-line">مقالات</div><h2>مقالات في الموضوع</h2></div>
+      <div class="doc-grid">
+        {posts.map((p) => (
+          <div class="doc-card"><span class="cat">{p.category}</span><h3><a href={`/blog/${p.slug}`}>{p.title}</a></h3><p>{p.excerpt}</p></div>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
+
+<section>
+  <div class="wrap">
+    <p style="color:var(--muted);">قطاعات أخرى: {others.map((o, i) => <><a href={`/solutions/${o.slug}`} style="color:var(--accent);font-weight:500;">{o.name}</a>{i < others.length - 1 ? ' · ' : ''}</>)}</p>
+  </div>
+</section>
+
+<section class="cta-banner"><div class="wrap"><h2>عايز تشوف النظام على بيانات شركتك؟</h2><p>احجز عرض تجريبي مباشر لمدة 20 دقيقة، من غير أي التزام.</p><a href="/contact" class="btn solid">احجز عرض تجريبي</a></div></section>
+</main>
+</Base>
