@@ -1,6 +1,7 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { serverClient } from '../../../lib/supabase';
+import { defaultPosts } from '../../../lib/settings';
 
 const supabase = serverClient(Astro);
 const me = Astro.locals.user!;
@@ -13,9 +14,17 @@ function slugify(s: string) {
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  if (form.get('_action') === 'seed') {
+    const rows = defaultPosts().map(({ id: _i, ...p }) => ({ ...p, author_id: me.id }));
+    const { error } = await supabase.from('posts').upsert(rows, { onConflict: 'slug', ignoreDuplicates: true });
+    if (error) flash = `تعذّر الاستيراد: ${error.message}`;
+    else return Astro.redirect('/admin/blog', 303);
+  }
   const title = String(form.get('title') || '').trim();
   const slug = (String(form.get('slug') || '').trim() || slugify(title)).replace(/[^a-z0-9-]/g, '');
-  if (!title) {
+  if (form.get('_action') === 'seed') {
+    /* handled above */
+  } else if (!title) {
     flash = 'اكتب عنوان المقال.';
   } else {
     const { data, error } = await supabase.from('posts')
@@ -43,6 +52,10 @@ const fmt = (s: string | null) => s ? new Date(s).toLocaleDateString('ar-EG', { 
       <div class="form-row"><label for="slug">الـ slug (إنجليزي — اختياري)</label><input id="slug" name="slug" pattern="[a-z0-9-]*" /></div>
       <button type="submit" class="btn solid" style="border:none;cursor:pointer;">إنشاء ومتابعة التحرير</button>
     </form>
+
+    {(posts ?? []).length < defaultPosts().length && (
+      <form method="POST" style="margin-bottom:24px;"><input type="hidden" name="_action" value="seed" /><button class="btn" style="cursor:pointer;">استيراد المقالات الافتراضية ({defaultPosts().length}) لتعديلها من هنا</button></form>
+    )}
 
     {(!posts || posts.length === 0) ? (
       <p style="color:var(--muted);">مفيش مقالات لسه.</p>

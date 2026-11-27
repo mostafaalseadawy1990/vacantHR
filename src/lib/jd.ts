@@ -1,6 +1,7 @@
 // Job-description templates: DB-backed (jd_templates) with the bundled markdown files as defaults/seed.
 import { anonClient } from './supabase';
 import { renderMarkdown } from './jobs';
+import catalog from '../data/jd/catalog.json';
 
 export type JdTemplate = {
   id: string; slug: string; title: string; sector: string | null; summary: string; body_html: string;
@@ -22,6 +23,11 @@ const META: Record<string, { title: string; sector: string; summary: string }> =
 function mdToHtml(md: string): string {
   const body = md.replace(/^# .*\n/, '').replace(/^> .*\n/m, '').replace(/^---\n\*[^\n]*\*\s*$/m, '');
   return renderMarkdown(body);
+}
+
+// 96-role library exported from the HRM SaaS job catalog (src/data/jd/catalog.json + one .md per role).
+for (const c of catalog as { slug: string; title: string; sector: string; summary: string }[]) {
+  if (!META[c.slug]) META[c.slug] = { title: c.title, sector: c.sector, summary: c.summary };
 }
 
 export const DEFAULT_JD: JdTemplate[] = Object.keys(META).map((slug, i) => ({

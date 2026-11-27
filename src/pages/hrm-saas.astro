@@ -8,6 +8,33 @@ import { getPricingPlans } from '../lib/settings';
 
 const plans = await getPricingPlans();
 
+const modules = [
+  { title: 'الحضور والانصراف', img: '/hrm/attendance.webp', alt: 'شاشة سجل الحضور اليومي في نظام HRM', body: 'سجل حضور يومي بالتأخير والانصراف المبكر والوقت الإضافي، مع ربط أجهزة البصمة والموبايل وجداول الورديات، وكله بيتحسب تلقائيًا على الراتب.' },
+  { title: 'الرواتب', img: '/hrm/payroll.webp', alt: 'شاشة مسيرة الرواتب الشهرية', body: 'مسيرة رواتب شهرية بالبدلات والخصومات والتأمينات والسلف، مع مراجعة قبل الاعتماد وقسائم رواتب إلكترونية لكل موظف.' },
+  { title: 'ملفات الموظفين', img: '/hrm/employees.webp', alt: 'دليل الموظفين بالبطاقات', body: 'دليل موظفين كامل بالبيانات الشخصية والوظيفية والمستندات، مع تتبع التعيين والنقل والترقية وإنهاء الخدمة في مكان واحد.' },
+  { title: 'الهيكل التنظيمي', img: '/hrm/org-chart.webp', alt: 'شجرة الهيكل التنظيمي للشركة', body: 'ارسم هيكل الإدارات والفروع والمسميات الوظيفية، واربط كل موظف بمكانه وبمديره المباشر.' },
+  { title: 'التوظيف ومتابعة المتقدمين', img: '/hrm/recruitment.webp', alt: 'شاشة المتقدمين للوظائف', body: 'انشر الوظائف واستقبل السير الذاتية وتابع كل متقدم من أول فرز لحد عرض العمل، مع جدولة المقابلات وتقييمها.' },
+  { title: 'تقييم الأداء', img: '/hrm/performance.webp', alt: 'دورات تقييم الأداء', body: 'دورات تقييم قابلة للتخصيص بمؤشرات أداء وأهداف واضحة، تساعدك في قرارات الترقية والتطوير والمكافآت.' },
+  { title: 'الجدارات والمهارات', img: '/hrm/competencies.webp', alt: 'مصفوفة الجدارات', body: 'مكتبة جدارات وملفات وظيفية ومصفوفة مهارات تبيّن فجوات كل موظف وتربطها بخطط التدريب.' },
+  { title: 'لوحة المتابعة (Dashboard)', img: '/hrm/analytics.webp', alt: 'لوحة مؤشرات الموارد البشرية — نظرة عامة', body: 'نظرة عامة لحظية على عدد الموظفين والحضور والإجازات والتوزيع على الإدارات، لتعرف وضع الشركة من شاشة واحدة.' },
+  { title: 'بطاقة أداء الموارد البشرية', img: '/hrm/dashboard-scorecard.webp', alt: 'بطاقة أداء الموارد البشرية بمؤشراتها', body: 'مؤشرات التوظيف والاحتفاظ والحضور والتدريب مقابل مستهدفاتك، بألوان توضح أين تحتاج تدخل.' },
+  { title: 'تقارير الموارد البشرية', img: '/hrm/hr-reports.webp', alt: 'شاشة تقارير وتحليلات الموارد البشرية', body: 'تقارير جاهزة للموظفين والحضور والرواتب والإجراءات، مع تصدير إلى Excel بضغطة واحدة.' },
+  { title: 'منشئ التقارير', img: '/hrm/report-builder.webp', alt: 'شاشة منشئ التقارير المخصصة', body: 'اختر الحقول والفلاتر بنفسك وابنِ تقريرك الخاص واحفظه لتعيد استخدامه، من غير ما تحتاج مبرمج.' },
+  { title: 'بوابة الموظف', img: '/hrm/employee-portal.webp', alt: 'الصفحة الرئيسية لبوابة الموظف', body: 'كل موظف يشوف حضوره ورصيد إجازاته وقسيمة راتبه ويقدّم طلباته من الموبايل، من غير ما يمرّ على الموارد البشرية.' },
+];
+
+const features = [
+  { title: 'سلاسل اعتماد مرنة', body: 'حدد مين يوافق على الإجازات والأذونات والمكافآت والسلف وبأي ترتيب.' },
+  { title: 'إجازات وأرصدة', body: 'قواعد إجازات قابلة للضبط (اعتيادي، مرضي، ترحيل رصيد) مع رصيد محدّث لحظيًا.' },
+  { title: 'ورديات وجداول عمل', body: 'جداول ورديات متعددة وتبديل ورديات وتنبيهات تأخير تلقائية.' },
+  { title: 'جزاءات وخصومات', body: 'لائحة جزاءات وخصومات تُطبَّق تلقائيًا وفق سياسة شركتك.' },
+  { title: 'نهاية الخدمة والمخالصات', body: 'حساب مستحقات نهاية الخدمة وإجراءات إخلاء الطرف بخطوات منظمة.' },
+  { title: 'تأمينات وضرائب', body: 'احتساب الاستقطاعات وفق قواعد التأمينات والضرائب، مع إعدادات تتحدث بتحديث اللوائح.' },
+  { title: 'تقييم الوظائف وهيكل الأجور', body: 'درجات وظيفية ومقارنة بالسوق لبناء هيكل أجور عادل ومتماسك.' },
+  { title: 'صلاحيات دقيقة', body: 'أدوار وصلاحيات على مستوى الشاشة، وسجل نشاط يوضح مين عمل إيه ومتى.' },
+  { title: 'واجهة عربية وتطبيق موبايل', body: 'واجهة عربية بالكامل تدعم RTL، وتطبيق ويب يعمل على الموبايل.' },
+];
+
 const jsonld = [{
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -62,24 +89,23 @@ const jsonld = [{
       <h2>وحدات النظام</h2>
     </div>
 
-    <div class="feature-row">
-      <div><h3>الحضور والانصراف</h3><p>تسجيل حضور عبر الموبايل أو البصمة، مع حساب تلقائي للتأخير والوقت الإضافي، وربط مباشر بكشوف الرواتب.</p></div>
-      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><circle cx="200" cy="150" r="80" fill="none" stroke="#1F3B36" stroke-width="8"/><line x1="200" y1="150" x2="200" y2="95" stroke="#1F3B36" stroke-width="8" stroke-linecap="round"/><line x1="200" y1="150" x2="240" y2="170" stroke="#B07A2E" stroke-width="8" stroke-linecap="round"/></svg></div>
-    </div>
+    {modules.map((m, i) => (
+      <div class:list={['feature-row', { rev: i % 2 === 1 }]}>
+        <div><h3>{m.title}</h3><p>{m.body}</p></div>
+        <div class="feature-media shot"><img src={m.img} alt={m.alt} width="1100" height="709" loading="lazy" decoding="async" /></div>
+      </div>
+    ))}
+  </div>
+</section>
 
-    <div class="feature-row rev">
-      <div><h3>الرواتب</h3><p>احتساب الرواتب والخصومات والبدلات تلقائيًا شهريًا، مع إصدار قسائم رواتب إلكترونية لكل موظف.</p></div>
-      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="130" y="55" width="140" height="190" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="152" y="85" width="96" height="8" fill="#2C5049"/><rect x="152" y="110" width="70" height="8" fill="#B07A2E"/><rect x="152" y="135" width="96" height="8" fill="#2C5049"/><circle cx="200" cy="195" r="24" fill="none" stroke="#B07A2E" stroke-width="5"/><text x="200" y="203" font-size="22" fill="#B07A2E" text-anchor="middle" font-family="Amiri, serif">£</text></svg></div>
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow-line">وأكتر من كده</div>
+      <h2>كل اللي محتاجه إدارة الموارد البشرية في نظام واحد</h2>
     </div>
-
-    <div class="feature-row">
-      <div><h3>الإجازات والطلبات</h3><p>تقديم طلبات الإجازة والموافقة عليها إلكترونيًا، مع رصيد إجازات محدث لحظيًا لكل موظف.</p></div>
-      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="120" y="60" width="160" height="170" fill="#FBF9F3" stroke="#1F3B36" stroke-width="3"/><rect x="120" y="60" width="160" height="30" fill="#1F3B36"/><path d="M150 150 l20 20 40 -45" fill="none" stroke="#B07A2E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    </div>
-
-    <div class="feature-row rev">
-      <div><h3>تقييم الأداء</h3><p>دورات تقييم دورية قابلة للتخصيص، بمؤشرات أداء واضحة تساعدك في قرارات الترقية والتطوير.</p></div>
-      <div class="feature-media" aria-hidden="true"><svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8E0CB"/><rect x="80" y="150" width="45" height="90" fill="#2C5049"/><rect x="150" y="110" width="45" height="130" fill="#1F3B36"/><rect x="220" y="80" width="45" height="160" fill="#B07A2E"/><rect x="290" y="130" width="45" height="110" fill="#2C5049"/><line x1="60" y1="240" x2="350" y2="240" stroke="#1F3B36" stroke-width="2"/></svg></div>
+    <div class="feat-grid">
+      {features.map((f) => <div class="feat-card"><h3>{f.title}</h3><p>{f.body}</p></div>)}
     </div>
   </div>
 </section>
