@@ -1,0 +1,42 @@
+---
+import Base from '../layouts/Base.astro';
+import { GLOSSARY } from '../data/glossary';
+
+const terms = [...GLOSSARY].sort((a, b) => a.term.localeCompare(b.term, 'ar'));
+const id = (t: string) => encodeURIComponent(t.replace(/\s*\(.*?\)\s*/g, '').trim().replace(/\s+/g, '-'));
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'DefinedTermSet', name: 'قاموس مصطلحات الموارد البشرية', inLanguage: 'ar',
+  hasDefinedTerm: terms.map((t) => ({ '@type': 'DefinedTerm', name: t.term, description: t.def })),
+}];
+---
+<Base
+  title="قاموس مصطلحات الموارد البشرية | Vacant HR"
+  description="شرح مبسط لأهم مصطلحات الموارد البشرية والرواتب والتأمينات وقانون العمل: الأجر التأميني، مكافأة نهاية الخدمة، فترة الاختبار، الوقت الإضافي وغيرها."
+  active="blog" path="/glossary" jsonld={jsonld}
+>
+<main id="main">
+<div class="wrap"><nav class="breadcrumb" aria-label="مسار التنقل"><a href="/">الرئيسية</a><span>/</span>قاموس الموارد البشرية</nav></div>
+<section class="hero" style="padding:40px 0 24px;">
+  <div class="wrap">
+    <div class="eyebrow-line">قاموس</div>
+    <h1 style="max-width:20ch;">قاموس مصطلحات الموارد البشرية</h1>
+    <p class="lead" style="max-width:62ch;">شرح مبسط لأشهر المصطلحات اللي بتقابلها في التوظيف والرواتب والتأمينات وقانون العمل. التعريفات للتوعية العامة وتحتاج مراجعة القانون الساري عند التطبيق.</p>
+  </div>
+</section>
+<section style="padding-top:0;">
+  <div class="wrap" style="max-width:860px;">
+    <nav class="blog-cats" aria-label="فهرس المصطلحات" style="margin-bottom:24px;">
+      {terms.map((t) => <a href={`#${id(t.term)}`}>{t.term.replace(/\s*\(.*?\)\s*/g, '')}</a>)}
+    </nav>
+    {terms.map((t) => (
+      <article id={id(t.term)} style="padding:22px 0;border-top:1px solid var(--line-soft);scroll-margin-top:90px;">
+        <h2 style="font-size:1.25rem;margin:0 0 8px;">{t.term}</h2>
+        <p style="margin:0;">{t.def}</p>
+        {t.link && <p style="margin:10px 0 0;"><a href={t.link.href} style="color:var(--accent);font-weight:500;">{t.link.label} ←</a></p>}
+      </article>
+    ))}
+  </div>
+</section>
+<section class="cta-banner"><div class="wrap"><h2>عايز تطبّق المفاهيم دي في شركتك؟</h2><p>برنامج HRM بيحسب الحضور والإجازات والرواتب وفق إعدادات تناسب سياستك.</p><a href="/hrm-saas" class="btn solid">اعرف أكتر عن البرنامج</a></div></section>
+</main>
+</Base>

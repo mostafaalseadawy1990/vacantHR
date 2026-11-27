@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import SiteSections from '../components/SiteSections.astro';
 import HrmShowcase from '../components/HrmShowcase.astro';
+import Faq from '../components/Faq.astro';
 import { getSections } from '../lib/sections';
 
 const sections = await getSections('hrm-saas');
@@ -11,6 +12,11 @@ const plans = await getPricingPlans();
 
 
 
+const offers = plans.map((p) => {
+  const n = String(p.price).match(/\d+(\.\d+)?/);
+  return n ? { '@type': 'Offer', name: p.name, price: n[0], priceCurrency: 'EGP', description: String(p.unit || 'لكل موظف شهريًا') } : null;
+}).filter(Boolean);
+
 const jsonld = [{
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -18,10 +24,7 @@ const jsonld = [{
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   inLanguage: 'ar',
-  offers: [
-    { '@type': 'Offer', name: 'أساسي', price: '150', priceCurrency: 'EGP', description: 'لكل موظف شهريًا' },
-    { '@type': 'Offer', name: 'احترافي', price: '220', priceCurrency: 'EGP', description: 'لكل موظف شهريًا' },
-  ],
+  offers,
   publisher: { '@type': 'Organization', name: 'Vacant HR', url: 'https://vacanthr.com/' },
 }];
 ---
@@ -34,7 +37,7 @@ const jsonld = [{
   jsonld={jsonld}
 >
 <main id="main">
-{sections.length > 0 ? <><SiteSections sections={sections} crumb="برنامج HRM" /><HrmShowcase /></> : (
+{sections.length > 0 ? <><SiteSections sections={sections} crumb="برنامج HRM" /><HrmShowcase /><Faq /></> : (
 <>
 
 <div class="wrap">
@@ -79,6 +82,8 @@ const jsonld = [{
     </div>
   </div>
 </section>
+
+<Faq />
 
 <section class="cta-banner">
   <div class="wrap">

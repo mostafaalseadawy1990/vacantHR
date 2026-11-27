@@ -8,7 +8,7 @@ export type Page = {
 /** Paths that belong to built-in routes — a CMS page can never shadow them. */
 export const RESERVED_SLUGS = new Set([
   'admin', 'dashboard', 'login', 'logout', 'signup', 'careers', 'blog', 'about', 'contact', 'privacy',
-  'recruitment', 'hrm-saas', 'hrm-guide', 'consulting', 'jd-templates', 'thanks', 'e', 'rss.xml', 'sitemap.xml',
+  'recruitment', 'hrm-saas', 'hrm-guide', 'pricing', 'solutions', 'glossary', 'consulting', 'jd-templates', 'thanks', 'e', 'rss.xml', 'sitemap.xml',
   'robots.txt', 'favicon.svg', 'og-image.png', 'style.css', 'script.js', 'templates', '404',
 ]);
 

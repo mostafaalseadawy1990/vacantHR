@@ -8,7 +8,7 @@ import { getSections } from '../lib/sections';
 
 const [s, testimonials, faqs, posts, { data: latestJobs }] = await Promise.all([
   getSettings(), getTestimonials(), getFaqs(), getPosts(),
-  anonClient().from('jobs').select('slug, title, department, location, employment_type, workplace, published_at, created_at').eq('status', 'open').order('published_at', { ascending: false, nullsFirst: false }).limit(3),
+  (async () => { try { return await anonClient().from('jobs').select('slug, title, department, location, employment_type, workplace, published_at, created_at').eq('status', 'open').order('published_at', { ascending: false, nullsFirst: false }).limit(3); } catch { return { data: null }; } })(),
 ]);
 const jobs = latestJobs ?? [];
 const sections = await getSections('home');

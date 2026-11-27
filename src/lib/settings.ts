@@ -151,9 +151,13 @@ export function getPosts(): Promise<Post[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
-  const { data } = await anonClient()
-    .from('posts').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
-  return (data as Post) ?? defaultPosts().find((p) => p.slug === slug) ?? null;
+  let row: Post | null = null;
+  try {
+    const { data } = await anonClient()
+      .from('posts').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
+    row = (data as Post) ?? null;
+  } catch { /* DB unreachable or not configured (e.g. preview deploys): fall back to the bundled articles */ }
+  return row ?? defaultPosts().find((p) => p.slug === slug) ?? null;
 }
 
 export function getGuideSections(): Promise<GuideSection[]> {
