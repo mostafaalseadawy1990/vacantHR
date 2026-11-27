@@ -105,8 +105,8 @@ S('public: blog index, category filter, post, related', async ({ page }) => {
 
 S('public: JD templates list, preview, Word download', async ({ page, req }) => {
   await page.goto('/jd-templates');
-  eq(await page.locator('.doc-card').count(), 6, 'six default templates');
-  await page.goto('/jd-templates?sector=' + encodeURIComponent('المالية')); eq(await page.locator('.doc-card').count(), 1, 'sector filter');
+  eq(await page.locator('.doc-card').count(), 98, 'all default templates (6 curated + 92 from the HRM catalog)');
+  await page.goto('/jd-templates?sector=' + encodeURIComponent('المالية')); { const n = await page.locator('.doc-card').count(); expect(n >= 1 && n < 98, 'sector filter'); }
   eq((await get(req, '/jd-templates/jd-senior-accountant')).status, 200, 'preview page');
   const r = await req.get('/jd-templates/jd-senior-accountant.docx');
   eq(r.status(), 200, 'docx status'); includes(r.headers()['content-type'], 'wordprocessingml', 'docx mime');
@@ -319,8 +319,8 @@ S('admin: site sections import + edit + public render', async ({ page, req }) =>
 
 S('admin: JD templates import/edit + pages + blog editor + media', async ({ page, req }) => {
   await login(page, 'admin@test.com');
-  let r = await post(req, '/admin/content/jd', { _action: 'seed' }); eq(r.status, 303, 'jd imported'); eq((await mockDb()).jd_templates.length, 6, 'six templates');
-  r = await post(req, '/admin/content/jd', { _action: 'save', title: 'مدير مشروعات', sector: 'إدارة', summary: 'x', body_html: '<h2>المهام</h2><ul><li>أ</li></ul>' }); eq((await mockDb()).jd_templates.length, 7, 'template added');
+  let r = await post(req, '/admin/content/jd', { _action: 'seed' }); eq(r.status, 303, 'jd imported'); eq((await mockDb()).jd_templates.length, 98, 'all default templates imported');
+  r = await post(req, '/admin/content/jd', { _action: 'save', title: 'مدير مشروعات', sector: 'إدارة', summary: 'x', body_html: '<h2>المهام</h2><ul><li>أ</li></ul>' }); eq((await mockDb()).jd_templates.length, 99, 'template added');
   const docx = await req.get('/jd-templates/jd-mdyr-mshrwaat.docx'); expect(docx.status() === 200 || docx.status() === 404, 'slug generated');
   const t = (await mockDb()).jd_templates.find((x) => x.title === 'مدير مشروعات'); eq((await req.get(`/jd-templates/${t.slug}.docx`)).status(), 200, 'new template downloads');
   // pages
