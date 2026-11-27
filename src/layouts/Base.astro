@@ -36,7 +36,7 @@ const canonical = new URL(path, site).href;
 const ogImageAbs = new URL(ogImage, site).href;
 
 // Bump when style.css / script.js change — busts any stale CDN/browser cache.
-const ASSET_VER = '20261002b';
+const ASSET_VER = '20261127a';
 
 const settings = await getSettings();
 
@@ -64,7 +64,11 @@ try {
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={ogImageAbs} />
+<meta property="og:image:alt" content={title} />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageAbs} />
 <link rel="icon" href={settings.favicon_path ? mediaUrl(settings.favicon_path) : '/favicon.svg'} />
 <link rel="apple-touch-icon" href={settings.favicon_path ? mediaUrl(settings.favicon_path) : '/favicon.svg'} />
 <link rel="alternate" type="application/rss+xml" title="مدوّنة Vacant HR" href="/rss.xml" />

@@ -1,4 +1,6 @@
 import { anonClient } from './supabase';
+import { renderMarkdown } from './jobs';
+import { DEFAULT_POSTS } from '../data/blog-posts';
 
 export type Settings = {
   contact_email: string;
@@ -126,6 +128,15 @@ export function getPricingPlans(): Promise<PricingPlan[]> {
   }).catch(() => []);
 }
 
+/** Bundled articles (src/data/blog-posts.ts) — shown until posts are imported into / written in the database. */
+export function defaultPosts(): Post[] {
+  return DEFAULT_POSTS.map((p) => ({
+    id: p.slug, slug: p.slug, title: p.title, excerpt: p.excerpt, cover_path: p.cover ?? null,
+    category: p.category, author_name: 'فريق Vacant HR', body_md: p.body, body_html: renderMarkdown(p.body),
+    tags: p.tags, status: 'published' as const, published_at: p.date, created_at: p.date, updated_at: p.date,
+  })).sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
+}
+
 export function getPosts(): Promise<Post[]> {
   return cached('posts', async () => {
     const { data, error } = await anonClient()
@@ -135,14 +146,14 @@ export function getPosts(): Promise<Post[]> {
       .order('published_at', { ascending: false, nullsFirst: false })
       .limit(500);
     if (error) throw error;
-    return (data ?? []) as Post[];
-  }).catch(() => []);
+    return (data && data.length ? data : defaultPosts()) as Post[];
+  }).catch(() => defaultPosts());
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
   const { data } = await anonClient()
     .from('posts').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
-  return (data as Post) ?? null;
+  return (data as Post) ?? defaultPosts().find((p) => p.slug === slug) ?? null;
 }
 
 export function getGuideSections(): Promise<GuideSection[]> {
@@ -163,6 +174,7 @@ export function ytEmbed(url?: string | null): string | null {
 
 /** Same-origin URL for a file in the `media` bucket (served through /img with long-lived caching). */
 export function mediaUrl(path: string, width?: number): string {
+  if (path.startsWith('/hrm/')) return path; // bundled static asset in /public
   const clean = String(path).replace(/^\/+/, '');
   return `/img/${clean}${width ? `?w=${width}` : ''}`;
 }
