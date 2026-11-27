@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { runtimeEnv } from '../../lib/runtime-env';
 
 export const prerender = false;
 
@@ -12,7 +11,7 @@ export const prerender = false;
 export const GET: APIRoute = async ({ params, request, locals }) => {
   const path = (params.path || '').replace(/^\/+/, '');
   if (!path || path.includes('..')) return new Response('Not found', { status: 404 });
-  const env = runtimeEnv({ locals });
+  const env = (locals as any)?.runtime?.env ?? {};
   const base = env.PUBLIC_SUPABASE_URL ?? import.meta.env.PUBLIC_SUPABASE_URL;
   const origin = `${base}/storage/v1/object/public/media/${path}`;
   const url = new URL(request.url);
@@ -23,12 +22,12 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
 
   const init: RequestInit & { cf?: unknown } = {};
-  if (w && env.IMAGE_RESIZE === '1') {
+  if (w && (env.IMAGE_RESIZE ?? import.meta.env.IMAGE_RESIZE) === '1') {
     init.cf = { image: { width: w, fit: 'scale-down', quality: 82, format: 'auto' } };
   }
   let up: Response | null = null;
   // Supabase image transformations (Pro plan) resize at the source; silently fall back to the original file.
-  if (w && !init.cf && env.SUPABASE_IMAGE_TRANSFORM === '1' && /\.(png|jpe?g|webp)$/i.test(path)) {
+  if (w && !init.cf && (env.SUPABASE_IMAGE_TRANSFORM ?? import.meta.env.SUPABASE_IMAGE_TRANSFORM) === '1' && /\.(png|jpe?g|webp)$/i.test(path)) {
     try {
       const r = await fetch(`${base}/storage/v1/render/image/public/media/${path}?width=${w}&quality=80&resize=contain`);
       if (r.ok && (r.headers.get('content-type') || '').startsWith('image/')) up = r;

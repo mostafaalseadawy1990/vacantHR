@@ -3,14 +3,13 @@
  * No-ops (with a console warning) when RESEND_API_KEY is missing, so the app
  * works before email is configured. Never throws.
  */
-import { runtimeEnv } from './runtime-env';
 type Ctx = { locals?: any };
 
 function readEnv(ctx?: Ctx) {
-  const runtimeEnv_ = runtimeEnv(ctx);
+  const runtimeEnv = ctx?.locals?.runtime?.env ?? {};
   return {
-    key: runtimeEnv_.RESEND_API_KEY,
-    from: runtimeEnv_.EMAIL_FROM ?? 'Vacant HR <noreply@vacanthr.com>',
+    key: runtimeEnv.RESEND_API_KEY ?? import.meta.env.RESEND_API_KEY,
+    from: runtimeEnv.EMAIL_FROM ?? import.meta.env.EMAIL_FROM ?? 'Vacant HR <noreply@vacanthr.com>',
   };
 }
 

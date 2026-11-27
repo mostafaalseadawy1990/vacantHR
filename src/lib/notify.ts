@@ -6,16 +6,15 @@
  */
 import { sendEmail, emailLayout } from './email';
 import { getSettings } from './settings';
-import { runtimeEnv } from './runtime-env';
 
 type Ctx = { locals?: any };
 
 export function notifyEnv(ctx?: Ctx) {
-  const env = runtimeEnv(ctx);
+  const env = ctx?.locals?.runtime?.env ?? {};
   return {
-    resend: !!(env.RESEND_API_KEY),
-    tgToken: env.TELEGRAM_BOT_TOKEN,
-    tgChat: env.TELEGRAM_CHAT_ID,
+    resend: !!(env.RESEND_API_KEY ?? import.meta.env.RESEND_API_KEY),
+    tgToken: env.TELEGRAM_BOT_TOKEN ?? import.meta.env.TELEGRAM_BOT_TOKEN,
+    tgChat: env.TELEGRAM_CHAT_ID ?? import.meta.env.TELEGRAM_CHAT_ID,
   };
 }
 

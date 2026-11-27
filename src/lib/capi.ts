@@ -7,15 +7,14 @@
  *  - META_TEST_EVENT_CODE (optional, shows events under "Test events" in Events Manager)
  * Never throws.
  */
-import { runtimeEnv } from './runtime-env';
 type Ctx = { locals?: any; request?: Request };
 
 export function capiEnv(ctx?: Ctx) {
-  const env = runtimeEnv(ctx);
+  const env = ctx?.locals?.runtime?.env ?? {};
   return {
-    pixelId: env.META_PIXEL_ID ?? '',
-    token: env.META_CAPI_TOKEN ?? '',
-    testCode: env.META_TEST_EVENT_CODE ?? '',
+    pixelId: env.META_PIXEL_ID ?? import.meta.env.META_PIXEL_ID ?? '',
+    token: env.META_CAPI_TOKEN ?? import.meta.env.META_CAPI_TOKEN ?? '',
+    testCode: env.META_TEST_EVENT_CODE ?? import.meta.env.META_TEST_EVENT_CODE ?? '',
   };
 }
 
